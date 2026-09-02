@@ -308,3 +308,97 @@ Enumerated 2026-09-02 from `COLMI R02_CC07`.
 | `0000fee7` | `0000fea1` notify/read, `0000fea2` indicate/read/write, `0000fec9` read | Tencent — a second OTA/config path |
 
 Reproduce with the GATT dump in the project history, or any BLE explorer.
+
+---
+
+## Firmware analysis (2026-09-02)
+
+Done to answer one question without flashing: **would the mod actually clear the
+gate on this ring?** Answer: no, on two independent grounds.
+
+### OTA container format
+
+Header layout, from atc1441's `OTA_Firmware_Header_description.png`:
+
+| Offset | Field |
+|---|---|
+| `0x00` | start magic |
+| `0x04` | CRC32 of firmware from payload start to end |
+| `0x08` | length of firmware from payload start |
+| `0x10` | firmware version string |
+| `0x30` | hardware version string |
+| `0x100` | raw firmware |
+
+Parsing every published image plus two pulled from the vendor CDN:
+
+| Image | Magic | Payload | CRC32 verifies |
+|---|---|---|---|
+| `R02_3.00.06_240523` | `78563412` | `0x100` | yes |
+| `R02_3.00.06_FasterRawValuesMOD` | `78563412` | `0x100` | yes |
+| `R02_3.00.17_240903` | `78563412` | `0x100` | yes |
+| `R01_1.00.01_231229` | `78563412` | `0x100` | yes |
+| **`RT02CR_3.12.02_260824`** (this ring) | **`e5c3bd81`** | `0x50` | **no** |
+| `RY02_3.00.33_250117` | `e5c3bd81` | `0x50` | no |
+
+**This ring's firmware uses a different container.** Different magic, payload at
+`0x50` not `0x100`, and the CRC32 field does not verify as a plain CRC32 of the
+payload. Entropy is 6.92 bits/byte with 9.6% zero bytes, against 6.67 and 15.5%
+for the `78563412` images, and `RT02CR` and `RY02` share a fixed 16-byte prefix
+(`0c00810993270000...f94c6b7e`). That is a wrapper -- encrypted or compressed --
+not the plaintext ARM image the older format exposes.
+
+Consequence: **the FasterRawValues patch cannot be ported to this ring.** There
+is no plaintext firmware to locate the constant in.
+
+### What the mod actually does
+
+The mod differs from its base by **five bytes**: four are the CRC32 in the
+header, and one is the real change.
+
+```
+offset 0x9b0a (payload 0x9a0a)
+orig: ...40 78 7d 27 28 4d ff 00...   byte = 125
+mod : ...40 78 20 27 28 4d ff 00...   byte =  32
+```
+
+In Thumb, `7d 27` is `MOVS r7, #125` and `20 27` is `MOVS r7, #32`. It is a
+single immediate constant, changed by a factor of **3.91x**.
+
+Two things follow.
+
+**The mod is a 3.91x speedup, not a 25x one.** Whether that clears 25 Hz depends
+entirely on the base rate of `R02_3.00.06`, which has not been measured here.
+The Edge Impulse capture implies roughly 20-30 Hz on their setup, which would be
+self-consistent with a ~5-8 Hz base -- putting a modded `R02_V3.0` ring right at
+the gate rather than comfortably past it. Applied to *this* ring's measured
+1.00 Hz, 3.91x is 3.9 Hz, nowhere near the gate.
+
+**The constant is an 8-bit immediate, so a custom value is possible** -- `#4`
+would be ~31x rather than 3.91x. That is the interesting path, and it is closed
+for this ring by the container format above. It would need an `R02_V3.0`-lineage
+unit, a rebuilt image, and a recomputed CRC32.
+
+### Vendor firmware CDN
+
+Images are fetchable directly, no app required:
+
+```
+http://api2.qcwxkjvip.com/download/ota/<HW_STRING>/<FW_STRING>.bin
+```
+
+`RT02CR_V3.1/RT02CR_3.12.02_260824.bin` returns 200 and 138016 bytes -- the
+exact stock image for this unit, matching its reported hardware and firmware
+strings. Useful for recovery or future analysis.
+
+### Conclusion
+
+The ring path is closed for v1:
+
+1. Stock is 1.00 Hz, 25x short.
+2. No `0xA1` parameter changes it.
+3. The one published mod is 3.91x, which is not enough even if it applied.
+4. It does not apply -- this ring's firmware is in a container we cannot patch.
+5. Building a custom mod needs different hardware, a rebuilt image, and a flash
+   with no recovery path.
+
+**Use the ESP32-S3 + MPU6050 build.**
