@@ -45,6 +45,22 @@ SUBTYPE_NAMES = {
 KNOWN_RING_NAMES = ("R01", "R02", "R03", "R04", "R05", "R06", "R07", "R08", "R09", "R10")
 
 
+def looks_like_ring(name: str | None) -> bool:
+    """
+    Whether an advertised name plausibly belongs to a Colmi-family ring.
+
+    Do not use startswith here. Real units advertise as "COLMI R02_CC07", with
+    the vendor first and a per-unit suffix, so a prefix match on "R02" silently
+    misses the ring that is sitting right in front of you. Matching anywhere in
+    the string costs nothing and catches the naming variants these rings ship
+    with.
+    """
+    if not name:
+        return False
+    upper = name.upper()
+    return "COLMI" in upper or any(model in upper for model in KNOWN_RING_NAMES)
+
+
 def checksum(packet: bytes | bytearray) -> int:
     """Sum of all bytes, mod 256."""
     return sum(packet) & 0xFF

@@ -70,34 +70,80 @@ class Capture:
         }
 
 
+async def adopt_system_connected() -> BLEDevice | None:
+    """
+    Find the ring via a connection macOS is already holding.
+
+    The ring bonds to the Mac, so macOS reconnects to it automatically -- and a
+    connected peripheral stops advertising. That makes it invisible to a scan
+    while being perfectly reachable, which presents as "no ring found" no matter
+    how long you scan or how hard you shake it.
+
+    CoreBluetooth can retrieve system-connected peripherals directly. We build
+    the BLEDevice bleak expects, using bleak's own central manager, because a
+    CBPeripheral is only valid for the manager that produced it.
+
+    Returns None on non-macOS platforms or when nothing is connected.
+    """
+    try:
+        from CoreBluetooth import CBUUID
+        from bleak.backends.corebluetooth.CentralManagerDelegate import CentralManagerDelegate
+    except ImportError:
+        return None
+
+    manager = CentralManagerDelegate()
+    await manager.wait_until_ready()
+
+    service = CBUUID.UUIDWithString_(protocol.UART_SERVICE_UUID)
+    peripherals = manager.central_manager.retrieveConnectedPeripheralsWithServices_([service])
+    if not peripherals:
+        return None
+
+    peripheral = peripherals[0]
+    logger.info("adopting system-connected peripheral %s", peripheral.name())
+    return BLEDevice(peripheral.identifier().UUIDString(), peripheral.name(), (peripheral, manager))
+
+
 async def find_ring(address: str | None = None, name: str | None = None, timeout: float = 10.0) -> BLEDevice:
     """
-    Locate a ring. Prefer an explicit address; fall back to scanning for a known
-    ring name. On macOS the address is a CoreBluetooth UUID, not a MAC.
+    Locate a ring, by scan or by adopting a connection macOS already holds.
+    On macOS the address is a CoreBluetooth UUID, not a MAC.
     """
     if address:
         device = await BleakScanner.find_device_by_address(address, timeout=timeout)
-        if device is None:
-            raise RuntimeError(f"no device found at address {address}")
-        return device
+        if device is not None:
+            return device
+        # Not advertising is the normal state for a bonded ring, not an error.
+        device = await adopt_system_connected()
+        if device is not None and device.address == address:
+            return device
+        raise RuntimeError(f"no device found at address {address}")
 
     logger.info("scanning for %.0fs", timeout)
     devices = await BleakScanner.discover(timeout=timeout)
 
     if name:
         match = next((d for d in devices if d.name == name), None)
-        if match is None:
-            raise RuntimeError(f"no device advertising the name {name!r}")
-        return match
+        if match is not None:
+            return match
+    else:
+        rings = [d for d in devices if protocol.looks_like_ring(d.name)]
+        if len(rings) > 1:
+            names = ", ".join(f"{d.name} ({d.address})" for d in rings)
+            raise RuntimeError(f"multiple rings found, pass --address to pick one: {names}")
+        if rings:
+            return rings[0]
 
-    rings = [d for d in devices if d.name and d.name.startswith(protocol.KNOWN_RING_NAMES)]
-    if not rings:
-        raise RuntimeError("no ring found. Is it charged and out of range of the phone app?")
-    if len(rings) > 1:
-        names = ", ".join(f"{d.name} ({d.address})" for d in rings)
-        raise RuntimeError(f"multiple rings found, pass --address to pick one: {names}")
+    device = await adopt_system_connected()
+    if device is not None:
+        return device
 
-    return rings[0]
+    raise RuntimeError(
+        "no ring found, by scan or by adopting a system connection.\n"
+        "  - is the phone app holding it? force quit it\n"
+        "  - is it charged and off the charger?\n"
+        "  - try a charger tap: 2 seconds on, then off"
+    )
 
 
 async def read_device_info(client: BleakClient, device: BLEDevice) -> DeviceInfo:

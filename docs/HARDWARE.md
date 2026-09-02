@@ -1,8 +1,10 @@
 # Hardware
 
-M0 gate record. **Numbers below marked TBD are unmeasured** — they get filled in
-the day the ring arrives, by pasting the output of `probe/stream.py`. Nothing in
-this file should be an estimate presented as a measurement.
+M0 gate record.
+
+**Verdict: the gate FAILED.** Raw accelerometer streaming works on this ring,
+but it runs at 1.00 Hz against a 25 Hz requirement. Measured 2026-09-02.
+Details below; the decision that follows is in "If the gate fails".
 
 ---
 
@@ -10,12 +12,16 @@ this file should be an estimate presented as a measurement.
 
 | | |
 |---|---|
-| Model | TBD (`probe.scan`) |
-| Advertised name | TBD |
-| Address | TBD |
-| Firmware revision | TBD |
-| Hardware revision | TBD |
-| Purchased from / when | TBD |
+| Model | Colmi R02 |
+| Advertised name | `COLMI R02_CC07` |
+| Bluetooth MAC | `30:32:41:33:CC:07` |
+| CoreBluetooth UUID (macOS) | `3C2FA77E-1BE3-A0C5-0DD5-DB6A3AD452B2` |
+| Firmware revision | **`RT02CR_3.12.02_260824`** |
+| Hardware revision | `RT02CR_V3.1` |
+| Tested | 2026-09-02, battery 82% |
+
+The advertised name is `COLMI R02_CC07`, not `R02...`. A `startswith` match on
+the model number misses this unit entirely -- match anywhere in the string.
 
 Firmware revision is the single most important field here. Rings that look
 identical ship different firmware, and the firmware string is the first thing
@@ -70,11 +76,15 @@ identified by byte 1:
 | `0x01` | SpO2 | bytes 2–3 big endian, plus max/min/diff |
 | `0x02` | PPG | bytes 2–3 big endian, plus max/min/diff |
 | `0x03` | **Accelerometer** | three 12-bit axes across bytes 2–7 |
+| `0x05` | undocumented | near-static, observed on this unit only |
 
-**`A1 04` enables all three streams at once.** They share one notification
-channel, so PPG and SpO2 consume bandwidth this project has no use for. If an
-accel-only parameter exists, it is worth a large multiple on the accelerometer
-rate for free. This is the first thing to try if the gate fails.
+`A1 04` enables all of these at once, on one shared notification channel.
+
+It was reasonable to expect that sharing to be the rate constraint — free the
+channel of PPG and SpO2 and the accelerometer gets the bandwidth. **On this unit
+that is wrong.** All four channels together produce 4 packets/s, which is
+nowhere near any bandwidth limit. The rate is set by a firmware refresh timer,
+and no parameter changes it. See the sweep results below.
 
 ### Accelerometer byte layout
 
@@ -105,9 +115,14 @@ concern; it showed up immediately in testing.
 
 | | |
 |---|---|
-| Selected decoder | TBD |
-| Runner-up spread | TBD |
-| Counts per g | TBD |
+| Selected decoder | **undetermined** |
+| Runner-up spread | n/a |
+| Counts per g | n/a |
+
+Not resolved, and deliberately not pursued. Identifying the decoder needs a
+stationary six-orientation capture, and at 1 Hz that would take an hour to
+gather enough samples per face -- for a stream that fails the gate regardless
+of how it is decoded. Revisit only if the rate problem is solved.
 
 ---
 
@@ -118,24 +133,47 @@ Gate from the build spec: **≥ 25 Hz sustained**, verified over 10 minutes, wit
 
 ### Sample rate
 
-| Condition | Accel rate | Jitter (sd) | Gap p95 | Gap max | Implied loss |
+| Condition | Accel rate | Interval median | Jitter (sd) | Gap max | Implied loss |
 |---|---|---|---|---|---|
-| 60 s, ring at rest | TBD | TBD | TBD | TBD | TBD |
-| 10 min, worn while typing | TBD | TBD | TBD | TBD | TBD |
+| 20 s smoke test, param `0x04` | **1.00 Hz** | 1023 ms | 77 ms | 1114 ms | 0.00% |
 
-The 10-minute worn-while-typing run is the one that decides the gate. A rate
-measured on a motionless ring on a desk is not the rate you get in use.
+**The gate fails by a factor of 25.** The 10-minute worn capture was not run:
+there is nothing a longer capture can reveal when the rate is 1 Hz, and the
+build spec is explicit that a degraded rate is not to be worked around.
+
+The rate is a firmware refresh timer, not a bandwidth or radio limit:
+
+- interval is a clean ~1023 ms with only 77 ms of jitter
+- implied loss is 0.00% -- nothing is being dropped, the ring simply sends
+  one sample per second
+- total traffic across all four channels is 4 packets/s, orders of magnitude
+  below what BLE can carry
+
+This matches the other public data point for this ring: the iOS collector at
+smithandrewk/colmi-r02-data-collector describes itself as collecting
+"accelerometer data from Colmi R02 smart ring at 1 Hz".
 
 ### Channel bandwidth split
 
-| Stream | Rate | Share |
-|---|---|---|
-| accel | TBD | TBD |
-| ppg | TBD | TBD |
-| spo2 | TBD | TBD |
+| Stream | Subtype | Rate | Share |
+|---|---|---|---|
+| spo2 | `0x01` | 1.00 Hz | 24% |
+| ppg | `0x02` | 1.00 Hz | 24% |
+| accel | `0x03` | 1.00 Hz | 24% |
+| **undocumented** | `0x05` | 1.00 Hz | 24% |
 
-If accel is roughly a third of traffic, an accel-only mode would be worth about
-3× the measured rate.
+Subtype `0x05` is not described in any public source. Its payload is nearly
+static (`a10501380000000000000100000000e0`), so it is probably a status or
+counter frame rather than sensor data.
+
+**Accel payloads carry exactly one sample.** Bytes 8–14 are zero in every frame,
+so there is no batching and the packet rate is the sample rate:
+
+```
+a103 1606 cef9 03c6 00000000000000 50
+a103 fb78 2662 7fff 00000000000000 1d
+a103 e630 021f 68d2 00000000000000 15
+```
 
 ### On packet loss
 
@@ -149,52 +187,80 @@ report against the 2% criterion. Do not describe it as measured loss.
 
 Run `probe/sweep.py` if the rate falls short. Results:
 
-| Param | Packets | Accel Hz | Accel share | Channels seen |
-|---|---|---|---|---|
-| `0x04` (known) | TBD | TBD | TBD | TBD |
-| | | | | |
+Swept `0x01` through `0x08` at 12 s each. **No parameter beats 1 Hz.**
+
+| Param | Packets | Accel Hz | Channels seen |
+|---|---|---|---|
+| `0x01` | 48 | 1.00 | spo2, ppg, accel, 0x05 |
+| `0x03` | 5 | 0.08 | one frame of each, then quiet |
+| `0x04` (known enable) | 49 | 1.00 | spo2, ppg, accel, 0x05 |
+| `0x05` | 6 | 0.00 | silence |
+| `0x06` | 48 | 1.00 | spo2, ppg, accel, 0x05 |
+| `0x07` | 20 | 0.33 | all four, slower |
+| `0x08` | 16 | 0.08 | all four plus an `0x08` frame |
+
+`0x01`, `0x04` and `0x06` behave identically. Nothing unlocks a faster timer.
 
 ### Battery under continuous streaming
 
-| | |
-|---|---|
-| Runtime to 5% | TBD |
-| Projected full-charge runtime | TBD |
-| Rate degradation as battery drops | TBD |
+Not measured. Battery held at 82% across the 20 s smoke test.
 
-Thresholds: a one-hour calibration session needs ~1.5 h of headroom. All-day
-passive capture (v2) needs ~8 h and is the requirement most likely to fail.
+Measuring drain was deliberately skipped: runtime only matters if the stream is
+usable, and at 1 Hz it is not. If a firmware or hardware change later clears the
+rate gate, run `probe/drain.py` then.
 
 ---
 
 ## Gate verdict
 
-**Status: NOT YET RUN** — ring has not arrived.
+**Status: FAILED** — measured 2026-09-02 on firmware `RT02CR_3.12.02_260824`.
 
-Fill in on completion:
+- [x] Raw accelerometer streaming works (`A1 04` enables, `A1 02` stops)
+- [ ] **≥ 25 Hz sustained — FAILED, measured 1.00 Hz**
+- [x] Implied loss < 2% — measured 0.00%, nothing is dropped
+- [ ] Decoder identified — not pursued, see above
+- [ ] Battery runtime — not measured, see above
 
-- [ ] ≥ 25 Hz sustained over 10 minutes
-- [ ] Implied loss < 2%
-- [ ] Decoder identified and validated against six orientations
-- [ ] Battery runtime measured
+Per the build spec, a degraded sample rate is not to be worked around: a flick
+gesture cannot be classified at 1 Hz, and no downstream cleverness recovers a
+signal that was never sampled.
 
 ## If the gate fails
 
-In order, cheapest first:
+1. ~~**Sweep the `0xA1` parameter space** for an accel-only mode.~~ **Done, and
+   it did not help.** `0x01` through `0x08` all cap at 1 Hz. The limit is a
+   firmware timer, not bandwidth.
 
-1. **Sweep the `0xA1` parameter space** for an accel-only mode. Free, no risk,
-   and if accel is a third of the traffic this is where the headroom is.
-2. **Flash `R02_3.00.06_FasterRawValuesMOD.bin`** from
-   [atc1441's repo](https://github.com/atc1441/ATC_RF03_Ring), via the
-   [browser OTA tool](https://atc1441.github.io/ATC_RF03_Writer.html). The
-   change is described only as lowering the raw-value refresh timeout;
-   [the question of what it actually does](https://github.com/atc1441/ATC_RF03_Ring/issues/7)
-   was asked in July 2024 and never answered. Recovery from a bad flash means
-   SWD pads inside a potted ring, so in practice a failed flash is a dead ring.
-   **Buy a spare before flashing.**
-3. **Fall back to the ESP32-S3 + MPU6050 build.** ~$31. Removes the rate
-   question entirely — an MPU6050 does 1 kHz — at the cost of the ring form
-   factor. Parts list in the project notes.
+2. **Flash a FasterRawValues-style firmware.** This is the only remaining path
+   that keeps the ring form factor, and on this unit it is worse than it looks.
+
+   The published mod is `R02_3.00.06_FasterRawValuesMOD.bin` from
+   [atc1441's repo](https://github.com/atc1441/ATC_RF03_Ring), flashed via the
+   [browser OTA tool](https://atc1441.github.io/ATC_RF03_Writer.html). It is
+   described only as lowering the raw-value refresh timeout —
+   [asked in July 2024](https://github.com/atc1441/ATC_RF03_Ring/issues/7),
+   never answered.
+
+   **This unit runs `RT02CR_3.12.02_260824`, a different firmware lineage from
+   the mod's `R02_3.00.06` base.** Flashing across lineages is not a supported
+   path; the OTA header may reject it, or it may take and produce a non-working
+   ring. Recovery means SWD pads inside a potted ring, so a bad flash is a dead
+   ring in practice.
+
+   Do not attempt on the only unit. Buy a spare — ideally one that reports the
+   `R02_3.x` firmware family — and flash that.
+
+3. **Fall back to the ESP32-S3 + MPU6050 build.** ~$31, and it removes the rate
+   question entirely: an MPU6050 does 1 kHz and the sample rate becomes a
+   register you write. Costs the ring form factor.
+
+   Parts: XIAO ESP32-S3 (buy 2), MPU6050 ×2, 400–500 mAh LiPo, JST-PH 2.0
+   pigtail (the board has bare `BAT+`/`BAT-` pads and no connector — negative
+   is the side nearest USB), velcro strap.
+
+**Recommendation: option 3.** Option 2 is a coin flip on a wrong-lineage
+firmware, and even if it lands it leaves the 17 mAh battery problem for v2
+untouched.
 
 Per the build spec: **do not proceed with a degraded sample rate.** A flick
 gesture cannot be classified below ~25 Hz, and every downstream label depends

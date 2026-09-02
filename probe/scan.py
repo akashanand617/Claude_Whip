@@ -23,7 +23,7 @@ async def run(address: str | None, name: str | None, timeout: float, show_all: b
     if show_all:
         print(f"scanning for {timeout:.0f}s, showing everything...\n")
         for device in await BleakScanner.discover(timeout=timeout):
-            marker = "  <-- ring" if device.name and device.name.startswith(protocol.KNOWN_RING_NAMES) else ""
+            marker = "  <-- ring" if protocol.looks_like_ring(device.name) else ""
             print(f"  {device.name or '(unnamed)':<24} {device.address}{marker}")
         return 0
 

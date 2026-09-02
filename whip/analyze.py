@@ -198,13 +198,22 @@ def format_report(stats: StreamStats, header: dict | None = None, payloads: list
         add("")
         add("  next steps on failure, cheapest first:")
         accel_share = next((s.share for s in stats.subtypes if s.subtype == protocol.SUBTYPE_ACCEL), 1.0)
-        if accel_share < 0.9:
+        total_rate = stats.total_packets / max(stats.duration_s, 1e-9)
+
+        # Only blame bandwidth when there is enough traffic for bandwidth to be
+        # the thing that binds. At a few packets per second the limit is a
+        # firmware refresh timer, and freeing up channel capacity buys nothing.
+        if total_rate < 10.0:
+            add(f"    1. total traffic is only {total_rate:.1f} packets/s across all channels.")
+            add("       That is a firmware refresh timer, not a bandwidth limit, so an")
+            add("       accel-only mode would not help. Skip the sweep.")
+        elif accel_share < 0.9:
             headroom = stats.accel_rate_hz / max(accel_share, 1e-9)
-            add(
-                f"    1. accel is only {accel_share * 100:.0f}% of traffic. An accel-only mode would"
-            )
+            add(f"    1. accel is only {accel_share * 100:.0f}% of traffic. An accel-only mode would")
             add(f"       give roughly {headroom:.0f} Hz. Run probe/sweep.py to look for one.")
-        add("    2. flash R02_3.00.06_FasterRawValuesMOD.bin (buy a spare ring first).")
+        add("    2. flash a FasterRawValues-style firmware -- but check the lineage first.")
+        add("       The published mod targets R02_3.00.06; a different base version")
+        add("       is a brick risk. Buy a spare ring before trying.")
         add("    3. fall back to the ESP32-S3 + MPU6050 build.")
 
     add("=" * 62)
