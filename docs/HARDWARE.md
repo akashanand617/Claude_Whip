@@ -231,24 +231,35 @@ signal that was never sampled.
    it did not help.** `0x01` through `0x08` all cap at 1 Hz. The limit is a
    firmware timer, not bandwidth.
 
-2. **Flash a FasterRawValues-style firmware.** This is the only remaining path
-   that keeps the ring form factor, and on this unit it is worse than it looks.
+2. **Flash a FasterRawValues-style firmware.** The only path that keeps the ring
+   form factor. Note that 1 Hz is the stock behaviour on *every* Colmi R02 --
+   there is no faster unit to buy instead, so flashing is the only option that
+   ends with a working ring.
 
    The published mod is `R02_3.00.06_FasterRawValuesMOD.bin` from
    [atc1441's repo](https://github.com/atc1441/ATC_RF03_Ring), flashed via the
    [browser OTA tool](https://atc1441.github.io/ATC_RF03_Writer.html). It is
-   described only as lowering the raw-value refresh timeout —
+   described only as lowering the raw-value refresh timeout --
    [asked in July 2024](https://github.com/atc1441/ATC_RF03_Ring/issues/7),
    never answered.
 
-   **This unit runs `RT02CR_3.12.02_260824`, a different firmware lineage from
-   the mod's `R02_3.00.06` base.** Flashing across lineages is not a supported
-   path; the OTA header may reject it, or it may take and produce a non-working
-   ring. Recovery means SWD pads inside a potted ring, so a bad flash is a dead
-   ring in practice.
+   **The OTA transport is confirmed present on this unit.** The writer drives
+   service `de5bf728-d711-4e47-af26-65e3012a5dc7` with `de5bf72a` for write and
+   `de5bf729` for notify. This ring exposes all three, exactly. It is an
+   RF03-family device and the tool can talk to it.
 
-   Do not attempt on the only unit. Buy a spare — ideally one that reports the
-   `R02_3.x` firmware family — and flash that.
+   An earlier note here guessed that the `RT02CR` firmware lineage meant the
+   ring was probably unflashable. That was wrong -- the GATT table settles it.
+
+   What remains unverified is the **image**, not the transport: whether
+   `R02_3.00.06` is correct for `RT02CR_V3.1` hardware. The writer performs no
+   validation ("This tool cannot check if the file is correct!!!") and recovery
+   means SWD pads inside a potted ring, so a wrong image is a dead ring.
+
+   The ring also exposes a Tencent `0000fee7` service, a second OTA path common
+   on Chinese BLE parts, if the first is rejected.
+
+   **Flash a spare, never the only unit.**
 
 3. **Fall back to the ESP32-S3 + MPU6050 build.** ~$31, and it removes the rate
    question entirely: an MPU6050 does 1 kHz and the sample rate becomes a
@@ -258,9 +269,13 @@ signal that was never sampled.
    pigtail (the board has bare `BAT+`/`BAT-` pads and no connector — negative
    is the side nearest USB), velcro strap.
 
-**Recommendation: option 3.** Option 2 is a coin flip on a wrong-lineage
-firmware, and even if it lands it leaves the 17 mAh battery problem for v2
-untouched.
+**Recommendation:** option 3 if you want certainty, option 2 if the ring form
+factor is worth a $20 spare and a two-week wait. Option 2 is a genuine bet now
+that the OTA transport is confirmed, not the long shot recorded earlier -- but
+it still leaves the 17 mAh battery problem for v2 untouched even when it works.
+
+Buying a different ring instead of flashing is not an option: 1 Hz is the stock
+behaviour across the product line.
 
 Per the build spec: **do not proceed with a degraded sample rate.** A flick
 gesture cannot be classified below ~25 Hz, and every downstream label depends
@@ -278,3 +293,18 @@ Treat this as an order-of-magnitude expectation, not a measurement: the file is
 resampled, and the firmware that produced it is not stated. It does suggest the
 stock configuration lands near the gate rather than comfortably above it, and
 that a 740 ms hole — half a gesture window — is a real failure mode to watch for.
+
+---
+
+## GATT table
+
+Enumerated 2026-09-02 from `COLMI R02_CC07`.
+
+| Service | Characteristics | Purpose |
+|---|---|---|
+| `6e40fff0-b5a3-f393-e0a9-e50e24dcca9e` | `6e400002` write, `6e400003` notify | Nordic UART — all command traffic |
+| `de5bf728-d711-4e47-af26-65e3012a5dc7` | `de5bf72a` write, `de5bf729` notify | **OTA firmware update** — the service atc1441's writer drives |
+| `0000180a` | serial, hardware rev, firmware rev, system ID | Device Information |
+| `0000fee7` | `0000fea1` notify/read, `0000fea2` indicate/read/write, `0000fec9` read | Tencent — a second OTA/config path |
+
+Reproduce with the GATT dump in the project history, or any BLE explorer.
