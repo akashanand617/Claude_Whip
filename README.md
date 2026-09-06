@@ -13,12 +13,17 @@ fills?**
 ## Status
 
 **M0 — hardware gate.** Everything downstream is blocked on raw accelerometer
-streaming working at ≥ 25 Hz. The probe harness in this repo is built and
-tested; it has not yet been run against a physical ring.
+streaming at ≥ 25 Hz.
+
+Stock firmware measured **1.00 Hz** — a firmware refresh timer, not a bandwidth
+limit, and no protocol parameter changes it. A low-latency firmware exists for
+this exact hardware that takes the timer to 16 ms, or **62.5 Hz**. The image is
+archived in `firmware/`, verified at instruction level, and its hash is pinned
+by a test. **The flash has not been performed yet** — see `docs/FLASHING.md`.
 
 | Milestone | State |
 |---|---|
-| M0 hardware gate | harness ready, **waiting on ring** |
+| M0 hardware gate | stock firmware FAILED at 1.00 Hz; **flash pending** for 62.5 Hz |
 | M1 gesture classifier | not started |
 | M2 calibration corpus | not started, **not blocked on hardware** |
 | M3 labeling session | not started, **not blocked on hardware** |
@@ -38,9 +43,18 @@ source .venv/bin/activate
 
 Needs Python 3.11+. The only runtime dependency is `bleak`.
 
+## Flashing
+
+The stock ring cannot clear the gate. `docs/FLASHING.md` is the runbook, and
+`probe/firmware.py` verifies any image offline before it touches hardware:
+
+```sh
+python -m probe.firmware firmware/rt02cr-low-latency.bin --hardware RT02CR_V3.1
+```
+
 ## The M0 runbook
 
-Run these in order the day the ring arrives.
+Run these in order.
 
 ### 1. Identify the ring
 
@@ -138,7 +152,7 @@ which makes it a useful rehearsal of the failure path.
 python -m pytest tests -q
 ```
 
-25 tests, no hardware required.
+34 tests, no hardware required.
 
 ## Layout
 
@@ -146,6 +160,7 @@ python -m pytest tests -q
 whip/           protocol, decoding, capture, analysis
   protocol.py   packet construction, command and subtype constants
   accel.py      12-bit decoding, candidate unpackers, gravity-based scoring
+  fwimage.py    OTA container parsing and timer-site analysis
   capture.py    BLE connection and notification recording
   analyze.py    rate, jitter, gap and loss metrics; the gate decision
 probe/          command line tools
@@ -155,9 +170,15 @@ probe/          command line tools
   drain.py      battery life under continuous streaming
   report.py     re-analyse a saved capture
   simulate.py   synthetic captures for testing without hardware
+  firmware.py   inspect and diff firmware images offline
+  gestures.py   hunt for gesture events and a hidden rate parameter
+  subdata.py    sweep sub-data bytes of the enable command
+  find.py       identify the ring by proximity when the name does not match
+firmware/       archived OTA images, stock and low-latency
 tests/
 docs/
   HARDWARE.md   the M0 gate record
+  FLASHING.md   the flashing runbook and recovery path
 data/           captures (gitignored)
 ```
 
