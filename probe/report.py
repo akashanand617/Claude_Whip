@@ -49,7 +49,26 @@ def main() -> int:
         stats = analyze.analyze(records)
         payloads = accel_payloads(records)
 
-        print(analyze.format_report(stats, header=header, payloads=payloads if args.stationary else None))
+        scored = None
+        if args.stationary:
+            timed = [
+                (t, p)
+                for t, p in records
+                if len(p) >= 8 and p[0] == protocol.CMD_RAW_SENSOR and p[1] == protocol.SUBTYPE_ACCEL
+            ]
+            windows = accel.stationary_windows(timed)
+            scored = [p for w in windows for p in w]
+            orientations = accel.count_orientations(windows)
+            print(
+                f"  stationary filter: kept {len(scored)} of {len(timed)} samples "
+                f"across {orientations} distinct orientations"
+            )
+            if orientations < 6:
+                print(f"  WARNING: {orientations} orientations is too few to separate the candidates.")
+                print("  Recapture with the ring resting in six clearly different attitudes.")
+            print()
+
+        print(analyze.format_report(stats, header=header, payloads=scored))
 
         if args.hex:
             print(f"\n  first {args.hex} raw payloads")

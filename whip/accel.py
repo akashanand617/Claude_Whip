@@ -96,6 +96,73 @@ def decode(payload: bytes, unpacker: str = DEFAULT_UNPACKER) -> AccelSample:
     return AccelSample(**axes)
 
 
+def raw_axes(payload: bytes) -> tuple[int, int, int]:
+    """
+    Unsigned 12-bit axes straight off the wire, no sign interpretation.
+
+    Used to judge whether the ring was moving, which must not depend on which
+    decoder is being evaluated -- otherwise the candidate under test gets to
+    choose the data it is scored on.
+    """
+    return (
+        (payload[6] << 4) | (payload[7] & 0x0F),
+        (payload[2] << 4) | (payload[3] & 0x0F),
+        (payload[4] << 4) | (payload[5] & 0x0F),
+    )
+
+
+def stationary_windows(
+    samples: list[tuple[float, bytes]], window_s: float = 1.0, max_spread: float = 40.0
+) -> list[list[bytes]]:
+    """
+    Split a capture into fixed windows and keep only the still ones.
+
+    A six-orientation capture is mostly stationary, but the moves between
+    orientations are real acceleration and they wreck the gravity-constancy
+    test. On the first real capture, discarding them cut every candidate's
+    spread roughly in half.
+    """
+    import statistics
+
+    kept: list[list[bytes]] = []
+    current: list[bytes] = []
+    start = samples[0][0] if samples else 0.0
+
+    for timestamp, payload in samples:
+        if timestamp - start >= window_s:
+            if current:
+                columns = list(zip(*[raw_axes(p) for p in current]))
+                if max(statistics.pstdev(c) for c in columns) < max_spread:
+                    kept.append(current)
+            current, start = [], timestamp
+        current.append(payload)
+
+    if current:
+        columns = list(zip(*[raw_axes(p) for p in current]))
+        if max(statistics.pstdev(c) for c in columns) < max_spread:
+            kept.append(current)
+
+    return kept
+
+
+def count_orientations(windows: list[list[bytes]], bucket: int = 200) -> int:
+    """
+    How many distinct attitudes the still windows actually cover.
+
+    The ranking is only trustworthy when the candidates were forced to disagree,
+    which needs gravity pointing several different ways. Reporting this stops a
+    tie being read as a result when the real problem is that the ring barely
+    moved.
+    """
+    import statistics
+
+    seen = set()
+    for window in windows:
+        columns = zip(*[raw_axes(p) for p in window])
+        seen.add(tuple(round(statistics.fmean(c) / bucket) for c in columns))
+    return len(seen)
+
+
 def score_unpackers(payloads: list[bytes]) -> list[tuple[str, float, float]]:
     """
     Rank candidate unpackers against a stationary capture.

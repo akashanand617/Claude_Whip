@@ -72,3 +72,33 @@ def test_score_unpackers_needs_multiple_orientations_to_discriminate():
     assert ranking[0][0] == "reference"
     assert ranking[0][2] < 0.02
     assert ranking[1][2] > ranking[0][2] * 2, "the runner up should be clearly worse"
+
+
+def test_raw_axes_is_decoder_independent():
+    """Stationarity must not be judged with the decoder under test."""
+    payload = make_accel_payload(x=100, y=1024, z=-40)
+    assert accel.raw_axes(payload) == (
+        (payload[6] << 4) | (payload[7] & 0x0F),
+        (payload[2] << 4) | (payload[3] & 0x0F),
+        (payload[4] << 4) | (payload[5] & 0x0F),
+    )
+
+
+def test_stationary_windows_discards_motion():
+    still = [(i * 0.02, make_accel_payload(50, 1024, 30)) for i in range(50)]
+    moving = [(1.0 + i * 0.02, make_accel_payload(50 + i * 40, 1024 - i * 30, 30)) for i in range(50)]
+
+    kept = accel.stationary_windows(still + moving)
+    assert len(kept) == 1, "the moving window should be discarded"
+    assert len(kept[0]) == 50
+
+
+def test_count_orientations_distinguishes_attitudes():
+    def block(t0, x, y, z):
+        return [(t0 + i * 0.02, make_accel_payload(x, y, z)) for i in range(50)]
+
+    one = accel.stationary_windows(block(0.0, 1000, 0, 0))
+    assert accel.count_orientations(one) == 1
+
+    three = accel.stationary_windows(block(0.0, 1000, 0, 0) + block(1.0, 0, 1000, 0) + block(2.0, 0, 0, 1000))
+    assert accel.count_orientations(three) == 3
