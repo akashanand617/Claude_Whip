@@ -50,7 +50,12 @@ The stock ring cannot clear the gate. `docs/FLASHING.md` is the runbook, and
 
 ```sh
 python -m probe.firmware firmware/rt02cr-low-latency.bin --hardware RT02CR_V3.1
+python -m probe.flash firmware/rt02cr-low-latency.bin --dry-run
 ```
+
+`probe/flash.py` is a local DFU implementation, so flashing does not depend on
+Chrome's Web Bluetooth working. Its framing is verified against upstream's
+published checksums; its on-device transfer path is not yet proven.
 
 ## The M0 runbook
 
@@ -150,7 +155,7 @@ which makes it a useful rehearsal of the failure path.
 python -m pytest tests -q
 ```
 
-34 tests, no hardware required.
+63 tests, no hardware required.
 
 ## Layout
 
@@ -159,6 +164,7 @@ whip/           protocol, decoding, capture, analysis
   protocol.py   packet construction, command and subtype constants
   accel.py      12-bit decoding, candidate unpackers, gravity-based scoring
   fwimage.py    OTA container parsing and timer-site analysis
+  dfu.py        QRing DFU framing, pure and testable without hardware
   capture.py    BLE connection and notification recording
   analyze.py    rate, jitter, gap and loss metrics; the gate decision
 probe/          command line tools
@@ -169,6 +175,7 @@ probe/          command line tools
   report.py     re-analyse a saved capture
   simulate.py   synthetic captures for testing without hardware
   firmware.py   inspect and diff firmware images offline
+  flash.py      flash an image over BLE, with preflight gates
   gestures.py   hunt for gesture events and a hidden rate parameter
   subdata.py    sweep sub-data bytes of the enable command
   find.py       identify the ring by proximity when the name does not match

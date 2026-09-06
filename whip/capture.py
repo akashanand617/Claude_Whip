@@ -30,6 +30,9 @@ logger = logging.getLogger(__name__)
 
 FLUSH_INTERVAL_S = 2.0
 
+# Generous on purpose -- see connected() for why a slow connect is normal here.
+CONNECT_TIMEOUT_S = 90.0
+
 
 @dataclass
 class DeviceInfo:
@@ -183,9 +186,22 @@ async def read_battery(client: BleakClient, timeout: float = 3.0) -> tuple[int, 
 
 
 @asynccontextmanager
-async def connected(device: BLEDevice, disconnect_callback=None):
-    """Connect to the ring, yielding a live BleakClient."""
-    client = BleakClient(device, disconnected_callback=disconnect_callback)
+async def connected(device: BLEDevice, disconnect_callback=None, timeout: float = CONNECT_TIMEOUT_S):
+    """
+    Connect to the ring, yielding a live BleakClient.
+
+    The default timeout is deliberately long. This ring advertises infrequently
+    to save power, so a connect request waits for its next advertisement, and
+    service discovery then costs one BLE connection interval per round trip
+    across four services -- at the slow interval these rings negotiate, that
+    alone runs to tens of seconds. Chrome's flasher is visibly slow on the same
+    hardware for the same reason.
+
+    Every earlier "TimeoutError" seen against this ring was at 10-30s, which is
+    inside the range a healthy connect can take. Impatience looked identical to
+    a broken device.
+    """
+    client = BleakClient(device, disconnected_callback=disconnect_callback, timeout=timeout)
     await client.connect()
     logger.info("connected to %s (%s)", device.name, device.address)
     try:

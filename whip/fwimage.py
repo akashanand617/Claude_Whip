@@ -167,6 +167,16 @@ def inspect(path: str | Path) -> FirmwareImage:
     )
 
 
+# Sites that carry the timer idiom but must never be patched. Upstream's
+# research notes record 0x007ed4 as part of incoming DFU frame reassembly:
+# lowering it can make large DFU Data frames CRC-check before every BLE write
+# slice has arrived, breaking future OTA recovery. It looks exactly like a rate
+# candidate, which is precisely why it needs naming.
+DO_NOT_PATCH = {
+    0x007ED4: "DFU frame reassembly -- patching it can break future OTA recovery",
+}
+
+
 def raw_motion_candidates(image: FirmwareImage, max_period_ms: int = 2000) -> list[TimerSite]:
     """
     Timer sites plausible as the raw motion period.
@@ -174,5 +184,13 @@ def raw_motion_candidates(image: FirmwareImage, max_period_ms: int = 2000) -> li
     The idiom is used for several unrelated timers, so this is a filter and not
     an identification. Periods of 1000 ms (stock, 1 Hz) and anything fast enough
     to matter for gesture work are what we care about.
+
+    Sites in DO_NOT_PATCH are excluded outright -- they are known to be
+    something else, and offering them as rate candidates invites a change that
+    costs the ability to recover the ring.
     """
-    return [s for s in image.timer_sites if 0 < s.period_ms <= max_period_ms]
+    return [
+        s
+        for s in image.timer_sites
+        if 0 < s.period_ms <= max_period_ms and s.offset not in DO_NOT_PATCH
+    ]

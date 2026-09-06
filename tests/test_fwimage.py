@@ -92,3 +92,15 @@ def test_find_timer_sites_on_a_synthetic_pattern():
 def test_timer_site_ignores_movs_too_far_from_the_shift():
     payload = bytes([0x05, 0x22]) + b"\x00" * 16 + bytes([0xD2, 0x00])
     assert fwimage.find_timer_sites(payload) == []
+
+
+def test_dfu_reassembly_site_is_never_offered_as_a_rate_candidate():
+    """
+    0x007ed4 carries the same 125 << 3 shape as a real timer but belongs to DFU
+    frame reassembly. Patching it can break OTA recovery, so it must not appear
+    in the list a future custom build would pick from.
+    """
+    assert 0x007ED4 in fwimage.DO_NOT_PATCH
+    for path in (STOCK, LOW_LATENCY):
+        image = fwimage.inspect(path)
+        assert all(s.offset not in fwimage.DO_NOT_PATCH for s in fwimage.raw_motion_candidates(image))

@@ -72,6 +72,36 @@ fast timer" alone would not distinguish them -- the 16 ms site is the patch.
 
 ## 3. Flash
 
+Two routes. **Try the browser first** -- its transfer path has been exercised
+against real hardware; ours has not.
+
+### 3a. Local flasher (`probe/flash.py`)
+
+```sh
+python -m probe.flash firmware/rt02cr-low-latency.bin --dry-run   # always first
+python -m probe.flash firmware/rt02cr-low-latency.bin
+```
+
+`--dry-run` builds and validates every byte that would be transmitted, confirms
+the 135 chunks reassemble to the original image, and never opens a connection.
+
+The live run refuses unless all of these hold, in order: the image hash matches
+its pinned value, the ring's hardware string equals the image's, the ring's
+firmware is within the catalogue's compatibility rule, and battery is at or
+above 50%. It then asks you to type `FLASH`. Every frame is acknowledged before
+the next is sent, and any status other than `ok` aborts immediately.
+
+**The on-device transfer path is unproven.** Frame construction is verified
+against upstream's published CRC-16 and checksum-16 for this exact image, but
+the sequencing has been reasoned about rather than observed. Treat the first
+real run as an experiment.
+
+If the ring shows more than one address in a picker, use the one currently
+advertising -- this ring rotates its BLE address, and stale bonded entries for
+old addresses never answer.
+
+### 3b. Browser flasher
+
 Open <https://nosh118.github.io/colmi-ring-tools/> in Chrome (Web Bluetooth;
 Safari and Firefox will not work).
 
@@ -130,11 +160,15 @@ the evidence.
 ## Recovery
 
 If the ring still connects over BLE but behaves badly, flash the archived stock
-image through the same tool's custom-file upload:
+image:
 
+```sh
+python -m probe.flash firmware/rt02cr-stock-3.12.02.bin --init-type 1
 ```
-firmware/rt02cr-stock-3.12.02.bin
-```
+
+or upload `firmware/rt02cr-stock-3.12.02.bin` through the browser tool's
+custom-file option. That image is hash-pinned in `firmware/SHA256SUMS`, so the
+verification does not lapse at the moment it matters most.
 
 That is `RT02CR_3.12.02_260824`, pulled from the vendor CDN at
 `http://api2.qcwxkjvip.com/download/ota/RT02CR_V3.1/RT02CR_3.12.02_260824.bin`
