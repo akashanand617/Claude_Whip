@@ -92,20 +92,18 @@ python -m probe.stream --duration 600 --label typing
 This is the measurement that decides M0. A rate measured on a motionless ring on
 a desk is not the rate you get in use. Exit code is 0 on pass, 2 on fail.
 
-### 4. If the rate falls short, sweep before flashing
+### 4. If the rate falls short
 
 ```sh
 python -m probe.sweep
 ```
 
-`A1 04` enables SpO2, PPG **and** accelerometer on one shared notification
-channel. If accel is only a third of the traffic, two thirds of the bandwidth is
-going to sensors this project does not use. `0x04` starts and `0x02` stops;
-every other parameter byte is unexplored. An accel-only mode would be worth a
-large multiple on the rate for free.
+Searches the `0xA1` parameter space for a faster mode. **Already run on this
+ring: nothing beats 1 Hz.** Stock rate is a firmware refresh timer, not a
+bandwidth limit, so there is no parameter to find. Kept because it is the right
+first move on any new unit, and it is free.
 
-This is the cheapest lever available and it should be exhausted before touching
-firmware.
+When the sweep comes up empty, the answer is firmware — see `docs/FLASHING.md`.
 
 ### 5. Battery
 
