@@ -2,9 +2,13 @@
 
 M0 gate record.
 
-**Verdict: the gate FAILED.** Raw accelerometer streaming works on this ring,
-but it runs at 1.00 Hz against a 25 Hz requirement. Measured 2026-09-02.
-Details below; the decision that follows is in "If the gate fails".
+**Verdict on stock firmware: FAILED.** Raw accelerometer streaming works, but at
+1.00 Hz against a 25 Hz requirement. Measured 2026-09-02.
+
+**This is not the end of the story.** A low-latency firmware exists for this
+exact hardware and takes the raw motion timer to 16 ms — 62.5 Hz. See
+"CORRECTION" at the end of this file, which also documents an error in the
+reasoning below. Read that before acting on anything in the middle sections.
 
 ---
 
