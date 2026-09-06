@@ -181,9 +181,13 @@ def format_report(stats: StreamStats, header: dict | None = None, payloads: list
         add("  unpacker ranking (only meaningful for a STATIONARY capture)")
         add("  the correct decode holds gravity's magnitude constant")
         ranking = accel.score_unpackers(payloads)
-        for i, (name, mean, cv) in enumerate(ranking):
+        add("  ranked by how much of the data each reconciles, then by spread")
+        for i, (name, median, spread, coverage) in enumerate(ranking):
             marker = "  <-- best" if i == 0 else ""
-            add(f"    {name:<18} mean |a| {mean:9.1f}   spread {cv * 100:6.2f}%{marker}")
+            add(
+                f"    {name:<18} |a| {median:9.1f}   agrees {coverage * 100:5.1f}%"
+                f"   spread {spread * 100:6.2f}%{marker}"
+            )
         add("")
 
     add("  GATE")

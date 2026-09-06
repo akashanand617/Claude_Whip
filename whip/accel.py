@@ -72,7 +72,23 @@ UNPACKERS: dict[str, Callable[[int, int], int]] = {
     "signed16_be": _signed16_be,
 }
 
-DEFAULT_UNPACKER = "reference"
+# Determined 2026-09-06 from a 2-minute stationary capture across 8 attitudes.
+# See docs/HARDWARE.md; the short version is three independent lines of evidence:
+#
+#   - byte structure: bytes 2/4/6 take ~10 distinct values while 3/5/7 take
+#     ~120, which is high-byte/low-byte for a 16-bit big-endian word. This is
+#     decoder-independent -- no candidate had to be assumed to see it.
+#   - coverage: it reconciles 82 of 85 stationary windows to a constant
+#     gravity magnitude. The runners-up only manage 51-75.
+#   - physics: 8005 counts per g implies a full scale of +/-4.09g, within 2%
+#     of the standard +/-4g setting.
+DEFAULT_UNPACKER = "signed16_be"
+
+OUTLIER_TOLERANCE = 0.15
+"""A window disagreeing by more than this is evidence the decode is wrong."""
+
+COUNTS_PER_G = 8005.0
+"""Measured, not from a datasheet. Divide raw axis values by this for g."""
 
 
 @dataclass(frozen=True)
@@ -167,7 +183,7 @@ def score_unpackers(payloads: list[bytes]) -> list[tuple[str, float, float]]:
     """
     Rank candidate unpackers against a stationary capture.
 
-    Returns (name, mean_magnitude, coefficient_of_variation) sorted best first.
+    Returns (name, median_magnitude, spread, coverage), best first.
     While the ring is still, the only acceleration is gravity, so magnitude
     should be near constant. The unpacker with the lowest relative spread is
     almost certainly the correct one.
@@ -179,15 +195,31 @@ def score_unpackers(payloads: list[bytes]) -> list[tuple[str, float, float]]:
     ring on each of its six faces for ten seconds and the sign handling, which
     is the only thing the candidates actually dispute, becomes decisive.
     """
+    import statistics
+
     results = []
     for name in UNPACKERS:
         mags = [decode(p, name).magnitude for p in payloads]
-        if not mags:
+        if len(mags) < 2:
             continue
-        mean = sum(mags) / len(mags)
-        if mean == 0:
+        median = statistics.median(mags)
+        if median == 0:
             continue
-        variance = sum((m - mean) ** 2 for m in mags) / len(mags)
-        results.append((name, mean, (variance**0.5) / mean))
 
-    return sorted(results, key=lambda r: r[2])
+        # Coverage first, spread second.
+        #
+        # Ranking on spread alone is exploitable: a decoder that is right in
+        # some orientations and wildly wrong in others produces a tight cluster
+        # plus a scatter of outliers, and scores well once the outliers are
+        # excluded. On the real capture that put the worst candidate top, by
+        # discarding 40% of the data as disagreement. A correct decode makes
+        # *every* stationary sample read 1g, so how much of the data it
+        # reconciles is the primary evidence.
+        agreeing = [m for m in mags if abs(m - median) / median <= OUTLIER_TOLERANCE]
+        coverage = len(agreeing) / len(mags)
+        if len(agreeing) < 2:
+            continue
+        spread = statistics.pstdev(agreeing) / statistics.fmean(agreeing)
+        results.append((name, median, spread, coverage))
+
+    return sorted(results, key=lambda r: (-round(r[3], 2), r[2]))

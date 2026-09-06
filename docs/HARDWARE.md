@@ -629,3 +629,76 @@ connects normally. The stale-bond problem documented above has not returned.
 - **Battery re-measurement** with the optical sensors off.
 - **Custom-rate image** at `#4`, to make the loss number honest rather than
   explained.
+
+
+---
+
+## Decoder resolved (2026-09-06)
+
+**`signed16_be`. 16-bit signed big-endian per axis. 8005 counts per g.**
+
+```python
+x = int.from_bytes(payload[6:8], "big", signed=True)
+y = int.from_bytes(payload[2:4], "big", signed=True)
+z = int.from_bytes(payload[4:6], "big", signed=True)
+```
+
+Axis order in the payload is Y, Z, X -- not X, Y, Z.
+
+### Evidence
+
+Three lines, deliberately independent.
+
+**Byte structure, decoder-independent.** Across 4276 stationary samples, bytes
+2/4/6 take ~10 distinct values while bytes 3/5/7 take ~120. That is high-byte /
+low-byte for a 16-bit big-endian word: the high byte barely moves while the low
+byte carries noise. No candidate had to be assumed to see this. Bytes 8-14 are
+always zero, confirming one sample per packet.
+
+**Coverage.** Over 85 stationary windows spanning 8 attitudes:
+
+| Unpacker | Reconciles | Spread | Median \|a\| |
+|---|---|---|---|
+| **signed16_be** | **96.0%** | 7.21% | 7952 |
+| signed12 | 88.4% | 5.46% | 497 |
+| reference | 62.7% | 2.92% | 3260 |
+| signed12_swapped | 52.8% | 5.51% | 2052 |
+| signed16_le | 52.7% | 5.46% | 32893 |
+
+**Physics.** 8005 counts per g implies full scale +/-4.09g on a 16-bit signed
+word -- within 2% of a standard +/-4g range setting.
+
+### A scoring flaw this exposed
+
+Ranking on spread alone picked `reference`, the *worst* candidate by coverage.
+A decoder that is correct in some orientations and wrong in others produces a
+tight cluster plus a scatter of outliers; excluding the outliers leaves a
+flattering spread. `reference` scored 2.92% by discarding 37% of the data as
+disagreement.
+
+A correct decode makes *every* stationary sample read 1g. How much of the data a
+candidate reconciles is therefore the primary evidence and spread is the
+tie-break. `score_unpackers` now ranks that way.
+
+Two earlier captures were inconclusive for a different reason -- too few
+distinct attitudes -- and `probe/report.py` now warns below six rather than
+presenting a coin flip as a winner.
+
+### Residual
+
+7.21% spread is higher than an ideal gravity-constancy test. Plausible causes:
+micro-tremor in hand-held windows, and sensor noise on a cheap part. Three
+windows read exactly 539 counts, an identical stuck value rather than a
+measurement, and were excluded as outliers.
+
+### Note on the LED
+
+`A1 04` starts *all* raw sensors. The low-latency firmware suppresses the PPG
+and SpO2 *notifications* but never powers their emitters down, so the green and
+red LEDs run for the whole capture producing nothing. `probe/quiet.py` sends the
+realtime stop commands and does not clear it on this firmware; a charger tap
+does.
+
+Worth testing: whether any `A1` parameter starts the accelerometer without the
+optical front end on this firmware. That would kill the LEDs and improve the
+battery figure, which was measured with the emitters lit throughout.

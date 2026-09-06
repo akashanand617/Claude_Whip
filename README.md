@@ -78,17 +78,19 @@ If nothing is found, make sure the phone app is closed; it holds the connection.
 ### 2. Verify the decoder — six orientations, ring stationary
 
 ```sh
-python -m probe.stream --duration 60 --label idle --stationary
+python -m probe.stream --duration 120 --label decoder --stationary
 ```
 
-Rest the ring on each of its six faces for ten seconds during the capture.
+Rest the ring in six clearly different attitudes, twenty seconds each, letting
+it settle. Motion is filtered out, so pauses cost nothing and rushed transitions
+cost everything.
 
-The 12-bit accelerometer decode is not settled — the one public working
-implementation has an internally inconsistent sign check. This capture ranks
-five candidate decoders by which one holds gravity's magnitude constant.
+**Already resolved on this ring: `signed16_be`, 8005 counts per g.** See
+`docs/HARDWARE.md`. Re-run only on a new unit or after a firmware change.
 
 Six orientations matter. With gravity on one axis every value stays positive,
-several candidates tie, and the ranking means nothing.
+the candidates never disagree about sign, and the ranking means nothing — the
+tool warns when a capture covers fewer than six.
 
 ### 3. Run the gate — ten minutes, worn, typing
 
@@ -157,14 +159,14 @@ which makes it a useful rehearsal of the failure path.
 python -m pytest tests -q
 ```
 
-63 tests, no hardware required.
+68 tests, no hardware required.
 
 ## Layout
 
 ```
 whip/           protocol, decoding, capture, analysis
   protocol.py   packet construction, command and subtype constants
-  accel.py      12-bit decoding, candidate unpackers, gravity-based scoring
+  accel.py      axis decoding, candidate ranking, stationary-window filtering
   fwimage.py    OTA container parsing and timer-site analysis
   dfu.py        QRing DFU framing, pure and testable without hardware
   capture.py    BLE connection and notification recording

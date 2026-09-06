@@ -59,7 +59,7 @@ def test_score_unpackers_needs_multiple_orientations_to_discriminate():
     """
     one_orientation = [make_accel_payload(x=50 + int(math.sin(i / 10) * 3), y=1024, z=30) for i in range(200)]
     ranking = accel.score_unpackers(one_orientation)
-    tied = [name for name, _, cv in ranking if cv < 0.01]
+    tied = [name for name, _, spread, _ in ranking if spread < 0.01]
     assert len(tied) > 1, "expected a single orientation to be ambiguous"
 
     six_orientations = []
@@ -69,9 +69,10 @@ def test_score_unpackers_needs_multiple_orientations_to_discriminate():
             six_orientations.append(make_accel_payload(x=gx + wobble, y=gy + wobble, z=gz))
 
     ranking = accel.score_unpackers(six_orientations)
+    # The fixture encodes with the reference scheme, so reference must win here.
     assert ranking[0][0] == "reference"
+    assert ranking[0][3] == 1.0, "the correct decode should reconcile every sample"
     assert ranking[0][2] < 0.02
-    assert ranking[1][2] > ranking[0][2] * 2, "the runner up should be clearly worse"
 
 
 def test_raw_axes_is_decoder_independent():
@@ -102,3 +103,26 @@ def test_count_orientations_distinguishes_attitudes():
 
     three = accel.stationary_windows(block(0.0, 1000, 0, 0) + block(1.0, 0, 1000, 0) + block(2.0, 0, 0, 1000))
     assert accel.count_orientations(three) == 3
+
+
+def test_ranking_prefers_coverage_over_a_tight_but_partial_fit():
+    """
+    A decoder right in some orientations and wrong in others yields a tight
+    cluster plus outliers, and wins on spread alone once the outliers are
+    dropped. On the real capture that put the worst candidate top by discarding
+    40% of the data. Coverage has to dominate.
+    """
+    payloads = []
+    for gx, gy, gz in [(1024, 0, 0), (-1024, 0, 0), (0, 1024, 0), (0, -1024, 0), (0, 0, 1024), (0, 0, -1024)]:
+        payloads += [make_accel_payload(x=gx, y=gy, z=gz) for _ in range(50)]
+
+    ranking = accel.score_unpackers(payloads)
+    best = ranking[0]
+    assert best[3] >= 0.99, "winner must reconcile essentially all the data"
+    for _, _, _, coverage in ranking[1:]:
+        assert coverage <= best[3]
+
+
+def test_default_unpacker_is_the_one_the_data_chose():
+    assert accel.DEFAULT_UNPACKER == "signed16_be"
+    assert 7500 < accel.COUNTS_PER_G < 8500
