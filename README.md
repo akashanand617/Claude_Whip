@@ -12,18 +12,20 @@ fills?**
 
 ## Status
 
-**M0 — hardware gate.** Everything downstream is blocked on raw accelerometer
-streaming at ≥ 25 Hz.
+**M0 — hardware gate.** Stock firmware measured **1.00 Hz** against a 25 Hz
+requirement. After flashing the low-latency firmware, a 10-minute worn capture
+measured **50.00 Hz** with a 74 ms worst-case gap and no stall in any of 400
+gesture windows.
 
-Stock firmware measured **1.00 Hz** — a firmware refresh timer, not a bandwidth
-limit, and no protocol parameter changes it. A low-latency firmware exists for
-this exact hardware that takes the timer to 16 ms, or **62.5 Hz**. The image is
-archived in `firmware/`, verified at instruction level, and its hash is pinned
-by a test. **The flash has not been performed yet** — see `docs/FLASHING.md`.
+The rate criterion passes at 2×. The packet-loss criterion reads 25.94% against
+a < 2% bar, because the firmware produces 62.5 Hz while BLE delivers 50 — a
+shortfall against production, not holes in the signal. Both readings are
+recorded in `docs/HARDWARE.md` rather than one chosen; the clean fix is a
+custom image at a slower timer, which is understood but not yet built.
 
 | Milestone | State |
 |---|---|
-| M0 hardware gate | stock firmware FAILED at 1.00 Hz; **flash pending** for 62.5 Hz |
+| M0 hardware gate | flashed; **50.00 Hz sustained**, rate PASS, loss metric needs a slower timer |
 | M1 gesture classifier | not started |
 | M2 calibration corpus | not started, **not blocked on hardware** |
 | M3 labeling session | not started, **not blocked on hardware** |
@@ -179,6 +181,7 @@ probe/          command line tools
   gestures.py   hunt for gesture events and a hidden rate parameter
   subdata.py    sweep sub-data bytes of the enable command
   find.py       identify the ring by proximity when the name does not match
+  quiet.py      stop the optical sensors (a lit LED wastes a 17 mAh cell)
 firmware/       archived OTA images, stock and low-latency
 tests/
 docs/

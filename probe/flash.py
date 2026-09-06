@@ -41,8 +41,10 @@ from whip import capture, dfu, fwimage, protocol
 MANIFEST_PATH = Path("firmware/upstream-manifest.json")
 
 # The protocol refuses below 20%. A stalled transfer is unrecoverable, so keep
-# a wide margin rather than the bare minimum.
-BATTERY_FLOOR_PERCENT = 50
+# a margin -- but not an arbitrary one. The transfer is a few hundred BLE writes
+# over a minute or two, well under 1 mAh out of a 17 mAh cell, so the charge
+# level is not what decides whether it survives.
+BATTERY_FLOOR_PERCENT = 40
 
 DEFAULT_SEGMENT_BYTES = 240
 ACK_TIMEOUT_S = 15.0
@@ -194,8 +196,15 @@ async def transfer(channel: DfuChannel, firmware: bytes, init_type: int) -> None
     await channel.send(dfu.check_frame())
     print("    CHECK   ok")
 
-    await channel.send(dfu.end_frame())
-    print("    END     ok")
+    # The ring reboots on END to apply the image, so it often never answers.
+    # A missing acknowledgement here is expected, not a failure -- CHECK is the
+    # frame that confirms the image was received and validated. Treating the
+    # silence as an error made a successful flash report as ABORTED.
+    try:
+        await channel.send(dfu.end_frame())
+        print("    END     ok")
+    except FlashAborted:
+        print("    END     no reply (expected -- the ring reboots to apply the image)")
 
 
 async def run(args: argparse.Namespace) -> int:

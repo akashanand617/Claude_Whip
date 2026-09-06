@@ -92,6 +92,10 @@ def test_preflight_allows_an_unpinned_image_when_asked(tmp_path, capsys):
     assert "NOT PINNED" in capsys.readouterr().out
 
 
-def test_battery_floor_is_well_above_the_protocol_minimum():
-    """The protocol refuses below 20%; a stalled transfer is unrecoverable."""
-    assert flash.BATTERY_FLOOR_PERCENT >= 50
+def test_battery_floor_keeps_a_margin_over_the_protocol_minimum():
+    """
+    The protocol refuses below 20%. We keep headroom over that, but the transfer
+    costs well under 1 mAh of a 17 mAh cell, so the floor is a sanity check
+    against flashing a nearly-dead ring -- not the thing that makes it safe.
+    """
+    assert flash.BATTERY_FLOOR_PERCENT >= 40

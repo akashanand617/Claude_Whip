@@ -2,13 +2,14 @@
 
 M0 gate record.
 
-**Verdict on stock firmware: FAILED.** Raw accelerometer streaming works, but at
-1.00 Hz against a 25 Hz requirement. Measured 2026-09-02.
+**Stock firmware: FAILED at 1.00 Hz** (2026-09-02).
+**After flashing the low-latency firmware: 50.00 Hz sustained** (2026-09-06).
 
-**This is not the end of the story.** A low-latency firmware exists for this
-exact hardware and takes the raw motion timer to 16 ms — 62.5 Hz. See
-"CORRECTION" at the end of this file, which also documents an error in the
-reasoning below. Read that before acting on anything in the middle sections.
+The rate criterion is met at twice the requirement. The packet-loss criterion is
+not met as literally written, for a reason that turns out not to be a defect.
+**"M0 RESULT AFTER FLASHING" at the end of this file is the current record.**
+The middle sections describe the stock-firmware investigation and contain a
+reasoning error that is corrected there.
 
 ---
 
@@ -522,3 +523,109 @@ exactly like a broken device. `whip/capture.py` now allows 90s.
 46% is below the 50% floor in `probe/flash.py`. The protocol itself refuses only
 below 20%, and the transfer is short, so 46% is not truly dangerous -- but this
 ring has no recovery path, which is what the wider margin is for.
+
+
+---
+
+## M0 RESULT AFTER FLASHING (2026-09-06)
+
+Flashed `rt02cr-low-latency.bin` with `probe/flash.py`. Firmware string changed
+from `RT02CR_3.12.02_260824` to `RT02CR_3.12.07_260514`; the advertised name
+also changed from `COLMI R02_CC07` to `R02_CC07`.
+
+### The gate capture: 10 minutes, worn, typing
+
+| Metric | Stock | After flash | Gate |
+|---|---|---|---|
+| Accel rate | 1.00 Hz | **50.00 Hz** | >= 25 Hz — **PASS** |
+| Interval median | 1023 ms | 16.99 ms | |
+| Jitter (sd) | 77 ms | 6.99 ms | |
+| Gap p95 | — | 29.77 ms | |
+| Gap max | 1114 ms | **74.02 ms** | |
+| Windows containing a stall | — | **0 of 400** | |
+| Implied loss | 0.00% | 25.94% | < 2% — **FAIL** |
+| Channels | spo2, ppg, accel, 0x05 | accel only (99.7%) | |
+
+29,999 accelerometer packets over 600 seconds.
+
+### What the 25.94% actually is
+
+Not dropouts. The firmware timer is 16 ms, so the ring **produces** 62.5 Hz
+while BLE **delivers** 50 Hz. `analyze.py` infers loss from gaps against the
+modal interval, so it counts the shortfall against production as loss.
+
+The same capture shows the difference: over ten minutes the largest gap was
+74 ms against a 1500 ms classification window, and not one of 400 windows
+contained a stall. Samples drop evenly across the stream, not in bursts.
+
+Compare stock, which scored **0.00% loss** on this metric while containing a
+single 1114 ms hole. A stream that scored perfectly and was useless. The metric
+does its job on the failure it was designed for and misleads on this one.
+
+Both readings are recorded rather than one chosen:
+
+1. **Against the criterion as written, the gate fails.** 25.94% is not < 2%.
+2. **Against what the criterion protects, it passes.** The classifier needs
+   uniform sampling above 25 Hz with no window-breaking gaps. It has 50 Hz,
+   7 ms jitter, and a 74 ms worst case.
+
+### The clean fix, not yet done
+
+Lower the firmware timer so production matches the link. The immediate at file
+offset `0x002248` is `#2` (16 ms). Setting it to `#4` gives 32 ms / 31.25 Hz --
+still clearing the gate, with production near the rate BLE already sustains,
+which should take implied loss close to zero.
+
+Everything needed is known: refresh the nested Realtek payload SHA-256, clear
+the `not_ready` bit (`0x0981` -> `0x0901`), recompute the outer body sum at
+`0x0c`, transfer with init type `0x04`. **Do not touch offset `0x007ed4`** --
+same timer shape, but it belongs to DFU frame reassembly and patching it can
+break OTA recovery.
+
+Until that is built and measured, the numbers above stand as reported.
+
+### Battery — provisional
+
+**78% -> 68% over 10 minutes of 50 Hz streaming**, about 1%/minute, projecting
+to roughly **1.7 hours** from full.
+
+**This figure is an underestimate of runtime.** The optical front end was
+powered for the whole capture: `A1 04` turns on PPG and SpO2, and the
+low-latency firmware suppresses their *notifications* without turning the
+sensors off, so the green LED ran for ten minutes producing nothing. Some
+unknown share of that 1%/minute is the LED, not the accelerometer.
+
+Re-measure with the optical sensors quiet before treating this as settled.
+
+| Use | Needs | Verdict on the provisional figure |
+|---|---|---|
+| Phase A calibration session (~1 h) | ~1.5 h | **viable** |
+| Phase B live capture (all day, v2) | ~8 h | **not viable** |
+
+Even at the pessimistic figure Phase A works, which is what v1 needs. Phase B
+would need a large improvement to become viable, so v2 should be designed for
+duty-cycled capture rather than assuming continuous streaming.
+
+### Operational notes
+
+**A lit LED means the optical sensor is still running.** Stopping the raw stream
+does not stop it. The reliable fix is a **charger tap** -- a few seconds in the
+case and out -- which power-cycles the ring. `probe/quiet.py` sends the realtime
+sensor stop commands, but on this firmware they did not clear it; the charger
+tap did.
+
+**Flashing:** the transfer completed with START, INIT, all 135 DATA chunks and
+CHECK acknowledged `ok`. Only END went unanswered, because the ring reboots to
+apply the image and cannot reply. `probe/flash.py` treated that silence as a
+failure and reported ABORTED on a successful flash; it now expects it.
+
+**Connectivity survived** the flash and subsequent charger taps -- `probe.scan`
+connects normally. The stale-bond problem documented above has not returned.
+
+### Still open
+
+- **12-bit decoder.** Impractical at 1 Hz, now a one-minute job: a stationary
+  capture across six orientations, ten seconds per face.
+- **Battery re-measurement** with the optical sensors off.
+- **Custom-rate image** at `#4`, to make the loss number honest rather than
+  explained.

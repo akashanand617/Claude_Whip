@@ -99,6 +99,18 @@ DISABLE_RAW_SENSOR = raw_sensor_packet(RAW_DISABLE)
 BATTERY_PACKET = make_packet(CMD_BATTERY)
 
 
+# Stopping the raw stream does not stop the optical front end. `A1 04` powers
+# the PPG/SpO2 sensors, and the low-latency firmware only suppresses their
+# notifications -- the green LED keeps running, draining a 17 mAh cell for data
+# nobody reads. These are the realtime-sensor stop commands, from the protocol
+# notes in Nosh118/colmi-ring-tools.
+QUIET_SENSOR_PACKETS = (
+    make_packet(0x69, bytes([0x01, 0x04])),        # stop heart rate data
+    make_packet(0x6A, bytes([0x01, 0x00, 0x00])),  # stop realtime heart rate
+    make_packet(0x6A, bytes([0x03, 0x00, 0x00])),  # stop realtime blood oxygen
+)
+
+
 def parse_battery(packet: bytes | bytearray) -> tuple[int, bool]:
     """Return (battery_percent, is_charging) from an 0x03 reply."""
     return packet[1], bool(packet[2])

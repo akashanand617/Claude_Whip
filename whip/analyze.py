@@ -196,9 +196,22 @@ def format_report(stats: StreamStats, header: dict | None = None, payloads: list
 
     if not stats.passes_gate:
         add("")
-        add("  next steps on failure, cheapest first:")
         accel_share = next((s.share for s in stats.subtypes if s.subtype == protocol.SUBTYPE_ACCEL), 1.0)
         total_rate = stats.total_packets / max(stats.duration_s, 1e-9)
+
+        # Rate fine, loss high, no long gaps: the firmware is producing faster
+        # than the link delivers. That is link saturation, not a stream with
+        # holes in it, and the fix is the opposite of the usual one -- slow the
+        # producer down rather than speed anything up.
+        if stats.passes_rate and stats.windows_contaminated == 0 and stats.gap_max_ms < GESTURE_WINDOW_S * 1000 / 4:
+            add("  diagnosis: rate clears the gate and no gesture window contains a stall,")
+            add("  yet implied loss is high. That combination means the firmware produces")
+            add("  faster than BLE delivers -- samples drop evenly, not in bursts.")
+            add("  Lowering the firmware timer so production matches the link would give a")
+            add("  cleaner stream that still clears 25 Hz.")
+            add("")
+
+        add("  next steps on failure, cheapest first:")
 
         # Only blame bandwidth when there is enough traffic for bandwidth to be
         # the thing that binds. At a few packets per second the limit is a
