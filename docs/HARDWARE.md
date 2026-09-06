@@ -474,3 +474,51 @@ measured** — this is a claim verified at the byte level, not a capture.
 - Charge above 50%. The flasher enforces a 20% minimum.
 - BLE connect from this Mac is currently failing for unrelated reasons. The
   flasher is Web Bluetooth in Chrome and may not be affected.
+
+
+---
+
+## Connection troubleshooting (resolved 2026-09-06)
+
+**Symptom:** the ring advertises reliably at strong signal, but every connection
+attempt times out. Both `bleak` and Chrome's Web Bluetooth hang identically,
+with no error from either side.
+
+**Cause:** a stale BLE bond on the Mac. The ring cleared its pairing keys (via
+unbinding in QRing and charger resets) while macOS kept the old ones, so link
+encryption never completed and the connect stalled silently.
+
+**Fix:** System Settings -> Bluetooth -> forget the ring. Nothing else worked.
+
+Things that did **not** fix it, all tried:
+
+- toggling Bluetooth off and on
+- `sudo pkill bluetoothd`
+- restarting the Mac -- the bond is on disk and survives
+- charger taps and waking the ring
+- unbinding from the QRing app
+- connecting the instant an advertisement is detected
+
+**A misleading signature:** Chrome's device picker showed the ring twice under
+the same name, at `30:32:41:33:CC:07` and `53:20:0D:60:4C:8F`, both marked
+Paired. The ring rotates its BLE address, so one entry was the live address and
+the other a stale bonded record. From Python this is invisible -- CoreBluetooth
+resolves both to one identifier (`3C2FA77E-...`) and picks for you.
+
+**Also worth knowing:** a connect to this ring is legitimately slow. It
+advertises infrequently and negotiates a slow connection interval, so service
+discovery across four services takes tens of seconds. Every earlier timeout was
+set at 10-30s, inside the range a healthy connect can take -- impatience looked
+exactly like a broken device. `whip/capture.py` now allows 90s.
+
+### State at the point of connection
+
+| | |
+|---|---|
+| Firmware | `RT02CR_3.12.02_260824` |
+| Hardware | `RT02CR_V3.1` |
+| Battery | 46% |
+
+46% is below the 50% floor in `probe/flash.py`. The protocol itself refuses only
+below 20%, and the transfer is short, so 46% is not truly dangerous -- but this
+ring has no recovery path, which is what the wider margin is for.
