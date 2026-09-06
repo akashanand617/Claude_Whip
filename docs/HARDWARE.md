@@ -402,3 +402,71 @@ The ring path is closed for v1:
    with no recovery path.
 
 **Use the ESP32-S3 + MPU6050 build.**
+
+---
+
+## CORRECTION (2026-09-06): the ring path is NOT closed
+
+Everything above concluding "this ring cannot be patched" was wrong on one
+point, and that point carried the whole conclusion.
+
+[Nosh118/colmi-ring-tools](https://github.com/Nosh118/colmi-ring-tools) targets
+`RT02R`/`RT02CR` rings on the 3.1x firmware family — this exact hardware — and
+publishes a low-latency firmware for it.
+
+### The error
+
+This document claimed the `e5c3bd81` container was "encrypted or compressed"
+and therefore unpatchable. That was inferred from entropy (6.92 bits/byte) and a
+CRC32 field that did not verify. **Neither is evidence of encryption**, and the
+inference was never tested against the obvious check: does the payload
+disassemble?
+
+It does. The nested payload begins at file offset `0x450` and is plain ARM Thumb:
+
+```
+0x000450  0048  ldr r0, [pc]
+0x000452  0047  bx  r0
+```
+
+It is a nested Realtek container with a different header layout, not an opaque
+blob. The lesson: entropy is a weak signal for a compiled ARM image, and a
+failing checksum means the checksum algorithm is different, not that the
+contents are unreadable.
+
+### What the low-latency firmware does
+
+Verified independently against the published binary. SHA-256 matches the
+manifest (`2ea1bb08...961c`), and the header declares `hw=RT02CR_V3.1`.
+
+The raw-motion timer patch, at file offset `0x002248`:
+
+| | Instruction | Period | Rate |
+|---|---|---|---|
+| Stock | `movs r2, #0x7d` / `lsls r2, r2, #3` | 125 × 8 = 1000 ms | 1.0 Hz |
+| Low-latency | `movs r2, #0x02` / `lsls r2, r2, #3` | 2 × 8 = 16 ms | **62.5 Hz** |
+
+Same `#N * 8` millisecond idiom identified in the R02 firmware analysis above,
+confirming that reading independently.
+
+It also NOPs the A101 / A102 / A105 notification sends, so PPG, SpO2 and the
+undocumented `0x05` channel stop competing for BLE airtime while raw motion is
+active, and lowers the notify queue retry thresholds. The `a1 03` packet shape
+is unchanged, so the decoder in `whip/accel.py` still applies.
+
+### Revised gate outlook
+
+62.5 Hz against a 25 Hz requirement, on the ring already in hand. **Not yet
+measured** — this is a claim verified at the byte level, not a capture.
+
+### Before flashing
+
+- Compatibility is declared by prefix `RT02CR_3.12.`; this ring is
+  `RT02CR_3.12.02_260824`, their base build is `RT02CR_3.12.00_251205`. In
+  family, not an exact version match.
+- **No RT02CR recovery or stock-restore image is published** — those exist only
+  for RT02R. The restore path is the vendor CDN image
+  `RT02CR_V3.1/RT02CR_3.12.02_260824.bin`, already archived.
+- Charge above 50%. The flasher enforces a 20% minimum.
+- BLE connect from this Mac is currently failing for unrelated reasons. The
+  flasher is Web Bluetooth in Chrome and may not be affected.
