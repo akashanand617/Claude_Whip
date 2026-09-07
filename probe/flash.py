@@ -81,6 +81,19 @@ def load_catalogue_entry(image: fwimage.FirmwareImage) -> dict | None:
     return None
 
 
+def has_compatibility_rules(entry: dict | None) -> bool:
+    """
+    Whether this entry carries upstream's compatibility metadata.
+
+    Images pinned locally via firmware/SHA256SUMS -- our own builds, and the
+    vendor stock image -- have a hash and nothing else. They are still gated on
+    the image's declared hardware string matching the ring, which is the check
+    that actually protects the device; the catalogue's firmware-family rule
+    simply does not exist for them.
+    """
+    return bool(entry) and "compatibleCurrentHardware" in entry
+
+
 def firmware_is_compatible(entry: dict, hardware: str, firmware: str) -> bool:
     """Upstream's compatibility rule: hardware exact, firmware exact or by prefix."""
     hardware_ok = hardware.strip() in [h.strip() for h in entry["compatibleCurrentHardware"]]
@@ -245,13 +258,15 @@ async def run(args: argparse.Namespace) -> int:
             )
         print("  hardware match  OK")
 
-        if entry and not firmware_is_compatible(entry, info.hardware or "", info.firmware or ""):
-            raise FlashAborted(
-                f"ring firmware {info.firmware!r} is outside the catalogue compatibility list for "
-                f"{entry['id']}"
-            )
-        if entry:
+        if has_compatibility_rules(entry):
+            if not firmware_is_compatible(entry, info.hardware or "", info.firmware or ""):
+                raise FlashAborted(
+                    f"ring firmware {info.firmware!r} is outside the catalogue compatibility list "
+                    f"for {entry['id']}"
+                )
             print("  compatibility   OK")
+        elif entry:
+            print(f"  compatibility   no catalogue rules for {entry['id']} (hash-pinned only)")
 
         battery = await capture.read_battery(client)
         if battery is None:

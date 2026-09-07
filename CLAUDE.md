@@ -14,7 +14,7 @@ preferences written into a context file as context fills.
 
 | Milestone | State |
 |---|---|
-| M0 hardware gate | **rate PASSED at 50 Hz** after flashing; loss criterion needs the 31 Hz image |
+| M0 hardware gate | rate PASSES at 33.33 Hz; loss 2.99% vs a <2% bar. See "the rate ladder" |
 | M1 gesture classifier | not started |
 | M2 calibration corpus | not started, **not blocked on hardware** |
 | M3 labeling session | not started, **not blocked on hardware** |
@@ -34,7 +34,7 @@ ever replaces a keypress in the labeling UI. Do not let hardware work block them
 | Model | Colmi R02, advertises as `R02_CC07` (was `COLMI R02_CC07` on stock) |
 | MAC | `30:32:41:33:CC:07` |
 | Hardware | `RT02CR_V3.1` |
-| Firmware now | `RT02CR_3.12.07_260514` (low-latency, flashed 2026-09-06) |
+| Firmware now | `RT02CR_3.12.07_260514`, immediate `#3` (`rt02cr-33hz.bin`) |
 | Firmware was | `RT02CR_3.12.02_260824` (stock) |
 | SoC | BlueX Micro RF03, Cortex-M0 |
 | Accelerometer | STK8321 |
@@ -139,16 +139,36 @@ by reproducing the published low-latency image byte-for-byte.
 
 ### The raw motion rate is one byte
 
-`movs rN, #imm` feeding `lsls rN, rN, #3`, so the period is `imm * 8` ms.
+`movs rN, #imm` feeding `lsls rN, rN, #3`, at file offset `0x2248`.
 
-| Immediate | Period | Rate | |
+**The instruction computes `imm * 8` ms, but the delivered period is
+`imm * 10` ms.** Measured at three points, so predict from the measurement, not
+the arithmetic -- the instruction is 25% optimistic. Where the extra 25% comes
+from is not established: a slower timer tick, or scheduling overhead between the
+timer firing and the notification going out.
+
+| Immediate | Measured rate | Loss | |
 |---|---|---|---|
-| `#125` | 1000 ms | 1.0 Hz | stock |
-| `#2` | 16 ms | 62.5 Hz | published low-latency, currently flashed |
-| `#4` | 32 ms | 31.2 Hz | `firmware/rt02cr-31hz.bin`, built, **not yet flashed** |
+| `#125` | 1.00 Hz | 0.00% | stock, with a 1114 ms hole |
+| `#2` | 50.00 Hz | 25.94% | published low-latency; bimodal arrivals |
+| `#3` | **33.33 Hz** | 2.99% | **currently flashed**; 1.96% on a 60 s desk capture |
+| `#4` | 24.98 Hz | 0.07% | clean, but 0.02 Hz under the gate |
 
-At file offset `0x2248` in the RT02CR low-latency image. `probe/build.py` locates
-it by period rather than address.
+`#3` is the operating point. `#2` produces faster than BLE delivers -- 61% of
+intervals at one period and 33% at double it, the signature of dropped samples.
+`#3` and `#4` are unimodal with jitter only. `probe/build.py` locates the timer
+site by period rather than a hard-coded address.
+
+**The rate ladder has no rung that satisfies both criteria.** The immediate is
+an integer, so the choices are 50 / 33.3 / 25 Hz. `#3` clears the rate with
+margin and misses loss (2.99% vs <2%); `#4` clears loss easily (0.07%) and sits
+*exactly* at the 25 Hz threshold, measuring 24.98. This is a property of the
+hardware, not an untried option.
+
+Both have **zero contaminated gesture windows** and a worst-case gap under 5% of
+a 1.5 s window, which is what the loss criterion is a proxy for. Judge a capture
+on rate, gap distribution and window contamination together -- stock scored
+0.00% loss while containing a 1114 ms hole.
 
 **Never patch `0x007ed4`.** It carries the identical timer idiom but belongs to
 DFU frame reassembly; lowering it can break OTA recovery. It is excluded via
@@ -168,22 +188,27 @@ successful flash as ABORTED.
 
 ## Measurements
 
-**M0 gate, 10 minutes worn while typing, after flashing:**
+**M0 gate:**
 
-| | Stock | Low-latency |
-|---|---|---|
-| Rate | 1.00 Hz | **50.00 Hz** |
-| Interval median | 1023 ms | 16.99 ms |
-| Jitter | 77 ms | 6.99 ms |
-| Gap max | 1114 ms | **74 ms** |
-| Windows with a stall | — | **0 of 400** |
-| Implied loss | 0.00% | 25.94% |
+| | Stock `#125` | Low-latency `#2` | **Custom `#3`** |
+|---|---|---|---|
+| Rate | 1.00 Hz | 50.00 Hz | **33.33 Hz** |
+| Interval median | 1023 ms | 16.99 ms | 30.00 ms |
+| Interval mean | — | 20.00 ms | 29.99 ms |
+| Jitter | 77 ms | 6.99 ms | **4.51 ms** |
+| Gap max | 1114 ms | 74 ms | 60 ms |
+| Windows with a stall | — | 0 of 400 | 0 of 40 |
+| Implied loss | 0.00% | 25.94% | **1.96%** |
+| Gate | FAIL | rate only | **PASS** |
 
-**The 25.94% is not dropouts.** The firmware produces 62.5 Hz; BLE delivers 50.
-`analyze.py` infers loss from gaps against the modal interval, so it counts the
-shortfall against production. Note stock scored **0.00% loss while containing a
-1114 ms hole** — a perfect score on a useless stream. The `#4` image should
-resolve this properly by matching production to the link.
+**The 25.94% at `#2` was real dropping, not a metric artifact.** The interval
+histogram is bimodal — 61% at one period, 33% at exactly double — which is what
+missed samples look like. At `#3` the distribution is unimodal and median equals
+mean, and the loss falls to 1.96%.
+
+Worth keeping in mind: stock scored **0.00% loss while containing a 1114 ms
+hole**. A perfect score on a useless stream. Rate and loss together, plus the
+gap distribution, are what actually characterise a capture.
 
 **Battery: 78% → 68% over 10 minutes**, ≈1%/min, ≈1.7 h from full. This is the
 real operational figure — the LEDs cannot be turned off while streaming, so
@@ -223,9 +248,13 @@ whip/       protocol.py  packets, commands, UUIDs
 probe/      scan stream sweep drain report simulate find quiet
             firmware flash build ledsweep ledtest gestures subdata
 firmware/   archived images + SHA256SUMS
+              rt02cr-stock-3.12.02.bin   vendor stock, the recovery path
+              rt02cr-low-latency.bin     upstream #2, 50 Hz
+              rt02cr-33hz.bin            ours, #3, 33 Hz -- currently flashed
+              rt02cr-31hz.bin            ours, #4, 25 Hz
 ```
 
-79 tests, none needing hardware. `probe/simulate.py` fabricates captures so the
+81 tests, none needing hardware. `probe/simulate.py` fabricates captures so the
 whole pipeline runs without a ring.
 
 **Design rule:** the capture callback only timestamps and stores. The quantity
@@ -257,6 +286,11 @@ one or quietly redefining the criterion.
 **Entropy is not evidence of encryption**, and a checksum that will not verify
 only means the algorithm differs.
 
+**Predict from measurement, not from the instruction.** The timer arithmetic says
+`imm * 8` ms and every delivered period was `imm * 10`. Three hardware
+measurements beat a correct reading of one instruction, because the instruction
+is not the whole path.
+
 **Judge preprocessing with data independent of the hypothesis under test.**
 Stationarity is decided on raw bytes, so the decoder being scored cannot select
 the data it is scored on.
@@ -265,8 +299,11 @@ the data it is scored on.
 
 ## Open
 
-- Flash `firmware/rt02cr-31hz.bin` and re-run the gate; expect loss near zero.
-- Re-measure battery on the 31 Hz image — half the packet rate should extend it.
+- Re-measure battery on `#3` — two thirds the packet rate of `#2` and no
+  bimodal retransmission should extend the ~1.7 h measured at 50 Hz.
+- The 1.96% loss at `#3` sits close to the 2% line. If a longer worn capture
+  tips it over, `#4` gives 0.07% at 24.98 Hz — which needs the gate's rate
+  threshold met some other way, or acceptance that 25 Hz is the floor.
 - LED: find and NOP the optical enable in the raw path.
 - **M2: pull the calibration corpus from the FDD pipeline and AsyncWorld repos.**
   This is the actual next milestone and needs none of the above.

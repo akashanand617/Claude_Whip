@@ -2,20 +2,21 @@
 Build a custom-rate firmware image.
 
 The raw motion period is one immediate operand: `movs rN, #imm` feeding
-`lsls rN, rN, #3`, so the period is `imm * 8` milliseconds. The published
-low-latency image uses `#2` -- 16 ms, 62.5 Hz -- which is faster than BLE
-delivers, so a quarter of the samples are dropped and the M0 loss criterion
-fails on a stream that is otherwise clean.
+`lsls rN, rN, #3`.
 
-Slowing the producer to match the link fixes that:
+The instruction says the period is `imm * 8` ms, but **the delivered period is
+`imm * 10` ms**, measured at three points on hardware:
 
-    #2   16 ms   62.5 Hz   produces faster than BLE delivers (~26% dropped)
-    #3   24 ms   41.7 Hz
-    #4   32 ms   31.2 Hz   comfortably above the 25 Hz gate
-    #5   40 ms   25.0 Hz   exactly at the gate, no margin
+    #2   50.00 Hz   bimodal arrivals, implied loss ~26%
+    #3   33.33 Hz   clean 30 ms intervals, loss 1.96%  <-- passes M0
+    #4   24.98 Hz   clean 40 ms intervals, loss 0.07%, just under the gate
 
-    python -m probe.build --immediate 4
-    python -m probe.build --immediate 4 --out firmware/rt02cr-31hz.bin
+Where the extra 25% comes from is not established -- a slower timer tick, or
+scheduling overhead between the timer and the notification. Rates here are
+computed from the measured relationship, not the instruction, because the
+instruction predicts 25% high.
+
+    python -m probe.build --immediate 3      # 33 Hz, the one that passes
 
 Every derived container field is recomputed, so the result is bootable. Verify
 before flashing:
@@ -38,6 +39,11 @@ DEFAULT_BASE = Path("firmware/rt02cr-low-latency.bin")
 # its current value rather than a hard-coded offset, so this keeps working if
 # upstream republishes at a different address.
 LOW_LATENCY_PERIOD_MS = 16
+
+# The instruction computes imm * 8 ms, but delivered periods are imm * 10 ms:
+# 50.00 / 33.33 / 24.98 Hz measured at #2 / #3 / #4. Predict from the
+# measurement, not the arithmetic.
+MEASURED_MS_PER_UNIT = 10
 
 
 def find_raw_motion_site(image: fwimage.FirmwareImage) -> fwimage.TimerSite:
@@ -68,7 +74,7 @@ def main() -> int:
     if not 1 <= args.immediate <= 255:
         raise SystemExit("immediate must fit in a byte (1-255)")
 
-    period_ms = args.immediate * 8
+    period_ms = args.immediate * MEASURED_MS_PER_UNIT
     rate_hz = 1000 / period_ms
     if rate_hz < 25:
         raise SystemExit(f"immediate {args.immediate} gives {rate_hz:.1f} Hz, below the 25 Hz gate")
@@ -86,8 +92,8 @@ def main() -> int:
     print(f"  base            {args.base.name}")
     print(f"  hardware        {image.hardware_string!r}")
     print(f"  timer site      {file_offset:#08x}  (payload {site.offset:#08x}, r{site.register})")
-    print(f"  current         #{site.immediate}  {site.period_ms} ms  {site.rate_hz:.2f} Hz")
-    print(f"  new             #{args.immediate}  {period_ms} ms  {rate_hz:.2f} Hz")
+    print(f"  current         #{site.immediate}  -> {1000 / (site.immediate * MEASURED_MS_PER_UNIT):.2f} Hz measured")
+    print(f"  new             #{args.immediate}  -> {rate_hz:.2f} Hz expected ({period_ms} ms)")
 
     patched = fwbuild.patch(data, {file_offset: args.immediate})
 

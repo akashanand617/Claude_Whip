@@ -99,3 +99,23 @@ def test_battery_floor_keeps_a_margin_over_the_protocol_minimum():
     against flashing a nearly-dead ring -- not the thing that makes it safe.
     """
     assert flash.BATTERY_FLOOR_PERCENT >= 40
+
+
+def test_locally_pinned_entries_have_no_catalogue_rules():
+    """
+    Our own builds and the vendor stock image are pinned by hash in
+    firmware/SHA256SUMS and carry no compatibility metadata. Reading those keys
+    unconditionally crashed the flash of a self-built image after the hardware
+    check had already passed.
+    """
+    local = flash.load_catalogue_entry(fwimage.inspect(STOCK))
+    assert local is not None
+    assert not flash.has_compatibility_rules(local)
+
+    upstream = catalogue_entry()
+    assert flash.has_compatibility_rules(upstream)
+
+
+def test_compatibility_is_only_consulted_when_rules_exist():
+    assert flash.has_compatibility_rules({"id": "x"}) is False
+    assert flash.has_compatibility_rules(None) is False
