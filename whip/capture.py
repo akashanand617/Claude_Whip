@@ -219,6 +219,7 @@ async def stream(
     param: int = protocol.RAW_ENABLE_ALL,
     sink: Path | None = None,
     capture: Capture | None = None,
+    quiet_optical: bool = False,
 ) -> list[tuple[float, bytes]]:
     """
     Enable raw sensor streaming, record every notification for `duration`
@@ -252,6 +253,16 @@ async def stream(
 
     await client.start_notify(protocol.UART_TX_CHAR_UUID, on_notify)
     await client.write_gatt_char(protocol.UART_RX_CHAR_UUID, protocol.raw_sensor_packet(param), response=False)
+
+    if quiet_optical:
+        # `A1 04` powers PPG and SpO2 as well as the accelerometer, and the
+        # low-latency firmware only suppresses their notifications -- the green
+        # and red emitters stay lit for the whole capture, producing nothing and
+        # draining a 17 mAh cell. Send the realtime stop commands *while* the
+        # stream is live; sending them after stopping it had no effect.
+        for packet in protocol.QUIET_SENSOR_PACKETS:
+            await asyncio.sleep(0.2)
+            await client.write_gatt_char(protocol.UART_RX_CHAR_UUID, packet, response=False)
 
     flush_task = asyncio.create_task(flusher()) if handle else None
     try:

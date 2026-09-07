@@ -50,12 +50,17 @@ async def run(args: argparse.Namespace) -> int:
         if battery_before:
             print(f"battery     {battery_before[0]}%")
         print(f"param       0x{args.param:02x}")
+        if args.quiet_optical:
+            print("optical     sending stop commands after enable")
         print(f"capturing   {args.duration:.0f}s -> {sink}")
         print()
 
         progress = asyncio.create_task(_progress(rec.records, args.duration))
         try:
-            await capture.stream(client, args.duration, param=args.param, sink=sink, capture=rec)
+            await capture.stream(
+                client, args.duration, param=args.param, sink=sink, capture=rec,
+                quiet_optical=args.quiet_optical,
+            )
         finally:
             progress.cancel()
 
@@ -103,6 +108,11 @@ def main() -> int:
         help="0xA1 parameter byte. 0x04 is the known enable-everything value.",
     )
     parser.add_argument("--out", help="explicit output path")
+    parser.add_argument(
+        "--quiet-optical",
+        action="store_true",
+        help="stop the PPG/SpO2 emitters after enabling the stream (kills the green/red LEDs)",
+    )
     parser.add_argument(
         "--stationary",
         action="store_true",

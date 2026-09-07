@@ -67,7 +67,7 @@ async def run(args: argparse.Namespace) -> int:
                 if first_level is None:
                     first_level = level
 
-                records = await capture.stream(client, args.chunk)
+                records = await capture.stream(client, args.chunk, quiet_optical=args.quiet_optical)
                 stats = analyze.analyze(records, duration_s=args.chunk)
 
                 elapsed = time.time() - started
@@ -105,6 +105,11 @@ def main() -> int:
     parser.add_argument("--chunk", type=float, default=120.0, help="seconds of streaming between battery polls")
     parser.add_argument("--max-hours", type=float, default=0.0, help="stop after this long, 0 for no limit")
     parser.add_argument("--stop-at", type=int, default=5, help="stop when battery reaches this percent")
+    parser.add_argument(
+        "--quiet-optical",
+        action="store_true",
+        help="stop the PPG/SpO2 emitters each chunk; measures the accelerometer alone",
+    )
     parser.add_argument("--address", help="connect directly instead of scanning")
     parser.add_argument("--name", help="match on advertised name")
     parser.add_argument("--timeout", type=float, default=10.0)
