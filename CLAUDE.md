@@ -14,7 +14,7 @@ preferences written into a context file as context fills.
 
 | Milestone | State |
 |---|---|
-| M0 hardware gate | rate PASSES at 33.33 Hz; loss 2.99% vs a <2% bar. See "the rate ladder" |
+| M0 hardware gate | **PASSED** on `#4`: 25.00 Hz, 0.24% loss, 10 min worn |
 | M1 gesture classifier | not started |
 | M2 calibration corpus | not started, **not blocked on hardware** |
 | M3 labeling session | not started, **not blocked on hardware** |
@@ -34,7 +34,7 @@ ever replaces a keypress in the labeling UI. Do not let hardware work block them
 | Model | Colmi R02, advertises as `R02_CC07` (was `COLMI R02_CC07` on stock) |
 | MAC | `30:32:41:33:CC:07` |
 | Hardware | `RT02CR_V3.1` |
-| Firmware now | `RT02CR_3.12.07_260514`, immediate `#3` (`rt02cr-33hz.bin`) |
+| Firmware now | `RT02CR_3.12.07_260514`, immediate `#4` (`rt02cr-25hz.bin`) |
 | Firmware was | `RT02CR_3.12.02_260824` (stock) |
 | SoC | BlueX Micro RF03, Cortex-M0 |
 | Accelerometer | STK8321 |
@@ -151,24 +151,27 @@ timer firing and the notification going out.
 |---|---|---|---|
 | `#125` | 1.00 Hz | 0.00% | stock, with a 1114 ms hole |
 | `#2` | 50.00 Hz | 25.94% | published low-latency; bimodal arrivals |
-| `#3` | **33.33 Hz** | 2.99% | **currently flashed**; 1.96% on a 60 s desk capture |
-| `#4` | 24.98 Hz | 0.07% | clean, but 0.02 Hz under the gate |
+| `#3` | 33.33 Hz | 2.99% | more headroom, fails the loss bar |
+| `#4` | **25.00 Hz** | **0.24%** | **currently flashed, passes M0** |
 
 `#3` is the operating point. `#2` produces faster than BLE delivers -- 61% of
 intervals at one period and 33% at double it, the signature of dropped samples.
 `#3` and `#4` are unimodal with jitter only. `probe/build.py` locates the timer
 site by period rather than a hard-coded address.
 
-**The rate ladder has no rung that satisfies both criteria.** The immediate is
-an integer, so the choices are 50 / 33.3 / 25 Hz. `#3` clears the rate with
-margin and misses loss (2.99% vs <2%); `#4` clears loss easily (0.07%) and sits
-*exactly* at the 25 Hz threshold, measuring 24.98. This is a property of the
-hardware, not an untried option.
+**`#4` is the operating point.** Over 10 minutes worn: exactly 25.00 Hz
+(15000 packets in 600 s) and 0.24% loss. An earlier 60 s capture read 24.98,
+which was a window-boundary artifact -- the period is a firmware constant, so
+the rate does not drift.
 
-Both have **zero contaminated gesture windows** and a worst-case gap under 5% of
-a 1.5 s window, which is what the loss criterion is a proxy for. Judge a capture
-on rate, gap distribution and window contamination together -- stock scored
-0.00% loss while containing a 1114 ms hole.
+Loss does not scale with rate the way you would expect. `#3` at 33 Hz loses
+2.99% worn; `#4` at 25 Hz loses 0.24%, ten times better for a 25% rate cut.
+Producing under what the link comfortably carries stops the notify queue
+thrashing rather than merely reducing it.
+
+Loss also tracks **motion**, not the link: still chunks read 0.1-0.2%, moving
+chunks up to 6%. A loss figure is partly a statement about how much the wearer
+moved.
 
 **Never patch `0x007ed4`.** It carries the identical timer idiom but belongs to
 DFU frame reassembly; lowering it can break OTA recovery. It is excluded via
@@ -210,10 +213,20 @@ Worth keeping in mind: stock scored **0.00% loss while containing a 1114 ms
 hole**. A perfect score on a useless stream. Rate and loss together, plus the
 gap distribution, are what actually characterise a capture.
 
-**Battery: 78% → 68% over 10 minutes**, ≈1%/min, ≈1.7 h from full. This is the
-real operational figure — the LEDs cannot be turned off while streaming, so
-there is no better case. Phase A (1 h session) is viable; Phase B (all-day
-capture) is not, and v2 should assume duty-cycled capture.
+**Battery, measured on three images:**
+
+| Image | Rate | Drain | Projected runtime |
+|---|---|---|---|
+| `#2` | 50 Hz | 1.0 %/min | ~1.7 h |
+| `#3` | 33 Hz | 0.27 %/min | ~6.3 h |
+| `#4` | 25 Hz | 0.30 %/min | ~5.5 h |
+
+**Drain is not dominated by the packet rate.** Going 50 → 33 Hz gave a 3.7x
+improvement, far more than the rate ratio, because it stopped the retransmission
+churn. Going 33 → 25 Hz changed nothing measurable. So the remaining cost is the
+LEDs and holding the BLE link, and **no rate choice unlocks Phase B** -- ~6 h is
+the ceiling until the emitters can be turned off. Phase A (1 h session) has
+ample margin.
 
 ---
 
@@ -299,11 +312,9 @@ the data it is scored on.
 
 ## Open
 
-- Re-measure battery on `#3` — two thirds the packet rate of `#2` and no
-  bimodal retransmission should extend the ~1.7 h measured at 50 Hz.
-- The 1.96% loss at `#3` sits close to the 2% line. If a longer worn capture
-  tips it over, `#4` gives 0.07% at 24.98 Hz — which needs the gate's rate
-  threshold met some other way, or acceptance that 25 Hz is the floor.
+- **Killing the LEDs is the only lever left on battery.** Rate is not it.
+- If M1's false-positive target proves hard, `#3` offers 33% more samples at
+  the cost of the loss criterion. Revisit then, not now.
 - LED: find and NOP the optical enable in the raw path.
 - **M2: pull the calibration corpus from the FDD pipeline and AsyncWorld repos.**
   This is the actual next milestone and needs none of the above.
