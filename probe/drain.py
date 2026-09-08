@@ -50,7 +50,8 @@ async def run(args: argparse.Namespace) -> int:
             info = await capture.read_device_info(client, device)
             print(f"device   {info.name}  fw {info.firmware}")
             print(f"logging  {log_path}")
-            print(f"chunk    {args.chunk:.0f}s of streaming between battery polls\n")
+            mode = "idle (no streaming, LEDs dark)" if args.idle else "streaming"
+            print(f"chunk    {args.chunk:.0f}s of {mode} between battery polls\n")
             print(f"  {'elapsed':>9}  {'battery':>7}  {'accel Hz':>9}  {'loss':>6}")
             print(f"  {'-' * 9}  {'-' * 7}  {'-' * 9}  {'-' * 6}")
 
@@ -67,8 +68,15 @@ async def run(args: argparse.Namespace) -> int:
                 if first_level is None:
                     first_level = level
 
-                records = await capture.stream(client, args.chunk, quiet_optical=args.quiet_optical)
-                stats = analyze.analyze(records, duration_s=args.chunk)
+                if args.idle:
+                    # Hold the link but never enable the sensors, so the LEDs
+                    # stay dark. The difference against a streaming run is the
+                    # ceiling on what any LED fix could ever recover.
+                    await asyncio.sleep(args.chunk)
+                    stats = analyze.analyze([], duration_s=args.chunk)
+                else:
+                    records = await capture.stream(client, args.chunk, quiet_optical=args.quiet_optical)
+                    stats = analyze.analyze(records, duration_s=args.chunk)
 
                 elapsed = time.time() - started
                 writer.writerow(
@@ -105,6 +113,11 @@ def main() -> int:
     parser.add_argument("--chunk", type=float, default=120.0, help="seconds of streaming between battery polls")
     parser.add_argument("--max-hours", type=float, default=0.0, help="stop after this long, 0 for no limit")
     parser.add_argument("--stop-at", type=int, default=5, help="stop when battery reaches this percent")
+    parser.add_argument(
+        "--idle",
+        action="store_true",
+        help="hold the connection without streaming; measures the link-only cost with LEDs dark",
+    )
     parser.add_argument(
         "--quiet-optical",
         action="store_true",

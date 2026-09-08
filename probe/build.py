@@ -67,17 +67,21 @@ def find_raw_motion_site(image: fwimage.FirmwareImage) -> fwimage.TimerSite:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Build a firmware image with a custom raw motion rate")
     parser.add_argument("--base", type=Path, default=DEFAULT_BASE, help="image to patch")
-    parser.add_argument("--immediate", type=int, required=True, help="timer immediate; period is imm * 8 ms")
+    parser.add_argument("--immediate", type=int, help="timer immediate; period is imm * MEASURED_MS_PER_UNIT ms")
+    parser.add_argument(
+        "--nop",
+        action="append",
+        default=[],
+        type=lambda v: int(v, 0),
+        help="file offset of a 4-byte bl to replace with two NOPs; repeatable",
+    )
     parser.add_argument("--out", type=Path, help="output path (default names itself after the rate)")
     args = parser.parse_args()
 
-    if not 1 <= args.immediate <= 255:
+    if args.immediate is None and not args.nop:
+        raise SystemExit("give --immediate, --nop, or both")
+    if args.immediate is not None and not 1 <= args.immediate <= 255:
         raise SystemExit("immediate must fit in a byte (1-255)")
-
-    period_ms = args.immediate * MEASURED_MS_PER_UNIT
-    rate_hz = 1000 / period_ms
-    if rate_hz < 25:
-        raise SystemExit(f"immediate {args.immediate} gives {rate_hz:.1f} Hz, below the 25 Hz gate")
 
     data = args.base.read_bytes()
     image = fwimage.inspect(args.base)
@@ -86,22 +90,43 @@ def main() -> int:
     if problems:
         raise SystemExit("base image is not internally consistent:\n  " + "\n  ".join(problems))
 
-    site = find_raw_motion_site(image)
-    file_offset = image.payload_offset + site.offset
-
     print(f"  base            {args.base.name}")
     print(f"  hardware        {image.hardware_string!r}")
-    print(f"  timer site      {file_offset:#08x}  (payload {site.offset:#08x}, r{site.register})")
-    print(f"  current         #{site.immediate}  -> {1000 / (site.immediate * MEASURED_MS_PER_UNIT):.2f} Hz measured")
-    print(f"  new             #{args.immediate}  -> {rate_hz:.2f} Hz expected ({period_ms} ms)")
 
-    patched = fwbuild.patch(data, {file_offset: args.immediate})
+    edits: dict[int, int] = {}
+    rate_hz = None
+
+    if args.immediate is not None:
+        site = find_raw_motion_site(image)
+        file_offset = image.payload_offset + site.offset
+        period_ms = args.immediate * MEASURED_MS_PER_UNIT
+        rate_hz = 1000 / period_ms
+        if rate_hz < 25:
+            raise SystemExit(f"immediate {args.immediate} gives {rate_hz:.1f} Hz, below the 25 Hz gate")
+        print(f"  timer site      {file_offset:#08x}  #{site.immediate} -> #{args.immediate}  ({rate_hz:.2f} Hz)")
+        edits[file_offset] = args.immediate
+
+    for offset in args.nop:
+        original = data[offset : offset + 4]
+        # A Thumb bl is a 32-bit pair; the second halfword has bits 15-14 set.
+        if not (original[1] & 0xF8) == 0xF0:
+            raise SystemExit(f"{offset:#x} does not look like the start of a bl (found {original.hex()})")
+        print(f"  nop             {offset:#08x}  {original.hex()} -> 00bf00bf")
+        edits.update({offset: 0x00, offset + 1: 0xBF, offset + 2: 0x00, offset + 3: 0xBF})
+
+    patched = fwbuild.patch(data, edits)
 
     remaining = fwbuild.verify(patched)
     if remaining:
         raise SystemExit("built image is inconsistent:\n  " + "\n  ".join(remaining))
 
-    out = args.out or args.base.parent / f"rt02cr-{rate_hz:.0f}hz.bin"
+    if args.out:
+        out = args.out
+    elif args.nop:
+        tag = "-".join(f"{o:x}" for o in args.nop)
+        out = args.base.parent / f"rt02cr-nop{tag}.bin"
+    else:
+        out = args.base.parent / f"rt02cr-{rate_hz:.0f}hz.bin"
     out.write_bytes(patched)
 
     changed = sum(1 for a, b in zip(data, patched) if a != b)
@@ -110,9 +135,7 @@ def main() -> int:
     print(f"  changed         {changed} bytes (1 timer + 32 sha + body sum)")
     print(f"  container       consistent")
 
-    rebuilt = fwimage.inspect(out)
-    fast = [s for s in fwimage.raw_motion_candidates(rebuilt) if s.rate_hz >= 25]
-    print(f"  timers >=25 Hz  {[(hex(s.offset), f'{s.rate_hz:.1f}Hz') for s in fast]}")
+
 
     print("\n  next:")
     print(f"    python -m probe.flash {out} --dry-run --allow-unpinned")

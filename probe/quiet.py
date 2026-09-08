@@ -35,6 +35,11 @@ async def run(args: argparse.Namespace) -> int:
         )
         print("sent     raw sensor disable")
 
+        for packet in protocol.DISABLE_LOGGING_PACKETS:
+            await client.write_gatt_char(protocol.UART_RX_CHAR_UUID, packet, response=False)
+            await asyncio.sleep(0.4)
+            print(f"sent     {packet[:4].hex()}...  (disable periodic logging)")
+
         for packet in protocol.QUIET_SENSOR_PACKETS:
             await client.write_gatt_char(protocol.UART_RX_CHAR_UUID, packet, response=False)
             await asyncio.sleep(0.3)

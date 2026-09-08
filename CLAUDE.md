@@ -241,10 +241,39 @@ and cannot be turned off:
   all, so they are not driven by the health-command path
 - no `A1` parameter streams motion without them
 
-They are wired into the raw-sensor path in firmware. Killing them means finding
-the sensor enable in that path and NOPing it, which is a flash-and-observe search
-with no debugger. `whip/fwbuild.py` makes the iteration possible; nobody has
-attempted it yet.
+### Everything ruled out, with evidence
+
+**Protocol: exhausted.**
+
+- Periodic HR logging (`16 02 02 3c`) was **already disabled** before we sent
+  anything -- confirmed by read-back (`16 01`) -- and the LEDs flicker anyway.
+- SpO2 (`0x2c`), stress (`0x36`), `0x38` all read zero; `0x37`/`0x39` unsupported.
+- Realtime stop commands (`69`/`6a`) do nothing, sent before, during or after.
+- All 15 `A1` parameters light them; none streams motion alone.
+- Sending the logging disable *before* `A1 04` darkens the ring but the
+  accelerometer never starts -- one packet in three minutes. The only dark state
+  is the one with no data.
+
+**Not a regression from the mod.** Stock `RT02CR_3.12.02` was flashed back and
+streamed for three minutes: **it flickers too**, while emitting spo2, ppg, accel
+and `0x05` at 1 Hz each. The optical sensor was always sampling; the low-latency
+build only suppresses the *reports*. All three of upstream's NOPs remove calls to
+one function, `bl #0x7e30`, the notification send -- no power-down instruction
+was dropped.
+
+So `A1 04` means "power the whole sensor front end" on every firmware, and the
+emitters are inseparable from the accelerometer at the protocol level.
+
+**Firmware: attempted and not cracked.** The call graph reachable from the A1
+handler is ~5100 call sites, far past blind bisection. Following the raw-sampling
+timer callback needs the image's load base, and solving for it failed -- the best
+candidate put only 49 of 206 function pointers on a prologue, with the top six
+scoring within noise across a 100 KB spread. Position-dependent code, no symbols,
+no memory map, and validation only by flashing and looking at the ring.
+
+**If revisiting:** ask the upstream author. Nosh118 found the timer immediate,
+the three send sites, the connection-parameter call and the Realtek activation
+sequence in this exact image. One question could replace days of work.
 
 ---
 

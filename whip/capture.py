@@ -220,6 +220,7 @@ async def stream(
     sink: Path | None = None,
     capture: Capture | None = None,
     quiet_optical: bool = False,
+    disable_logging: bool = False,
 ) -> list[tuple[float, bytes]]:
     """
     Enable raw sensor streaming, record every notification for `duration`
@@ -252,7 +253,22 @@ async def stream(
             written = _flush(handle, records, written)
 
     await client.start_notify(protocol.UART_TX_CHAR_UUID, on_notify)
+
     await client.write_gatt_char(protocol.UART_RX_CHAR_UUID, protocol.raw_sensor_packet(param), response=False)
+
+    if disable_logging:
+        # Order matters, and it is the opposite of what you would guess.
+        #
+        # `16 02 02 3c` does control the optical emitters -- sending it kept the
+        # ring dark for three minutes, the first time anything had. But sending
+        # it *before* `A1 04` leaves the sensor subsystem down and raw streaming
+        # never starts: one packet in three minutes. Sent after the stream is
+        # already running, the accelerometer keeps going and only the periodic
+        # optical logging is turned off.
+        await asyncio.sleep(0.5)
+        for packet in protocol.DISABLE_LOGGING_PACKETS:
+            await client.write_gatt_char(protocol.UART_RX_CHAR_UUID, packet, response=False)
+            await asyncio.sleep(0.4)
 
     if quiet_optical:
         # `A1 04` powers PPG and SpO2 as well as the accelerometer, and the

@@ -50,6 +50,8 @@ async def run(args: argparse.Namespace) -> int:
         if battery_before:
             print(f"battery     {battery_before[0]}%")
         print(f"param       0x{args.param:02x}")
+        if args.disable_logging:
+            print("logging     disabling periodic HR/SpO2 just after enabling the stream")
         if args.quiet_optical:
             print("optical     sending stop commands after enable")
         print(f"capturing   {args.duration:.0f}s -> {sink}")
@@ -60,6 +62,7 @@ async def run(args: argparse.Namespace) -> int:
             await capture.stream(
                 client, args.duration, param=args.param, sink=sink, capture=rec,
                 quiet_optical=args.quiet_optical,
+                disable_logging=args.disable_logging,
             )
         finally:
             progress.cancel()
@@ -108,6 +111,11 @@ def main() -> int:
         help="0xA1 parameter byte. 0x04 is the known enable-everything value.",
     )
     parser.add_argument("--out", help="explicit output path")
+    parser.add_argument(
+        "--disable-logging",
+        action="store_true",
+        help="turn off periodic HR/SpO2 logging just after the stream starts (kills the LEDs)",
+    )
     parser.add_argument(
         "--quiet-optical",
         action="store_true",

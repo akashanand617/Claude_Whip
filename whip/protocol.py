@@ -110,6 +110,16 @@ QUIET_SENSOR_PACKETS = (
     make_packet(0x6A, bytes([0x03, 0x00, 0x00])),  # stop realtime blood oxygen
 )
 
+# The emitters are not driven by raw streaming. They light on the ring's own
+# background health-logging schedule -- observed coming on ~90 s into a session
+# rather than when `A1 04` starts, persisting after `A1 02`, and ignoring every
+# realtime stop command above. Those commands stop *realtime* measurement; these
+# turn the periodic logging off, which is what actually schedules the emitters.
+DISABLE_LOGGING_PACKETS = (
+    make_packet(0x16, bytes([0x02, 0x02, 0x3C])),  # disable heart-rate logging
+    make_packet(0x2C, bytes([0x02, 0x02])),        # disable blood-oxygen logging
+)
+
 
 def parse_battery(packet: bytes | bytearray) -> tuple[int, bool]:
     """Return (battery_percent, is_charging) from an 0x03 reply."""
