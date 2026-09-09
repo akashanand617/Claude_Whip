@@ -131,14 +131,25 @@ async def find_ring(address: str | None = None, name: str | None = None, timeout
         raise RuntimeError(f"no device found at address {address}")
 
     logger.info("scanning for %.0fs", timeout)
-    devices = await BleakScanner.discover(timeout=timeout)
+    # return_adv because the name frequently lives only in the advertisement's
+    # local_name while BLEDevice.name is None. Matching on device.name alone
+    # produced intermittent "no ring found" against a ring sitting at -67 dBm,
+    # which then "fixed itself" on a retry that happened to populate the name.
+    found = await BleakScanner.discover(timeout=timeout, return_adv=True)
+
+    def advertised_name(device, adv) -> str | None:
+        return adv.local_name or device.name
 
     if name:
-        match = next((d for d in devices if d.name == name), None)
+        match = next((d for d, adv in found.values() if advertised_name(d, adv) == name), None)
         if match is not None:
             return match
     else:
-        rings = [d for d in devices if protocol.looks_like_ring(d.name)]
+        rings = [
+            d for d, adv in found.values()
+            if protocol.looks_like_ring(advertised_name(d, adv))
+            or protocol.UART_SERVICE_UUID.lower() in [u.lower() for u in (adv.service_uuids or [])]
+        ]
         if len(rings) > 1:
             names = ", ".join(f"{d.name} ({d.address})" for d in rings)
             raise RuntimeError(f"multiple rings found, pass --address to pick one: {names}")

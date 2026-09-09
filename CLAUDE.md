@@ -56,6 +56,13 @@ advertises reliably at strong signal, but every connect times out — in `bleak`
 `sudo pkill bluetoothd`, not a full restart (the bond is on disk), not charger
 taps, not unbinding from QRing.
 
+**A ring can be visible and still "not found".** `BLEDevice.name` is often
+`None` while the name lives in the advertisement's `local_name`. Matching on
+`device.name` alone missed a ring sitting at -67 dBm, then "worked" on a retry
+that happened to populate it -- which reads exactly like a flaky ring.
+`find_ring` now matches on `adv.local_name or device.name`, and on the UART
+service UUID as a fallback.
+
 **The ring rotates its BLE address.** Chrome's picker showed it twice under one
 name, at `30:32:41:33:CC:07` and `53:20:0D:60:4C:8F`, both marked Paired — one
 live, one a stale bonded record. From Python this is invisible: CoreBluetooth
