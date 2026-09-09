@@ -202,7 +202,21 @@ async def connected(device: BLEDevice, disconnect_callback=None, timeout: float 
     a broken device.
     """
     client = BleakClient(device, disconnected_callback=disconnect_callback, timeout=timeout)
-    await client.connect()
+    try:
+        await client.connect()
+    except Exception as exc:
+        # CBErrorDomain 15, "failed to encrypt the connection", is a stale bond:
+        # the ring cleared its pairing keys and macOS kept the old ones. It also
+        # presents as a silent timeout, which is what made it cost hours to find
+        # the first time. Nothing but forgetting the device clears it -- not a
+        # Bluetooth toggle, not `pkill bluetoothd`, not a reboot.
+        if "encrypt" in str(exc).lower() or "Code=15" in str(exc):
+            raise RuntimeError(
+                "stale Bluetooth bond: macOS holds pairing keys the ring no longer has.\n"
+                "  Fix: System Settings -> Bluetooth -> forget this device, then retry.\n"
+                "  A Bluetooth toggle, pkill bluetoothd and a reboot all leave it in place."
+            ) from exc
+        raise
     logger.info("connected to %s (%s)", device.name, device.address)
     try:
         yield client
