@@ -223,8 +223,49 @@ A CNN learning richer features than three thresholds should clear both
 comfortably. **These are the numbers to beat, and the honest baseline to report
 against.**
 
-Still unmeasured, and the one physically closest to a real gesture: **gesturing
-while talking**.
+### Hard negatives, measured (2026-09-08)
+
+Idle coding motions -- hand to head, fingers through hair, face rubbing, chin on
+hand, stretching, reaching for a mug -- produced **zero** flick-like events.
+Most are short impulses under 300 ms with no oscillation; chin-on-hand and face
+rubbing did not even cross the detection threshold.
+
+Nearest miss among them: **stretch and lean back**, 600 ms with 3 oscillation
+peaks. Only amplitude separates it (2.27 g against a 4.88 g flick median) -- and
+amplitude is the feature that clips at 4.09 g and whose softest real flick was
+2.91 g. Thin margin at both ends. Include plenty of stretching in the negatives.
+
+Deliberately adversarial gestures found the two real hard negatives:
+
+| motion | duration | peaks | peak g | verdict |
+|---|---|---|---|---|
+| **waving** | 1320 ms | **6** | 3.52 | indistinguishable on these features |
+| **snapping** | 540 ms | 2 | 5.42 | matches a single-flick profile |
+| clapping | 1515 ms | 3 | 5.49 | too long |
+| dismissive flick | - | - | - | below threshold entirely |
+| so-so wobble | - | - | - | below threshold entirely |
+
+Waving has *more* oscillations than a median double-flick. Both must be in the
+training set in quantity.
+
+**What the CNN has that thresholds do not:** waving is a smooth sinusoid, a flick
+is a sharp impulse with ringing. Same duration, same peak count, entirely
+different waveform. Shape is what a conv stack sees and what three summary
+statistics cannot.
+
+### Debouncing needs a band, not a floor
+
+An earlier version of this document said "require k-of-n consecutive positive
+windows". That is wrong for sustained motion. A gesture fires ~8 consecutive
+windows (2.0 s window, 0.24 s stride, ~1.2 s gesture). A 3-second wave fires ~15.
+A `>= 4 consecutive` rule therefore makes waving *more* likely to trigger.
+
+Use a band -- roughly **4 to 12 consecutive positive windows** -- which rejects
+isolated noise and sustained oscillation with the same mechanism.
+
+Note also that these captures repeated each motion continuously for 20 s, so the
+event *rates* are far above reality. They sample what a motion looks like, not
+how often it happens.
 
 ### Walking costs packets, not accuracy
 

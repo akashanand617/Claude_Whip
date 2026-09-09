@@ -324,6 +324,17 @@ dependency). Export weights plus **golden vectors**; the C++ must reproduce them
 to 1e-5 in float. Get float parity first, then quantise -- changing both at once
 makes a discrepancy unattributable.
 
+**Measured false-positive baselines.** Typing and walking are cleanly separable:
+a conjunction of amplitude, duration and oscillation count gives zero false
+positives on both, though any single feature gives 36-66/hour. Idle coding
+motions also give zero. The real hard negatives are **waving** (1320 ms, 6 peaks
+-- more oscillations than a median double-flick) and **snapping** (540 ms, 5.4 g
+-- a single-flick profile). Both must be in the training set.
+
+**Debounce with a band, not a floor.** A gesture fires ~8 consecutive windows; a
+3-second wave fires ~15. Requiring `>= 4 consecutive` makes sustained motion
+*more* likely to fire, not less. Accept 4-12.
+
 See `docs/COLLECTION.md` for the collection protocol and the confounds it controls.
 
 ## Tooling

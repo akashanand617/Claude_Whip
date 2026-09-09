@@ -109,6 +109,19 @@ class SessionNotes:
         entry["cue_at"] = cue_at
         self.marks.append(entry)
 
+    def add_cue(self, motion: str, cue_at: float, until: float) -> None:
+        """
+        Mark a stretch of a negative session as a named motion.
+
+        The label stays `none` -- these are all negatives. The point is
+        attribution: knowing that waving produced four flick-like events while
+        chin-on-hand produced none tells you which habit actually threatens the
+        false-positive budget, which a single undifferentiated negative session
+        cannot.
+        """
+        self.marks.append({"label": "none", "motion": motion,
+                           "cue_at": cue_at, "until": until})
+
     def write(self, path: Path) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(asdict(self), indent=2))

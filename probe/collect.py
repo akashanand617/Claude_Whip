@@ -68,6 +68,9 @@ async def run(args: argparse.Namespace) -> int:
         schedule = session.build_schedule(args.prompts, seed=args.seed)
         mean_gap = (args.gap_min + args.gap_max) / 2
         duration = 2.0 + len(schedule) * (COUNTDOWN_S + mean_gap) + 8.0
+    elif args.cues:
+        motions = [m.strip() for m in args.cues.split(",") if m.strip()]
+        duration = 2.0 + len(motions) * args.cue_seconds + 5.0
     else:
         duration = args.minutes * 60.0
 
@@ -107,6 +110,8 @@ async def run(args: argparse.Namespace) -> int:
             flags = sum(1 for p in schedule if p.label == "flag")
             print(f"schedule    {len(schedule)} prompts ({flags} flag / {len(schedule) - flags} approve), interleaved")
             print(f"pacing      {args.gap_min:.1f}-{args.gap_max:.1f}s randomised gaps")
+        elif args.cues:
+            print(f"motions     {len([m for m in args.cues.split(',') if m.strip()])} x {args.cue_seconds:.0f}s, all labelled `none`")
         else:
             print(f"mode        {args.kind}: no prompts, everything unmarked is `none`")
 
@@ -115,6 +120,9 @@ async def run(args: argparse.Namespace) -> int:
             rng = random.Random(args.seed)
             tasks.append(asyncio.create_task(
                 run_prompts(rec, notes, schedule, args.gap_min, args.gap_max, rng)))
+        elif args.cues:
+            motions = [m.strip() for m in args.cues.split(",") if m.strip()]
+            tasks.append(asyncio.create_task(run_cues(notes, motions, args.cue_seconds)))
         else:
             tasks.append(asyncio.create_task(_tick(duration)))
 
@@ -143,6 +151,19 @@ async def _tick(duration: float) -> None:
         print(f"  {left / 60:.1f} min left", flush=True)
 
 
+async def run_cues(notes: session.SessionNotes, motions: list[str], seconds: float) -> None:
+    """Cycle through named motions on a timer, recording when each began."""
+    await asyncio.sleep(2.0)
+    print()
+    start = time.perf_counter()
+    for i, motion in enumerate(motions):
+        at = time.perf_counter() - start
+        print(f"  [{i + 1}/{len(motions)}]  >>> {motion.upper()}  ({seconds:.0f}s)", flush=True)
+        await asyncio.sleep(seconds)
+        notes.add_cue(motion, at, time.perf_counter() - start)
+    print("\n  motions complete\n", flush=True)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Record a gesture collection session")
     parser.add_argument("--kind", default="prompted",
@@ -153,6 +174,8 @@ def main() -> int:
     parser.add_argument("--gap-max", type=float, default=session.MAX_GAP_S,
                         help="maximum quiet after a cue; randomised so no rhythm is learnable")
     parser.add_argument("--minutes", type=float, default=20.0, help="non-prompted modes: length")
+    parser.add_argument("--cues", help="comma-separated motions to cycle through, e.g. 'wave,snap,wobble'")
+    parser.add_argument("--cue-seconds", type=float, default=20.0, help="seconds per cued motion")
     parser.add_argument("--hand", default="left", help="which hand wears the ring")
     parser.add_argument("--ring-position", default="index",
                         help="finger and rough rotation, e.g. 'index, logo up'")
