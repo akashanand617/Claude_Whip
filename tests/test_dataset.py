@@ -42,7 +42,7 @@ def test_windowing_geometry():
 def test_windows_are_extracted_at_the_right_stride(tmp_path):
     cap = tmp_path / "s.jsonl"
     write_capture(cap, seconds=10.0)
-    w = dataset.windows_from_session(cap)
+    w = dataset.windows_from_session(cap, declared_negative=True)
     expected = (250 - dataset.WINDOW_SAMPLES) // dataset.STRIDE_SAMPLES + 1
     assert len(w) == expected
     assert all(len(x.axes) == 3 for x in w)
@@ -57,7 +57,7 @@ def test_gravity_is_removed_but_amplitude_is_not(tmp_path):
     """
     cap = tmp_path / "s.jsonl"
     write_capture(cap, seconds=6.0)
-    w = dataset.windows_from_session(cap)[0]
+    w = dataset.windows_from_session(cap, declared_negative=True)[0]
     for axis in w.axes:
         assert abs(sum(axis) / len(axis)) < 1e-6      # mean removed
     spread = max(w.axes[0]) - min(w.axes[0])
@@ -87,7 +87,7 @@ def test_ambiguous_windows_are_dropped_not_guessed(tmp_path):
     write_notes(notes, "s", gestures)
 
     with_marks = dataset.windows_from_session(cap, notes)
-    without = dataset.windows_from_session(cap)
+    without = dataset.windows_from_session(cap, declared_negative=True)
     assert len(with_marks) < len(without), "some windows should have been dropped as ambiguous"
 
 
@@ -119,3 +119,36 @@ def test_summary_reports_imbalance():
     assert s["total"] == 100
     assert s["counts"]["none"] == 90
     assert s["balance"]["flag"] == pytest.approx(0.1)
+
+
+def test_unlabelled_capture_is_refused(tmp_path):
+    """
+    "No notes means negative" put 33 real gestures into the `none` class. A
+    capture is negative only if it says so.
+    """
+    cap = tmp_path / "mystery.jsonl"
+    write_capture(cap, seconds=6.0)
+    with pytest.raises(dataset.UnlabelledCapture):
+        dataset.windows_from_session(cap)
+    assert dataset.windows_from_session(cap, declared_negative=True)
+
+
+def test_wrong_sample_rate_is_refused(tmp_path):
+    """
+    50 samples is 2.0 s at 25 Hz and 1.0 s at 50 Hz -- same tensor shape, half
+    the time span, and nothing downstream would notice.
+    """
+    cap = tmp_path / "fast.jsonl"
+    write_capture(cap, seconds=6.0, rate=50.0)
+    with pytest.raises(dataset.WrongSampleRate):
+        dataset.windows_from_session(cap, declared_negative=True)
+
+
+def test_load_all_reports_why_it_skipped(tmp_path):
+    write_capture(tmp_path / "unknown.jsonl", seconds=6.0)
+    write_capture(tmp_path / "fast.jsonl", seconds=6.0, rate=50.0)
+    windows, skipped = dataset.load_all(tmp_path)
+    assert windows == []
+    assert len(skipped) == 2
+    assert any("not declared negative" in s for s in skipped)
+    assert any("Hz" in s for s in skipped)
