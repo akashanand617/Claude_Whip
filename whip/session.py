@@ -48,6 +48,11 @@ TEMPOS = ("brisk", "natural", "deliberate")
 MIN_GAP_S = 2.5
 MAX_GAP_S = 4.5
 
+# The invariant that actually matters, in seconds from one cue to the next:
+# longest gesture (1.4 s) plus the window (2.0 s). The countdown counts toward
+# it, so callers must satisfy COUNTDOWN + MIN_GAP_S >= this.
+MIN_CUE_TO_CUE_S = 3.4
+
 
 @dataclass(frozen=True)
 class Prompt:

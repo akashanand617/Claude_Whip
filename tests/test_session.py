@@ -57,13 +57,19 @@ def test_seed_reproduces_a_schedule():
     assert session.build_schedule(30, seed=5) == session.build_schedule(30, seed=5)
 
 
-def test_gap_bounds_keep_two_gestures_out_of_one_window():
+def test_pacing_never_puts_two_gestures_in_one_window():
     """
-    A gesture reaches 1.4 s and the window is 2.0 s. Anything under ~3.4 s
-    cue-to-cue can put two gestures in one window, which then has no valid label.
-    The countdown contributes ~3 s on top of the gap.
+    The real invariant, which an earlier version of this test missed by pinning
+    an arbitrary gap constant instead.
+
+    `approve` IS two flicks, so two `flag`s inside one 2.0 s window look exactly
+    like an `approve` and no label for that window is correct. Cue-to-cue must
+    therefore clear the longest gesture (1.4 s) plus the window (2.0 s), and the
+    countdown counts toward that.
     """
-    assert session.MIN_GAP_S >= 3.0
+    from probe.collect import COUNTDOWN_S
+
+    assert COUNTDOWN_S + session.MIN_GAP_S >= session.MIN_CUE_TO_CUE_S
     assert session.MAX_GAP_S > session.MIN_GAP_S
 
 
