@@ -56,19 +56,30 @@ including the return to rest, with an internal period of ~120-210 ms.
 
 | | single | double |
 |---|---|---|
-| duration | 795-1125 ms, median 913 | 480-1395 ms, median 1065 |
+| duration | 795-1125 ms, median 913 | 480-1395 ms, median 1005 |
 | peaks per event | median 2, range 1-4 | median 5, range 2-9 |
 
-**Duration does not separate the classes** -- all six singles fall inside the
-double range, and the best duration-only split is 73% accurate. **Oscillation
-count does**: a peak-count threshold reaches 85%.
+**Duration does not separate the classes, and is actively misleading.** Execution
+speed varies enormously between sessions -- three double-flick captures gave
+median durations of 1005, 1200 and 795 ms for the same gesture. In the fastest
+session the doubles (795 ms) were *shorter* than the singles (913 ms). Duration
+does not merely overlap; it inverts.
 
-So the discriminator is internal structure, which is what the CNN is for. Those
-two numbers are the baselines the model must beat; a classifier that cannot clear
-85% is learning nothing a threshold could not.
+**Oscillation count is stable across every session**: 2 for singles, 4.0-5.5 for
+doubles. Best duration-only split is 73%; peak count reaches 85%.
 
-There is no "gap" to instruct. Standardise the overall tempo instead, and leave
-at least 3 s between gestures during prompted collection so events stay separable.
+Two consequences that shape training:
+
+- **Duration is a session-correlated shortcut.** A model that learns "long =
+  double" scores well within a session and fails across days -- a session oracle
+  wearing a disguise. Wide time-warp augmentation is what breaks the correlation.
+- **Time-warp augmentation must be ±40%, not ±15%.** Your own execution varies by
+  ~50% between sessions. Augmentation narrower than the natural variation leaves
+  the model brittle to exactly what you will actually produce.
+
+There is no "gap" to instruct. Leave at least 3 s between gestures during prompted
+collection so events stay separable, and deliberately vary tempo within each
+session rather than settling into one rhythm.
 
 ### Open decision: one hand or two
 
@@ -91,7 +102,8 @@ rather than train on it. Keep them out of training; score them separately.
 | Probe | Tests |
 |---|---|
 | hard single vs soft double | whether amplitude is being confused with count |
-| slow double (~600 ms gap) | receptive-field limit; expect degradation, confirm it is graceful |
+| very slow double (~1.4 s) | receptive-field limit; expect degradation, confirm it is graceful |
+| fast double vs slow single | duration inversion -- the confound that broke duration as a feature |
 | flick from ongoing typing | windup leak |
 | flick with ring re-seated 90° | rotation robustness |
 | near-miss motions: reaching, mouse click, scratching, adjusting glasses | the hard negatives most likely to fire |
@@ -177,7 +189,7 @@ These must match exactly. Add them to the parity vectors.
 - finger-axis rotation, ±30° (the ring spins about the finger; it does not tumble,
   so arbitrary SO(3) teaches invariance you do not need)
 - amplitude scaling, ±30%
-- time warp, ±15%
+- time warp, **±40%** (measured session-to-session execution variance is ~50%)
 - random window offset, so the gesture appears at every phase
 - additive noise at the level measured from stationary captures
 
@@ -188,6 +200,29 @@ covers the gap, since a real gesture still sits cleanly inside 3-4 of its ~6
 overlapping windows.
 
 ---
+
+## Splitting: by session, never by window
+
+**Random window splitting leaks catastrophically.** Three compounding reasons:
+
+- windows overlap 84% (50-sample window, 6-sample stride), so a window and its
+  neighbour share 44 of 50 samples -- train on one, test on the other, and you
+  have tested on training data
+- one gesture yields ~8 windows, so random splitting scatters instances of the
+  *same* physical flick across train and test
+- session artifacts (ring rotation, bias drift, how it settled) are constant
+  within a session and become free signal
+
+Expect a random-window split to report ~98% and mean nothing.
+
+**Split by session.** Train on three, validate on a fourth, test on a held-out
+naturalistic session recorded on a different day. This is what the build spec
+already requires.
+
+Sessions are short: 150 prompts at ~7 s is ~18 minutes. Four of those across four
+*different days* is the whole prompted requirement. Duration is not the
+load-bearing property -- separation in time is. Two hours recorded back to back
+is one session's worth of information.
 
 ## Evaluation
 

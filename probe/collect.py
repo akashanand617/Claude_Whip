@@ -1,0 +1,177 @@
+"""
+Record a gesture collection session.
+
+    python -m probe.collect --prompts 40                 # prompted block
+    python -m probe.collect --kind negative --minutes 30 # negatives, no prompts
+    python -m probe.collect --kind naturalistic --minutes 20
+
+Prompted mode cues each gesture with a countdown and records the cue timestamp,
+so **there is no marking motion in the signal at all** -- the thing that would
+otherwise contaminate every labelled window.
+
+The capture is continuous and unsegmented; marks live in a sidecar JSON. Windowing
+and label-coverage decisions happen offline against the stored stream, because
+those decisions have already changed once and will change again.
+
+Run `python -m probe.checkup <session>` afterwards before trusting the data.
+"""
+
+from __future__ import annotations
+
+import argparse
+import asyncio
+import logging
+import random
+import time
+from pathlib import Path
+
+from whip import capture, protocol, session
+
+DATA_DIR = Path("data/sessions")
+
+COUNTDOWN_S = 3
+
+
+async def run_prompts(rec: capture.Capture, notes: session.SessionNotes,
+                      schedule: list[session.Prompt], gap_lo: float, gap_hi: float,
+                      rng: random.Random) -> None:
+    """
+    Cue each gesture, recording when the cue fired. Runs alongside the stream.
+
+    Gaps are randomised, for two reasons. A gesture reaches 1.4 s and the window
+    is 2.0 s, so anything under ~3.4 s cue-to-cue lets one window span two
+    gestures -- a window with no defined label. And a *constant* gap teaches a
+    rhythm: "quiet then motion" becomes correlated with the label, which is the
+    windup leak in another form. In use, gestures emerge from ongoing activity.
+    """
+    await asyncio.sleep(2.0)
+    print()
+    for prompt in schedule:
+        print(f"  [{prompt.index + 1}/{len(schedule)}]  {prompt.spoken()}", flush=True)
+        for n in range(COUNTDOWN_S, 0, -1):
+            print(f"        {n}...", end="\r", flush=True)
+            await asyncio.sleep(1.0)
+
+        cue = time.perf_counter() - rec.notes["stream_t0"]
+        notes.add_mark(prompt, cue)
+        print("        >>> NOW                    ", flush=True)
+
+        await asyncio.sleep(rng.uniform(gap_lo, gap_hi))
+    print("\n  schedule complete, letting the stream run out\n", flush=True)
+
+
+async def run(args: argparse.Namespace) -> int:
+    device = await capture.find_ring(address=args.address, timeout=args.timeout)
+
+    schedule: list[session.Prompt] = []
+    if args.kind == "prompted":
+        schedule = session.build_schedule(args.prompts, seed=args.seed)
+        mean_gap = (args.gap_min + args.gap_max) / 2
+        duration = 2.0 + len(schedule) * (COUNTDOWN_S + mean_gap) + 8.0
+    else:
+        duration = args.minutes * 60.0
+
+    stamp = time.strftime("%Y%m%d_%H%M%S")
+    session_id = f"{args.kind}_{stamp}"
+    sink = DATA_DIR / f"{session_id}.jsonl"
+    notes_path = DATA_DIR / f"{session_id}.notes.json"
+
+    async with capture.connected(device) as client:
+        info = await capture.read_device_info(client, device)
+        battery = await capture.read_battery(client)
+
+        notes = session.SessionNotes(
+            session_id=session_id,
+            started_wall=time.time(),
+            kind=args.kind,
+            hand=args.hand,
+            ring_position=args.ring_position,
+            note=args.note,
+        )
+
+        rec = capture.Capture(
+            device=info, started_wall=time.time(), param=protocol.RAW_ENABLE_ALL,
+            label=session_id,
+            notes={"battery_before": battery[0] if battery else None,
+                   "kind": args.kind, "hand": args.hand,
+                   "ring_position": args.ring_position, "stream_t0": 0.0},
+        )
+
+        print(f"session     {session_id}")
+        print(f"device      {info.name}  fw {info.firmware}")
+        if battery:
+            print(f"battery     {battery[0]}%")
+        print(f"hand        {args.hand}   ring {args.ring_position}")
+        print(f"duration    {duration / 60:.1f} min -> {sink}")
+        if schedule:
+            flags = sum(1 for p in schedule if p.label == "flag")
+            print(f"schedule    {len(schedule)} prompts ({flags} flag / {len(schedule) - flags} approve), interleaved")
+            print(f"pacing      {args.gap_min:.1f}-{args.gap_max:.1f}s randomised gaps")
+        else:
+            print(f"mode        {args.kind}: no prompts, everything unmarked is `none`")
+
+        tasks = []
+        if schedule:
+            rng = random.Random(args.seed)
+            tasks.append(asyncio.create_task(
+                run_prompts(rec, notes, schedule, args.gap_min, args.gap_max, rng)))
+        else:
+            tasks.append(asyncio.create_task(_tick(duration)))
+
+        try:
+            await capture.stream(client, duration, sink=sink, capture=rec)
+        finally:
+            for t in tasks:
+                t.cancel()
+
+        battery_after = await capture.read_battery(client)
+        if battery and battery_after:
+            print(f"battery     {battery[0]}% -> {battery_after[0]}%")
+
+    notes.write(notes_path)
+    print(f"\ncapture     {sink}")
+    print(f"notes       {notes_path}  ({len(notes.marks)} marks)")
+    print(f"\nnow run:    python -m probe.checkup {session_id}")
+    return 0
+
+
+async def _tick(duration: float) -> None:
+    start = time.perf_counter()
+    while True:
+        await asyncio.sleep(30.0)
+        left = duration - (time.perf_counter() - start)
+        print(f"  {left / 60:.1f} min left", flush=True)
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Record a gesture collection session")
+    parser.add_argument("--kind", default="prompted",
+                        choices=("prompted", "naturalistic", "negative", "probe"))
+    parser.add_argument("--prompts", type=int, default=40, help="prompted mode: gestures to cue")
+    parser.add_argument("--gap-min", type=float, default=session.MIN_GAP_S,
+                        help="minimum quiet after a cue; below this a window can span two gestures")
+    parser.add_argument("--gap-max", type=float, default=session.MAX_GAP_S,
+                        help="maximum quiet after a cue; randomised so no rhythm is learnable")
+    parser.add_argument("--minutes", type=float, default=20.0, help="non-prompted modes: length")
+    parser.add_argument("--hand", default="left", help="which hand wears the ring")
+    parser.add_argument("--ring-position", default="index",
+                        help="finger and rough rotation, e.g. 'index, logo up'")
+    parser.add_argument("--note", default="", help="anything unusual about this session")
+    parser.add_argument("--seed", type=int, help="schedule seed; omit for a fresh draw")
+    parser.add_argument("--address")
+    parser.add_argument("--timeout", type=float, default=25.0)
+    args = parser.parse_args()
+
+    logging.basicConfig(level=logging.WARNING, format="%(levelname)s: %(message)s")
+    try:
+        return asyncio.run(run(args))
+    except RuntimeError as exc:
+        print(f"error: {exc}")
+        return 1
+    except KeyboardInterrupt:
+        print("\ninterrupted -- partial capture and marks are on disk")
+        return 130
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

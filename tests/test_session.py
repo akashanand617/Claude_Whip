@@ -1,0 +1,101 @@
+import json
+from pathlib import Path
+
+from whip import session
+
+
+def test_schedule_is_class_balanced():
+    s = session.build_schedule(40, seed=1)
+    assert len(s) == 40
+    labels = [p.label for p in s]
+    assert labels.count("flag") == labels.count("approve") == 20
+
+
+def test_schedule_never_runs_more_than_two_of_a_class():
+    """
+    Blocked recording lets session drift -- ring position, sensor bias, how the
+    ring settled -- correlate with the label for free. Drawing shuffled pairs
+    bounds any run at two, which no independent draw would guarantee.
+    """
+    for seed in range(20):
+        labels = [p.label for p in session.build_schedule(60, seed=seed)]
+        run = longest = 1
+        for a, b in zip(labels, labels[1:]):
+            run = run + 1 if a == b else 1
+            longest = max(longest, run)
+        assert longest <= 2, f"seed {seed} produced a run of {longest}"
+
+
+def test_odd_counts_are_handled():
+    s = session.build_schedule(7, seed=3)
+    assert len(s) == 7
+
+
+def test_every_factor_varies_across_a_schedule():
+    """Marginal balance is what decorrelates a factor from the label."""
+    s = session.build_schedule(120, seed=7)
+    assert len({p.direction for p in s}) == len(session.DIRECTIONS)
+    assert len({p.amplitude for p in s}) == len(session.AMPLITUDES)
+    assert len({p.windup for p in s}) == len(session.WINDUPS)
+    assert len({p.posture for p in s}) == len(session.POSTURES)
+    assert len({p.tempo for p in s}) == len(session.TEMPOS)
+
+
+def test_factors_are_not_correlated_with_the_class():
+    """
+    The whole point of randomising: within each class every factor level should
+    still appear. If a factor were drawn per-class it could become a shortcut.
+    """
+    s = session.build_schedule(200, seed=11)
+    for label in session.CLASSES:
+        subset = [p for p in s if p.label == label]
+        assert len({p.direction for p in subset}) == len(session.DIRECTIONS)
+        assert len({p.amplitude for p in subset}) == len(session.AMPLITUDES)
+
+
+def test_seed_reproduces_a_schedule():
+    assert session.build_schedule(30, seed=5) == session.build_schedule(30, seed=5)
+
+
+def test_gap_bounds_keep_two_gestures_out_of_one_window():
+    """
+    A gesture reaches 1.4 s and the window is 2.0 s. Anything under ~3.4 s
+    cue-to-cue can put two gestures in one window, which then has no valid label.
+    The countdown contributes ~3 s on top of the gap.
+    """
+    assert session.MIN_GAP_S >= 3.0
+    assert session.MAX_GAP_S > session.MIN_GAP_S
+
+
+def test_prompt_names_the_class_first():
+    p = session.build_schedule(2, seed=0)[0]
+    assert p.spoken().startswith(("SINGLE", "DOUBLE"))
+
+
+def test_notes_round_trip(tmp_path):
+    notes = session.SessionNotes(
+        session_id="prompted_x", started_wall=1.0, kind="prompted",
+        hand="left", ring_position="index, logo up", note="test",
+    )
+    for p in session.build_schedule(4, seed=2):
+        notes.add_mark(p, cue_at=float(p.index) * 5)
+
+    path = tmp_path / "n.json"
+    notes.write(path)
+    back = session.load_notes(path)
+
+    assert back.session_id == notes.session_id
+    assert len(back.marks) == 4
+    assert back.marks[0]["cue_at"] == 0.0
+    assert "label" in back.marks[0]
+
+
+def test_marks_carry_every_factor(tmp_path):
+    """Offline analysis needs the full factor set to check for leakage."""
+    notes = session.SessionNotes(
+        session_id="s", started_wall=0.0, kind="prompted", hand="left", ring_position="index"
+    )
+    notes.add_mark(session.build_schedule(2, seed=0)[0], cue_at=1.0)
+    mark = notes.marks[0]
+    for field in ("label", "direction", "amplitude", "windup", "posture", "tempo", "cue_at"):
+        assert field in mark
