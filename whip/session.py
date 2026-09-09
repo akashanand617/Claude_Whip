@@ -24,7 +24,7 @@ from pathlib import Path
 
 CLASSES = ("flag", "approve")
 
-DIRECTIONS = ("flexion", "extension", "ulnar", "radial")
+DIRECTIONS = ("up", "down", "left", "right")
 AMPLITUDES = ("soft", "normal", "hard")
 WINDUPS = ("none", "minimal", "deliberate")
 POSTURES = ("on keyboard", "on mouse", "raised", "flat on desk", "at side")
@@ -68,9 +68,72 @@ class Prompt:
     cue_at: float = 0.0
 
     def spoken(self) -> str:
-        """The instruction, ordered so the class is heard first and last."""
+        """
+        The instruction. Class first and in caps because it is the only part
+        that must not be got wrong -- the rest is variation, and a factor
+        slightly off is harmless since the point is decorrelating them from the
+        label, not teaching them.
+        """
         kind = "SINGLE" if self.label == "flag" else "DOUBLE"
-        return f"{kind}  |  {self.amplitude}, {self.direction}, {self.windup} windup, {self.posture}, {self.tempo}"
+        return f"{kind}  |  {self.amplitude}, {self.direction}"
+
+
+def build_structured_schedule(
+    per_class_per_cell: dict[str, int] | None = None,
+    directions: tuple[str, ...] = DIRECTIONS,
+    seed: int | None = None,
+) -> list[Prompt]:
+    """
+    A blocked design: work through one direction at a time, with a fixed number
+    of each amplitude, and both classes interleaved inside every block.
+
+    Blocking by direction is deliberate and safe. The confound that matters is
+    anything correlating with the *label*, and direction is not the label -- so
+    grouping by it costs nothing, while making the session far easier to execute
+    than a fully randomised draw.
+
+    Interleaving the classes inside each block is the part that is not optional.
+    Doing 25 `flag` then 25 `approve` would let fatigue and ring settling
+    separate the classes for free, which is the session-oracle problem in
+    miniature.
+
+    Windup and posture are not varied here. That costs generalisation to
+    postures you did not train in; it does not create a confound, because both
+    classes share whatever posture you happen to use.
+    """
+    per_class_per_cell = per_class_per_cell or {"soft": 10, "hard": 15}
+    rng = random.Random(seed)
+
+    prompts: list[Prompt] = []
+    index = 0
+    for direction in directions:
+        block: list[tuple[str, str]] = []
+        for amplitude, n in per_class_per_cell.items():
+            for _ in range(n):
+                block.append(("flag", amplitude))
+                block.append(("approve", amplitude))
+
+        # Shuffle amplitudes within the block but keep classes alternating, so
+        # neither amplitude nor position in the block predicts the class.
+        rng.shuffle(block)
+        fixed: list[tuple[str, str]] = []
+        pending = {"flag": [b for b in block if b[0] == "flag"],
+                   "approve": [b for b in block if b[0] == "approve"]}
+        want = "flag" if rng.random() < 0.5 else "approve"
+        while pending["flag"] or pending["approve"]:
+            other = "approve" if want == "flag" else "flag"
+            src = pending[want] or pending[other]
+            fixed.append(src.pop())
+            want = other if pending[other] else want
+
+        for label, amplitude in fixed:
+            prompts.append(Prompt(
+                index=index, label=label, direction=direction, amplitude=amplitude,
+                windup="natural", posture="as you are", tempo=rng.choice(TEMPOS),
+            ))
+            index += 1
+
+    return prompts
 
 
 def build_schedule(count: int, seed: int | None = None) -> list[Prompt]:

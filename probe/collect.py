@@ -71,7 +71,8 @@ async def run(args: argparse.Namespace) -> int:
 
     schedule: list[session.Prompt] = []
     if args.kind == "prompted":
-        schedule = session.build_schedule(args.prompts, seed=args.seed)
+        schedule = (session.build_structured_schedule(seed=args.seed) if args.structured
+                    else session.build_schedule(args.prompts, seed=args.seed))
         mean_gap = (args.gap_min + args.gap_max) / 2
         duration = 2.0 + len(schedule) * (COUNTDOWN_S + mean_gap) + 8.0
     elif args.cues:
@@ -187,6 +188,8 @@ def main() -> int:
                         help="finger and rough rotation, e.g. 'index, logo up'")
     parser.add_argument("--note", default="", help="anything unusual about this session")
     parser.add_argument("--seed", type=int, help="schedule seed; omit for a fresh draw")
+    parser.add_argument("--structured", action="store_true",
+                        help="blocked design: 10 soft + 15 hard per class per direction")
     parser.add_argument("--preview", action="store_true",
                         help="print the schedule and exit, without touching the ring")
     parser.add_argument("--address")
@@ -194,7 +197,8 @@ def main() -> int:
     args = parser.parse_args()
 
     if args.preview:
-        schedule = session.build_schedule(args.prompts, seed=args.seed)
+        schedule = (session.build_structured_schedule(seed=args.seed) if args.structured
+                    else session.build_schedule(args.prompts, seed=args.seed))
         flags = sum(1 for p in schedule if p.label == "flag")
         for p in schedule:
             print(f"  [{p.index + 1:>3}]  {p.spoken()}")

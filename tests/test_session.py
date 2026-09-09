@@ -140,3 +140,51 @@ def test_loader_identifies_the_header_structurally(tmp_path):
     header, records = capture.load_capture(path)
     assert header["kind"] == "negative"
     assert len(records) == 2
+
+
+def test_structured_schedule_matches_the_requested_design():
+    """10 soft + 15 hard per class, in each of four directions."""
+    s = session.build_structured_schedule(seed=1)
+    assert len(s) == 200
+    for direction in session.DIRECTIONS:
+        block = [p for p in s if p.direction == direction]
+        assert len(block) == 50
+        for label in session.CLASSES:
+            per = [p for p in block if p.label == label]
+            assert sum(1 for p in per if p.amplitude == "soft") == 10
+            assert sum(1 for p in per if p.amplitude == "hard") == 15
+
+
+def test_structured_schedule_interleaves_classes_within_every_block():
+    """
+    Blocking by direction is safe -- direction is not the label. Blocking by
+    *class* would let fatigue and ring settling separate the classes for free,
+    so the classes must alternate inside each direction block.
+    """
+    for seed in range(10):
+        s = session.build_structured_schedule(seed=seed)
+        for direction in session.DIRECTIONS:
+            labels = [p.label for p in s if p.direction == direction]
+            run = longest = 1
+            for a, b in zip(labels, labels[1:]):
+                run = run + 1 if a == b else 1
+                longest = max(longest, run)
+            assert longest <= 2, f"seed {seed}, {direction}: run of {longest}"
+
+
+def test_amplitude_does_not_predict_the_class():
+    """Both classes must span both amplitudes, or amplitude becomes a shortcut."""
+    s = session.build_structured_schedule(seed=4)
+    for label in session.CLASSES:
+        amps = {p.amplitude for p in s if p.label == label}
+        assert amps == {"soft", "hard"}
+
+
+def test_directions_are_named_the_way_a_person_thinks():
+    assert session.DIRECTIONS == ("up", "down", "left", "right")
+
+
+def test_prompt_leads_with_the_class():
+    p = session.build_structured_schedule(seed=0)[0]
+    assert p.spoken().startswith(("SINGLE", "DOUBLE"))
+    assert p.direction in p.spoken()
