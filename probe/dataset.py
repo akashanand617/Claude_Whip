@@ -96,8 +96,13 @@ def main() -> int:
         X = np.array([w.axes for w in windows], dtype=np.float32)
         y = np.array([w.label_index for w in windows], dtype=np.int64)
         sess = np.array([w.session_id for w in windows])
+        # Window start times, so a single session can be split temporally when
+        # there is not yet a second session to hold out. Without these the only
+        # available split leaves the test set with no positives at all.
+        start = np.array([w.start_s for w in windows], dtype=np.float32)
         args.out.parent.mkdir(parents=True, exist_ok=True)
-        np.savez_compressed(args.out, X=X, y=y, session=sess, labels=np.array(dataset.LABELS))
+        np.savez_compressed(args.out, X=X, y=y, session=sess, start_s=start,
+                            labels=np.array(dataset.LABELS))
         print(f"\nwrote {args.out}  X{X.shape} y{y.shape}")
         print("  split by session, never by window -- windows overlap 88%")
 
