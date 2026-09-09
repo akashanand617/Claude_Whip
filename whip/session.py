@@ -37,8 +37,16 @@ TEMPOS = ("brisk", "natural", "deliberate")
 # The gap is randomised between these bounds rather than fixed: a constant gap
 # makes "quiet, then motion" correlate with the label, which is the windup leak
 # in another form. Real gestures emerge from ongoing activity, not a metronome.
-MIN_GAP_S = 3.0
-MAX_GAP_S = 6.0
+# `approve` IS two flicks, so two `flag`s inside one 2.0 s window look exactly
+# like an `approve` and no label for that window is correct. The gap therefore
+# has to guarantee that no window ever holds two gestures: gesture-end to next
+# gesture-start >= the window length. With gestures reaching 1.4 s and a 2 s
+# countdown, 2.5 s of settle clears it.
+#
+# Randomised rather than fixed: a constant gap makes "quiet, then motion"
+# correlate with the label, which is the windup leak in another form.
+MIN_GAP_S = 2.5
+MAX_GAP_S = 4.5
 
 
 @dataclass(frozen=True)

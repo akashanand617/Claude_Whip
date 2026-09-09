@@ -29,7 +29,10 @@ from whip import capture, protocol, session
 
 DATA_DIR = Path("data/sessions")
 
-COUNTDOWN_S = 3
+# Two seconds is enough to get set once the prompt has already been read. The
+# prompt is shown at the *start* of the preceding gap, so reading time overlaps
+# the settle time instead of stacking on top of it.
+COUNTDOWN_S = 2
 
 
 async def run_prompts(rec: capture.Capture, notes: session.SessionNotes,
@@ -44,9 +47,12 @@ async def run_prompts(rec: capture.Capture, notes: session.SessionNotes,
     rhythm: "quiet then motion" becomes correlated with the label, which is the
     windup leak in another form. In use, gestures emerge from ongoing activity.
     """
-    await asyncio.sleep(2.0)
+    await asyncio.sleep(1.5)
     print()
-    for prompt in schedule:
+    for i, prompt in enumerate(schedule):
+        # Show it, give a short countdown, cue, then settle -- and during the
+        # settle, show the next one so it is already read by the time its
+        # countdown starts.
         print(f"  [{prompt.index + 1}/{len(schedule)}]  {prompt.spoken()}", flush=True)
         for n in range(COUNTDOWN_S, 0, -1):
             print(f"        {n}...", end="\r", flush=True)
@@ -54,7 +60,7 @@ async def run_prompts(rec: capture.Capture, notes: session.SessionNotes,
 
         cue = time.perf_counter() - rec.notes["stream_t0"]
         notes.add_mark(prompt, cue)
-        print("        >>> NOW                    ", flush=True)
+        print("        >>> NOW                              ", flush=True)
 
         await asyncio.sleep(rng.uniform(gap_lo, gap_hi))
     print("\n  schedule complete, letting the stream run out\n", flush=True)
@@ -181,9 +187,22 @@ def main() -> int:
                         help="finger and rough rotation, e.g. 'index, logo up'")
     parser.add_argument("--note", default="", help="anything unusual about this session")
     parser.add_argument("--seed", type=int, help="schedule seed; omit for a fresh draw")
+    parser.add_argument("--preview", action="store_true",
+                        help="print the schedule and exit, without touching the ring")
     parser.add_argument("--address")
     parser.add_argument("--timeout", type=float, default=25.0)
     args = parser.parse_args()
+
+    if args.preview:
+        schedule = session.build_schedule(args.prompts, seed=args.seed)
+        flags = sum(1 for p in schedule if p.label == "flag")
+        for p in schedule:
+            print(f"  [{p.index + 1:>3}]  {p.spoken()}")
+        pace = COUNTDOWN_S + (args.gap_min + args.gap_max) / 2
+        print(f"\n  {len(schedule)} prompts ({flags} flag / {len(schedule) - flags} approve)")
+        print(f"  ~{pace:.1f}s each -> ~{len(schedule) * pace / 60:.0f} min")
+        print("  (no ring needed; re-run without --preview to record)")
+        return 0
 
     logging.basicConfig(level=logging.WARNING, format="%(levelname)s: %(message)s")
     try:
