@@ -88,9 +88,9 @@ The ring is worn on one hand, and the signal mirrors if you switch. Decide now:
 - **One hand** -- half the data, and the model breaks if you ever switch.
 - **Both hands** -- doubles the requirement to 300/class/hand.
 
-Recommendation: pick one hand, wear it consistently, and record ~30 examples on
-the other hand purely as a documented failure case. If you later switch, you will
-know exactly what it costs.
+**Decided: one hand only.** Left hand, middle finger. The model will not
+generalise to the other hand and that is accepted -- switching hands means
+recollecting.
 
 ---
 
@@ -237,16 +237,34 @@ amplitude is the feature that clips at 4.09 g and whose softest real flick was
 
 Deliberately adversarial gestures found the two real hard negatives:
 
-| motion | duration | peaks | peak g | verdict |
-|---|---|---|---|---|
-| **waving** | 1320 ms | **6** | 3.52 | indistinguishable on these features |
-| **snapping** | 540 ms | 2 | 5.42 | matches a single-flick profile |
-| clapping | 1515 ms | 3 | 5.49 | too long |
-| dismissive flick | - | - | - | below threshold entirely |
-| so-so wobble | - | - | - | below threshold entirely |
+| motion | duration | peaks | peak g | rise | verdict |
+|---|---|---|---|---|---|
+| **waving** | 1320 ms | **6** | 3.52 | 1 samp | the one genuine hard negative |
+| snapping | 45 ms | - | 5.42 | **0 samp** | rejected on duration; see below |
+| clapping | 1515 ms | 3 | 5.49 | 13 samp | too long |
+| dismissive flick | - | - | - | - | below threshold entirely |
+| so-so wobble | - | - | - | - | below threshold entirely |
 
-Waving has *more* oscillations than a median double-flick. Both must be in the
-training set in quantity.
+**Snapping is not a hard negative, despite the amplitude.** Rise time separates
+it completely:
+
+| | rise to peak | duration | peak g |
+|---|---|---|---|
+| snap | **0 samples** | 45 ms | 5.42 |
+| flick | **9 samples (360 ms)** | 988 ms | 4.88 |
+
+A snap is tension, release, then a hard stop against the palm -- there is no
+deceleration phase, and at 25 Hz the impulse aliases into a near-delta function.
+Four of five snaps peaked on the first sample above threshold. A flick is a wrist
+rotation and has to accelerate. The one snap that looked flick-like (540 ms,
+13-sample rise) was two snaps merged.
+
+Layer 1's 5-sample kernel spans 200 ms, so onset shape is the first thing the
+network sees.
+
+**Waving is the remaining hard negative** and needs to be in the training set in
+quantity -- more oscillations than a median double-flick, though at lower
+amplitude (2.27 g median against 4.88).
 
 **What the CNN has that thresholds do not:** waving is a smooth sinusoid, a flick
 is a sharp impulse with ringing. Same duration, same peak count, entirely
