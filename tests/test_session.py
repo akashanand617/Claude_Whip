@@ -197,3 +197,23 @@ def test_prompt_leads_with_the_class():
     p = session.build_structured_schedule(seed=0)[0]
     assert p.spoken().startswith(("SINGLE", "DOUBLE"))
     assert p.direction in p.spoken()
+
+
+def test_preview_and_record_build_the_same_schedule():
+    """
+    They were built in two places and drifted: --soft/--hard reached the preview
+    but not the recording, so the preview promised 104 prompts and the session
+    ran 200.
+    """
+    import argparse
+
+    from probe.collect import schedule_for
+
+    args = argparse.Namespace(structured=True, soft=5, hard=8, seed=11, prompts=40)
+    a = schedule_for(args)
+    b = schedule_for(args)
+    assert len(a) == len(b) == 104
+    assert [p.spoken() for p in a] == [p.spoken() for p in b]
+
+    args.soft, args.hard = 10, 15
+    assert len(schedule_for(args)) == 200

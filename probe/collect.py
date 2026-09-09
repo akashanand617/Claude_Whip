@@ -35,6 +35,22 @@ DATA_DIR = Path("data/sessions")
 COUNTDOWN_S = 2
 
 
+def schedule_for(args) -> list[session.Prompt]:
+    """
+    The one place a schedule is built.
+
+    Preview and record previously built it separately, and drifted: --soft/--hard
+    reached the preview but not the recording, so the preview promised 104
+    prompts and the session ran 200. A preview that disagrees with the run is
+    worse than either number being wrong.
+    """
+    if args.structured:
+        return session.build_structured_schedule(
+            {"soft": args.soft, "hard": args.hard}, seed=args.seed
+        )
+    return session.build_schedule(args.prompts, seed=args.seed)
+
+
 async def run_prompts(rec: capture.Capture, notes: session.SessionNotes,
                       schedule: list[session.Prompt], gap_lo: float, gap_hi: float,
                       rng: random.Random) -> None:
@@ -201,10 +217,7 @@ def main() -> int:
     args = parser.parse_args()
 
     if args.preview:
-        schedule = (session.build_structured_schedule(
-                        {"soft": args.soft, "hard": args.hard}, seed=args.seed)
-                    if args.structured
-                    else session.build_schedule(args.prompts, seed=args.seed))
+        schedule = schedule_for(args)
         flags = sum(1 for p in schedule if p.label == "flag")
         for p in schedule:
             print(f"  [{p.index + 1:>3}]  {p.spoken()}")
