@@ -15,7 +15,7 @@ preferences written into a context file as context fills.
 | Milestone | State |
 |---|---|
 | M0 hardware gate | **PASSED** on `#4`: 25.00 Hz, 0.24% loss, 10 min worn |
-| M1 gesture classifier | not started |
+| M1 gesture classifier | protocol designed (`docs/COLLECTION.md`); harness not built |
 | M2 calibration corpus | not started, **not blocked on hardware** |
 | M3 labeling session | not started, **not blocked on hardware** |
 | M4 reward model | not started |
@@ -276,6 +276,47 @@ the three send sites, the connection-parameter call and the Realtek activation
 sequence in this exact image. One question could replace days of work.
 
 ---
+
+## M1 design decisions
+
+Architecture is a 1D CNN, ~9k parameters, on 38-sample windows (1.52 s at 25 Hz):
+
+```
+Conv1d(3->16,k5) -> BN -> ReLU -> MaxPool2      (16, 18)
+Conv1d(16->32,k5) -> BN -> ReLU -> MaxPool2     (32, 9)
+Conv1d(32->64,k3) -> BN -> ReLU                 (64, 9)
+GlobalAvgPool (+) GlobalMaxPool -> Dropout -> Linear(128->3)
+```
+
+**Two pools is the ceiling.** 38 -> 18 -> 9; a third leaves 4 samples, under a
+kernel width. Depth is limited by sequence length, which is the concrete cost of
+25 Hz over 50 Hz.
+
+**Receptive field is 24 samples ≈ 960 ms**, which must exceed the whole
+double-flick or `approve` becomes indistinguishable from two `flag`s. This is why
+the collection protocol bounds the double-flick gap to 200-450 ms.
+
+**Both poolings, concatenated.** Max reports "did the two-peak template match"
+(pattern identity); average reports total activation (energy, correlates with
+count). Neither disambiguates amplitude from count alone -- one hard flick and two
+soft ones give the same mean -- but the classifier reads both and can learn the
+ratio.
+
+**No softmax in the model** (CrossEntropyLoss wants logits); it lives in the C++
+daemon. **No RNN** -- the receptive field already spans the gesture, and recurrence
+is disproportionately painful to port.
+
+Classes are `none`, `flag` (single flick), `approve` (double flick). `none` is not
+a gesture: it is ~99.99% of windows, and it is why the false-positive budget
+rather than F1 is the binding constraint. Two positives rather than one because a
+negative-only signal trains the model toward terseness and refusal.
+
+Split: PyTorch for training (user), hand-written C++ for inference (~200 lines, no
+dependency). Export weights plus **golden vectors**; the C++ must reproduce them
+to 1e-5 in float. Get float parity first, then quantise -- changing both at once
+makes a discrepancy unattributable.
+
+See `docs/COLLECTION.md` for the collection protocol and the confounds it controls.
 
 ## Tooling
 
