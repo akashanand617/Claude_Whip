@@ -189,7 +189,11 @@ def main() -> int:
     parser.add_argument("--note", default="", help="anything unusual about this session")
     parser.add_argument("--seed", type=int, help="schedule seed; omit for a fresh draw")
     parser.add_argument("--structured", action="store_true",
-                        help="blocked design: 10 soft + 15 hard per class per direction")
+                        help="blocked design, one direction at a time")
+    parser.add_argument("--soft", type=int, default=5,
+                        help="soft gestures per class per direction")
+    parser.add_argument("--hard", type=int, default=8,
+                        help="hard gestures per class per direction")
     parser.add_argument("--preview", action="store_true",
                         help="print the schedule and exit, without touching the ring")
     parser.add_argument("--address")
@@ -197,7 +201,9 @@ def main() -> int:
     args = parser.parse_args()
 
     if args.preview:
-        schedule = (session.build_structured_schedule(seed=args.seed) if args.structured
+        schedule = (session.build_structured_schedule(
+                        {"soft": args.soft, "hard": args.hard}, seed=args.seed)
+                    if args.structured
                     else session.build_schedule(args.prompts, seed=args.seed))
         flags = sum(1 for p in schedule if p.label == "flag")
         for p in schedule:
