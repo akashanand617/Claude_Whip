@@ -37,21 +37,25 @@ TEMPOS = ("brisk", "natural", "deliberate")
 # The gap is randomised between these bounds rather than fixed: a constant gap
 # makes "quiet, then motion" correlate with the label, which is the windup leak
 # in another form. Real gestures emerge from ongoing activity, not a metronome.
-# `approve` IS two flicks, so two `flag`s inside one 2.0 s window look exactly
-# like an `approve` and no label for that window is correct. The gap therefore
-# has to guarantee that no window ever holds two gestures: gesture-end to next
-# gesture-start >= the window length. With gestures reaching 1.4 s and a 2 s
-# countdown, 2.5 s of settle clears it.
+# What the pacing must guarantee: a *positive* window for one gesture must never
+# contain the next one. `approve` is two flicks, so two `flag`s in one window
+# would look exactly like an `approve` and no label for it would be correct.
+#
+#   a positive window holds >= MIN_POSITIVE_COVERAGE of the gesture, so the
+#   latest one starts (1 - 0.70) * 1.4 s = 0.42 s into it, and ends 2.0 s later
+#   -> the next gesture must begin at least 2.42 s after this one
+#
+# An earlier version required 3.4 s, which was sized so that *negative* windows
+# could also sit cleanly in the quiet between gestures. That is not needed:
+# prompted sessions exist to produce positives, negatives come from ambient
+# wear, and windows straddling the gap are dropped as ambiguous anyway.
 #
 # Randomised rather than fixed: a constant gap makes "quiet, then motion"
 # correlate with the label, which is the windup leak in another form.
-MIN_GAP_S = 2.5
-MAX_GAP_S = 4.5
+MIN_CUE_TO_CUE_S = 2.5
 
-# The invariant that actually matters, in seconds from one cue to the next:
-# longest gesture (1.4 s) plus the window (2.0 s). The countdown counts toward
-# it, so callers must satisfy COUNTDOWN + MIN_GAP_S >= this.
-MIN_CUE_TO_CUE_S = 3.4
+MIN_GAP_S = 0.5
+MAX_GAP_S = 2.0
 
 
 @dataclass(frozen=True)

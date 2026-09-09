@@ -68,7 +68,16 @@ def test_pacing_never_puts_two_gestures_in_one_window():
     countdown counts toward that.
     """
     from probe.collect import COUNTDOWN_S
+    from whip import dataset
 
+    # Derive the requirement rather than trusting the constant: the latest
+    # positive window starts (1 - coverage) into the gesture and runs a full
+    # window, so the next gesture must begin after that.
+    longest_gesture_s = 1.4
+    window_s = dataset.WINDOW_SAMPLES / dataset.SAMPLE_RATE_HZ
+    required = (1 - dataset.MIN_POSITIVE_COVERAGE) * longest_gesture_s + window_s
+
+    assert session.MIN_CUE_TO_CUE_S >= required
     assert COUNTDOWN_S + session.MIN_GAP_S >= session.MIN_CUE_TO_CUE_S
     assert session.MAX_GAP_S > session.MIN_GAP_S
 
