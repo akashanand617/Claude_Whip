@@ -44,13 +44,31 @@ interactions, and you do not.
 | Amplitude | soft, normal, hard |
 | Windup | none (from ongoing motion), minimal, deliberate |
 | Posture at onset | on keyboard, on mouse, raised, flat on desk, hanging at side |
-| Double-flick gap | fast (~200 ms), natural (~300 ms), slow (~450 ms) |
+| Gesture tempo | brisk, natural, deliberate |
 
-**Double-flick gap is bounded by physics, not preference.** The layer-3
-receptive field is 24 samples ≈ 960 ms. A gap wider than that means no unit sees
-both peaks, and `approve` becomes indistinguishable from two separate `flag`s.
-Below ~100 ms the two peaks merge into one at 25 Hz. Stay inside 200-450 ms and
-verify the distribution after collection.
+### Measured gesture characteristics (2026-09-08, n=33)
+
+The "two impulses separated by a gap" model was **wrong**, and measuring it
+before writing 300 examples saved the protocol.
+
+A flick is not an impulse -- it is an oscillation train lasting ~0.8-1.4 s
+including the return to rest, with an internal period of ~120-210 ms.
+
+| | single | double |
+|---|---|---|
+| duration | 795-1125 ms, median 913 | 480-1395 ms, median 1065 |
+| peaks per event | median 2, range 1-4 | median 5, range 2-9 |
+
+**Duration does not separate the classes** -- all six singles fall inside the
+double range, and the best duration-only split is 73% accurate. **Oscillation
+count does**: a peak-count threshold reaches 85%.
+
+So the discriminator is internal structure, which is what the CNN is for. Those
+two numbers are the baselines the model must beat; a classifier that cannot clear
+85% is learning nothing a threshold could not.
+
+There is no "gap" to instruct. Standardise the overall tempo instead, and leave
+at least 3 s between gestures during prompted collection so events stay separable.
 
 ### Open decision: one hand or two
 

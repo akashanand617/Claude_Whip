@@ -279,22 +279,30 @@ sequence in this exact image. One question could replace days of work.
 
 ## M1 design decisions
 
-Architecture is a 1D CNN, ~9k parameters, on 38-sample windows (1.52 s at 25 Hz):
+Architecture is a 1D CNN, ~17.5k parameters, on 50-sample windows (2.0 s at 25 Hz):
 
 ```
-Conv1d(3->16,k5) -> BN -> ReLU -> MaxPool2      (16, 18)
-Conv1d(16->32,k5) -> BN -> ReLU -> MaxPool2     (32, 9)
-Conv1d(32->64,k3) -> BN -> ReLU                 (64, 9)
+Conv1d(3->16,k5) -> BN -> ReLU -> MaxPool2      (16, 25)
+Conv1d(16->32,k5) -> BN -> ReLU -> MaxPool2     (32, 12)
+Conv1d(32->64,k7) -> BN -> ReLU                 (64, 12)
 GlobalAvgPool (+) GlobalMaxPool -> Dropout -> Linear(128->3)
 ```
 
-**Two pools is the ceiling.** 38 -> 18 -> 9; a third leaves 4 samples, under a
-kernel width. Depth is limited by sequence length, which is the concrete cost of
-25 Hz over 50 Hz.
+**Window and receptive field were both sized from measurement, not assumption.**
+A first pass used 38-sample windows and a k=3 third layer, giving a 960 ms
+receptive field on the assumption that a double-flick was two taps ~300 ms apart.
+Measuring 33 real gestures showed they run **0.8-1.4 s**, so 74% of them exceeded
+that receptive field and the window left only 125 ms of alignment slack.
 
-**Receptive field is 24 samples ≈ 960 ms**, which must exceed the whole
-double-flick or `approve` becomes indistinguishable from two `flag`s. This is why
-the collection protocol bounds the double-flick gap to 200-450 ms.
+Now: RF = 40 samples = **1600 ms** (covers the 1395 ms worst case), window 2.0 s
+(~600 ms of slack). Two pools remains the ceiling; a third leaves too few samples.
+
+**The discriminator is oscillation count, not duration.** Singles average 2 peaks,
+doubles 5. Duration overlaps completely between classes -- best duration-only
+split is 73%, peak-count reaches 85%. Those are the baselines the model must beat.
+
+**Clipping is confirmed.** Flicks peak at ~6.5 g against a ±4.09 g range, so
+amplitude saturates on hard gestures and shape has to carry the discrimination.
 
 **Both poolings, concatenated.** Max reports "did the two-peak template match"
 (pattern identity); average reports total activation (energy, correlates with
