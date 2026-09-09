@@ -137,15 +137,27 @@ def check(session_id: str) -> Result:
     G = accel.COUNTS_PER_G
     mags = [((s.x ** 2 + s.y ** 2 + s.z ** 2) ** 0.5) / G for s in samples]
     baseline = statistics.median(mags)
-    quiet = []
+    quiet, outside = [], []
     for m in notes.marks:
         lo, hi = m["cue_at"], m["cue_at"] + 2.0
         window = [mg for t, mg in zip(times, mags) if lo <= t <= hi]
-        if window and (max(window) - baseline) < 0.5:
+        if not window:
+            # No samples at all in that span: the cue is not on the capture's
+            # timeline. This check previously treated an empty window as "fine"
+            # and reported 200/200 for a session whose cues were raw
+            # perf_counter values, 105,000 s outside the capture.
+            outside.append(m["index"])
+        elif (max(window) - baseline) < 0.5:
             quiet.append(m["index"])
+
+    if outside:
+        result.fail(
+            f"{len(outside)} cue(s) fall outside the capture timeline entirely "
+            f"(indices {outside[:5]}) -- the marks are on a different clock"
+        )
     if quiet:
         result.warn(f"{len(quiet)} cue(s) have no motion within 2 s: indices {quiet[:8]}")
-    print(f"  cues with motion  {len(notes.marks) - len(quiet)}/{len(notes.marks)}")
+    print(f"  cues with motion  {len(notes.marks) - len(quiet) - len(outside)}/{len(notes.marks)}")
 
     return result
 

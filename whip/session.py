@@ -19,7 +19,7 @@ from __future__ import annotations
 import json
 import random
 import time
-from dataclasses import dataclass, asdict, field
+from dataclasses import dataclass, asdict, field, fields
 from pathlib import Path
 
 CLASSES = ("flag", "approve")
@@ -208,8 +208,17 @@ class SessionNotes:
 
 
 def load_notes(path: Path) -> SessionNotes:
+    """
+    Read a notes file, tolerating fields this version does not know about.
+
+    Notes accumulate metadata over a project's life -- recovery records,
+    annotations, whatever a later tool adds. Refusing to load because of an
+    unrecognised key makes old sessions unreadable by new code and new sessions
+    unreadable by old, for no benefit.
+    """
     data = json.loads(Path(path).read_text())
     marks = data.pop("marks", [])
-    notes = SessionNotes(**data)
+    known = {f.name for f in fields(SessionNotes)} - {"marks"}
+    notes = SessionNotes(**{k: v for k, v in data.items() if k in known})
     notes.marks = marks
     return notes

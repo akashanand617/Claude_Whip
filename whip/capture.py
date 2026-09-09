@@ -264,6 +264,12 @@ async def stream(
     """
     records: list[tuple[float, bytes]] = capture.records if capture else []
     t0 = time.perf_counter()
+    if capture is not None:
+        # Publish the stream's clock origin. Anything timestamping events
+        # alongside the stream -- prompt cues, for one -- must subtract this, or
+        # it records raw perf_counter values on a different clock entirely and
+        # every label lands outside the capture.
+        capture.notes["stream_t0"] = t0
 
     def on_notify(_sender, data: bytearray) -> None:
         # Nothing but a timestamp and a copy. Any work here shows up as jitter.

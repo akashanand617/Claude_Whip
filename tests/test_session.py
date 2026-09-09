@@ -217,3 +217,37 @@ def test_preview_and_record_build_the_same_schedule():
 
     args.soft, args.hard = 10, 15
     assert len(schedule_for(args)) == 200
+
+
+def test_stream_publishes_its_clock_origin():
+    """
+    Cue timestamps are taken with perf_counter and must be expressed relative to
+    the stream's start. Leaving stream_t0 at 0.0 recorded raw perf_counter --
+    105,000 s outside a 660 s capture -- so every label missed and the session
+    produced zero positive windows.
+    """
+    from whip import capture
+
+    rec = capture.Capture(
+        device=capture.DeviceInfo(address="a", name="n"),
+        started_wall=0.0, param=0xA1, label="x", notes={"stream_t0": 0.0},
+    )
+    assert rec.notes["stream_t0"] == 0.0  # before streaming
+
+    import inspect
+    src = inspect.getsource(capture.stream)
+    assert 'capture.notes["stream_t0"] = t0' in src, "stream must publish its clock origin"
+
+
+def test_notes_tolerate_unknown_fields(tmp_path):
+    """Notes accumulate metadata; an unknown key must not make a session unreadable."""
+    import json
+
+    path = tmp_path / "n.json"
+    path.write_text(json.dumps({
+        "session_id": "s", "started_wall": 0.0, "kind": "prompted",
+        "hand": "left", "ring_position": "middle", "note": "",
+        "marks": [], "recovered_offset_s": 12.5, "some_future_field": True,
+    }))
+    notes = session.load_notes(path)
+    assert notes.session_id == "s"
