@@ -201,6 +201,42 @@ overlapping windows.
 
 ---
 
+## Measured false-positive baselines
+
+Both negative classes are cleanly separable by three crude features, measured on
+real recordings at the deployment rate.
+
+| | events/hr | peak g median | duration median | peaks median |
+|---|---|---|---|---|
+| typing (10 min) | 390 | 1.99 | 240 ms | 0.0 |
+| walking (5 min) | 96 | 1.53 | 68 ms | 0.0 |
+| **flicks** | | **4.88** | **988 ms** | **4.0** |
+
+Any single heuristic is fooled -- on typing, `peak >= 2.9 g` alone gives 36
+false positives/hour and `duration 480-1400 ms` gives 66. **The conjunction of
+all three gives zero on both.** The features fail independently: typing produces
+short sharp taps or long low-energy drifts but essentially never a
+second-long multi-peak burst at 4+ g; walking produces 68 ms impulses (heel
+strikes travelling up the arm) that no duration filter would accept.
+
+A CNN learning richer features than three thresholds should clear both
+comfortably. **These are the numbers to beat, and the honest baseline to report
+against.**
+
+Still unmeasured, and the one physically closest to a real gesture: **gesturing
+while talking**.
+
+### Walking costs packets, not accuracy
+
+Walking measured **10.9% implied loss with a 795 ms dropout**, against 0.24% at
+the desk. That is body attenuation and distance, not motion -- the ring is only
+reachable while you are near the machine. Two consequences: negative sessions
+recorded while moving will always be gappy, so `checkup.py` treats a rate
+shortfall as a warning for unprompted sessions and a failure only for prompted
+ones, where it would misalign every cue timestamp. And those gaps belong in the
+negative set: a dropout looks like a discontinuity, which looks like a flick
+onset.
+
 ## Splitting: by session, never by window
 
 **Random window splitting leaks catastrophically.** Three compounding reasons:

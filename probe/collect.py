@@ -93,7 +93,7 @@ async def run(args: argparse.Namespace) -> int:
             device=info, started_wall=time.time(), param=protocol.RAW_ENABLE_ALL,
             label=session_id,
             notes={"battery_before": battery[0] if battery else None,
-                   "kind": args.kind, "hand": args.hand,
+                   "session_kind": args.kind, "hand": args.hand,
                    "ring_position": args.ring_position, "stream_t0": 0.0},
         )
 

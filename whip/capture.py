@@ -62,14 +62,22 @@ class Capture:
     notes: dict = field(default_factory=dict)
 
     def header(self) -> dict:
+        """
+        The first line of a capture file.
+
+        Caller notes are spread *first* so the structural fields cannot be
+        clobbered by one. A session recorder that put its own "kind" in notes
+        overwrote `kind: header`, which left the loader parsing the header as a
+        sample and raising KeyError on every affected file.
+        """
         return {
+            **self.notes,
             "kind": "header",
             "started_wall": self.started_wall,
             "started_iso": time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime(self.started_wall)),
             "param": self.param,
             "label": self.label,
             "device": self.device.as_dict(),
-            **self.notes,
         }
 
 
@@ -338,7 +346,10 @@ def load_capture(path: Path) -> tuple[dict, list[tuple[float, bytes]]]:
             if not line:
                 continue
             obj = json.loads(line)
-            if obj.get("kind") == "header":
+            # Identify the header structurally rather than by its label: files
+            # written before the header-clobbering fix carry the session kind
+            # here instead of "header".
+            if "t" not in obj or "p" not in obj:
                 header = obj
             else:
                 records.append((obj["t"], bytes.fromhex(obj["p"])))

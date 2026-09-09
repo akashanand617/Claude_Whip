@@ -73,9 +73,24 @@ def check(session_id: str) -> Result:
     rate = len(acc) / span
 
     print(f"  duration      {span / 60:7.1f} min   {len(acc)} samples")
+    # Prompted sessions carry labels positioned by cue timestamp, so a rate
+    # shortfall shifts every label. Unprompted negatives have nothing to
+    # misalign -- and moving away from the laptop genuinely costs packets
+    # (walking measured 10.9% loss against 0.24% at the desk), so rejecting
+    # them for that would reject exactly the realistic conditions we want.
+    header = header or {}
+    # Captures written before the header fix stored the session kind under
+    # "kind", which also names the header line itself.
+    kind = header.get("session_kind") or (
+        header["kind"] if header.get("kind") not in (None, "header") else "prompted"
+    )
     print(f"  rate          {rate:7.2f} Hz")
     if abs(rate - RATE_TARGET) > RATE_TOLERANCE:
-        result.fail(f"rate {rate:.2f} Hz is outside {RATE_TARGET} +/- {RATE_TOLERANCE}")
+        msg = f"rate {rate:.2f} Hz is outside {RATE_TARGET} +/- {RATE_TOLERANCE}"
+        if kind in ("prompted", "probe"):
+            result.fail(msg + " -- cue timestamps would be misaligned")
+        else:
+            result.warn(msg + f" ({kind} session; link quality, not label quality)")
 
     intervals = sorted((times[i + 1] - times[i]) * 1000 for i in range(len(times) - 1))
     median = statistics.median(intervals)
@@ -84,7 +99,8 @@ def check(session_id: str) -> Result:
     print(f"  interval      {median:7.2f} ms median, p95 {intervals[int(len(intervals) * 0.95)]:.1f}, max {intervals[-1]:.1f}")
     print(f"  implied loss  {loss * 100:7.2f} %")
     if loss > LOSS_WARN:
-        result.warn(f"implied loss {loss * 100:.2f}% is above the {LOSS_WARN * 100:.0f}% baseline")
+        result.warn(f"implied loss {loss * 100:.2f}% is above the {LOSS_WARN * 100:.0f}% baseline"
+                    + (" -- gaps resemble flick onsets, keep them as negatives" if kind == "negative" else ""))
 
     samples = [accel.decode(p) for _, p in acc]
     clipped = sum(1 for s in samples if max(abs(s.x), abs(s.y), abs(s.z)) > CLIP_LIMIT)

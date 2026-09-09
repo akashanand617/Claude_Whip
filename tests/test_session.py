@@ -99,3 +99,38 @@ def test_marks_carry_every_factor(tmp_path):
     mark = notes.marks[0]
     for field in ("label", "direction", "amplitude", "windup", "posture", "tempo", "cue_at"):
         assert field in mark
+
+
+def test_capture_header_survives_a_notes_key_collision(tmp_path):
+    """
+    A session recorder putting its own "kind" in notes clobbered `kind: header`,
+    so the loader parsed the header as a sample and every affected capture
+    failed to load. Structural fields must win over caller notes.
+    """
+    from whip import capture
+
+    rec = capture.Capture(
+        device=capture.DeviceInfo(address="a", name="n"),
+        started_wall=0.0, param=0xA1, label="x",
+        notes={"kind": "negative", "label": "clobber", "hand": "left"},
+    )
+    header = rec.header()
+    assert header["kind"] == "header"
+    assert header["label"] == "x"
+    assert header["hand"] == "left"
+
+
+def test_loader_identifies_the_header_structurally(tmp_path):
+    """Captures written before the fix carry the session kind in that field."""
+    import json
+    from whip import capture
+
+    path = tmp_path / "c.jsonl"
+    path.write_text(
+        json.dumps({"kind": "negative", "device": {"name": "r"}}) + "\n"
+        + json.dumps({"t": 0.0, "p": "a103" + "00" * 14}) + "\n"
+        + json.dumps({"t": 0.04, "p": "a103" + "00" * 14}) + "\n"
+    )
+    header, records = capture.load_capture(path)
+    assert header["kind"] == "negative"
+    assert len(records) == 2
