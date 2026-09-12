@@ -251,3 +251,24 @@ def test_notes_tolerate_unknown_fields(tmp_path):
     }))
     notes = session.load_notes(path)
     assert notes.session_id == "s"
+
+
+def test_collect_builds_its_schedule_in_exactly_one_place():
+    """
+    The preview and the recording path each built their own schedule and drifted
+    twice -- first --soft/--hard reached only the preview, then a partial fix
+    left the recording path still calling the builder directly. Both times the
+    preview promised one count and the session ran another.
+
+    Testing schedule_for() in isolation did not catch it, because the bug was
+    that a caller bypassed it. So assert there are no other construction sites.
+    """
+    import pathlib
+
+    src = pathlib.Path("probe/collect.py").read_text()
+    body = src.split("def schedule_for", 1)[1].split("\ndef ", 1)
+    inside, rest = body[0], "".join(body[1:])
+
+    assert "build_structured_schedule" in inside, "schedule_for should build the schedule"
+    assert "build_structured_schedule" not in rest, "another call site bypasses schedule_for"
+    assert "build_schedule(" not in rest, "another call site bypasses schedule_for"

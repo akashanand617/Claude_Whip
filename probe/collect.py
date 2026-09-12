@@ -87,8 +87,7 @@ async def run(args: argparse.Namespace) -> int:
 
     schedule: list[session.Prompt] = []
     if args.kind == "prompted":
-        schedule = (session.build_structured_schedule(seed=args.seed) if args.structured
-                    else session.build_schedule(args.prompts, seed=args.seed))
+        schedule = schedule_for(args)
         mean_gap = (args.gap_min + args.gap_max) / 2
         duration = 2.0 + len(schedule) * (COUNTDOWN_S + mean_gap) + 8.0
     elif args.cues:
