@@ -86,8 +86,11 @@ def main() -> int:
         if mask.sum() < 60:
             continue
         order = np.where(mask)[0][np.argsort(START[mask])]
+        batch = X[order]
+        if model.n_channels != batch.shape[1]:
+            batch = gesture_model.to_model_input(batch)
         with torch.no_grad():
-            pred = model(torch.tensor(X[order])).argmax(1).numpy()
+            pred = model(torch.tensor(batch)).argmax(1).numpy()
         preds = [labels[p] for p in pred]
         starts = START[order].tolist()
         hours = (starts[-1] - starts[0]) / 3600

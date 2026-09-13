@@ -5,8 +5,8 @@ torch = pytest.importorskip("torch")
 from whip import model as gm
 
 
-def a_batch(n=4):
-    return torch.randn(n, gm.N_AXES, gm.WINDOW_SAMPLES)
+def a_batch(n=4, channels=None):
+    return torch.randn(n, channels or gm.N_CHANNELS, gm.WINDOW_SAMPLES)
 
 
 def test_output_shape_is_one_logit_per_class():
@@ -15,10 +15,10 @@ def test_output_shape_is_one_logit_per_class():
 
 def test_parameter_count_stays_small():
     """
-    17,859 parameters against a few hundred gestures. The measured failure mode
+    17,939 parameters against a few hundred gestures. The measured failure mode
     is memorising the session, not underfitting, so growth here needs a reason.
     """
-    assert sum(p.numel() for p in gm.GestureNet().parameters()) == 17859
+    assert sum(p.numel() for p in gm.GestureNet().parameters()) == 17939
 
 
 def test_receptive_field_spans_the_longest_measured_gesture():
@@ -107,3 +107,62 @@ def test_augmentation_can_be_turned_off_entirely():
     batch = a_batch(4)
     out = gm.augment(batch, amplitude=0.0, rotation_deg=0.0, noise_g=0.0)
     assert torch.allclose(out, batch, atol=1e-6)
+
+
+def test_model_input_splits_shape_from_scale():
+    """
+    Trained on raw g the network keys on amplitude, which is the easiest feature
+    and the wrong one. Soft flicks peak at 2.3 g and typing at 2.0 g, so an
+    amplitude threshold misses half the soft gestures and fires while you type.
+    """
+    import numpy as np
+
+    raw = np.random.randn(6, gm.N_AXES, gm.WINDOW_SAMPLES).astype("float32")
+    out = gm.to_model_input(raw)
+    assert out.shape == (6, gm.N_CHANNELS, gm.WINDOW_SAMPLES)
+
+    peak = np.sqrt((out[:, :gm.N_AXES] ** 2).sum(axis=1)).max(axis=1)
+    assert np.allclose(peak, 1.0, atol=1e-5), "waveform channels must be unit amplitude"
+
+
+def test_loud_and_quiet_versions_of_one_gesture_share_a_waveform():
+    """
+    The whole point: the same motion done softly and firmly differs only in the
+    scale channel, so the network cannot use amplitude to decide it did not
+    happen.
+    """
+    import numpy as np
+
+    raw = np.random.randn(1, gm.N_AXES, gm.WINDOW_SAMPLES).astype("float32")
+    soft = gm.to_model_input(raw * 0.3)
+    loud = gm.to_model_input(raw * 3.0)
+
+    assert np.allclose(soft[:, :gm.N_AXES], loud[:, :gm.N_AXES], atol=1e-5)
+    assert loud[0, gm.N_AXES, 0] > soft[0, gm.N_AXES, 0]
+    # and the gap is the log of the amplitude ratio, not the ratio itself
+    assert np.isclose(loud[0, gm.N_AXES, 0] - soft[0, gm.N_AXES, 0], np.log10(10.0), atol=1e-4)
+
+
+def test_a_silent_window_does_not_divide_by_zero():
+    import numpy as np
+
+    out = gm.to_model_input(np.zeros((2, gm.N_AXES, gm.WINDOW_SAMPLES), dtype="float32"))
+    assert np.isfinite(out).all()
+
+
+def test_amplitude_augmentation_moves_the_scale_channel_not_the_waveform():
+    """
+    On a shape+scale input the waveform is unit-amplitude by construction.
+    Scaling it would desynchronise it from the scale channel and teach the two
+    to disagree, so loudness has to be applied where loudness lives.
+    """
+    batch = a_batch(8)
+    out = gm.augment(batch, amplitude=0.2, rotation_deg=0.0, noise_g=0.0)
+    assert torch.allclose(out[:, :gm.N_AXES], batch[:, :gm.N_AXES], atol=1e-6)
+    assert not torch.allclose(out[:, gm.N_AXES:], batch[:, gm.N_AXES:], atol=1e-4)
+
+
+def test_three_channel_models_still_work():
+    """The pre-split representation stays loadable, so old checkpoints still run."""
+    net = gm.GestureNet(n_channels=3)
+    assert net(a_batch(2, channels=3)).shape == (2, gm.N_CLASSES)
