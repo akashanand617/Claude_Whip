@@ -286,14 +286,68 @@ sequence in this exact image. One question could replace days of work.
 
 ## M1 design decisions
 
-Architecture is a 1D CNN, ~17.5k parameters, on 50-sample windows (2.0 s at 25 Hz):
+Architecture is an InceptionTime-style 1D CNN, ~226k parameters, on 50-sample
+windows (2.0 s at 25 Hz). Input is **four** channels, not three: see "shape and
+scale" below.
 
 ```
-Conv1d(3->16,k5) -> BN -> ReLU -> MaxPool2      (16, 25)
-Conv1d(16->32,k5) -> BN -> ReLU -> MaxPool2     (32, 12)
-Conv1d(32->64,k7) -> BN -> ReLU                 (64, 12)
-GlobalAvgPool (+) GlobalMaxPool -> Dropout -> Linear(128->3)
+InceptionBlock(4->128)    parallel k=9,19,39 + maxpool branch, 1x1 bottleneck
+InceptionBlock(128->128)
+InceptionBlock(128->128)  + residual 1x1 shortcut from the input
+GlobalAvg (+) GlobalMax (+) GlobalStd -> Dropout -> Linear(384->3)
 ```
+
+**No temporal pooling anywhere in the trunk**, and that is the point. The first
+design pooled 2x twice (50 samples -> 12) and then pooled globally. The
+discriminator is *oscillation count* -- singles 2 peaks, doubles 5 -- and a 1.4 s
+double flick is ~35 samples, ~8 after pooling, so five distinguishable peaks sat
+at the Nyquist limit. Global average and global max cannot count in any case: one
+reports total activation, the other the largest single value. The architecture
+was discarding the feature the classes differ on.
+
+Kernels span three time scales because one scale cannot cover the problem: at
+25 Hz, k=9 is 360 ms (one oscillation), k=19 is 760 ms (the gap between two),
+k=39 is 1560 ms (the whole gesture).
+
+**Compare architectures only at a matched false-positive budget.** Uncalibrated,
+`resnet1d` and a conv+biGRU looked precise (0.9 FP/hour) when they were merely
+reluctant to fire. Tuning every model's threshold to the same 1 FP/hour budget
+*first*, then reading recall, reverses the ranking. Seven seeds:
+
+| architecture | recall @ 1 FP/hour |
+|---|---|
+| CompactNet (the old one) | 57.1 ± 13.6 |
+| + std pooling | 62.1 ± 6.3 |
+| dilated, no pooling | 62.3 ± 8.9 |
+| dilated + attention pooling | 63.8 ± 15.4 |
+| resnet1d (499k params) | 59.4 ± 4.9 |
+| conv + biGRU (DeepConvLSTM) | 56.2 ± 12.4 |
+| **GestureNet (inception)** | **69.9 ± 7.4** |
+
+**Recurrence lost.** The biGRU was worst on recall, so the one architecture that
+would have forced a painful hand-written C++ port is also the one not worth
+porting. `GestureNet` is pure convolution.
+
+Size bought reliability, not just capacity: seed-to-seed spread roughly halves
+against the baseline's ±13.6. At this sample size (64 held-out gestures)
+**differences under ~8 points are not resolvable** -- treat them as ties.
+
+**Shape and scale are separate channels.** Trained on raw g, the network keys on
+amplitude, because amplitude is the easiest feature there. That one shortcut
+causes both failure modes at once: soft flicks peak near 2.3 g and typing peaks
+near 2.0 g, so an amplitude threshold misses half the soft gestures *and* fires
+while you type. `to_model_input` feeds three unit-amplitude waveform channels
+plus one log-peak channel. Over five seeds: soft recall 28 -> 39%, hard 61 ->
+78%, typing false positives 10 -> 4/hour, variance roughly halved.
+
+Dividing amplitude out *entirely* is worse in the other direction -- a quiet
+window normalises sensor noise up to full scale and starts to look like a
+gesture, costing 6 points on hard flicks. Keep both, separately.
+
+Also ruled out: biasing amplitude augmentation downward to synthesise soft
+flicks from hard ones. It makes things worse (soft 31 -> 24%), because hard
+flicks clip at ±4.09 g, so scaling one down yields a flat-topped signal at low
+amplitude -- not what a real soft flick looks like.
 
 **Window and receptive field were both sized from measurement, not assumption.**
 A first pass used 38-sample windows and a k=3 third layer, giving a 960 ms
@@ -301,8 +355,10 @@ receptive field on the assumption that a double-flick was two taps ~300 ms apart
 Measuring 33 real gestures showed they run **0.8-1.4 s**, so 74% of them exceeded
 that receptive field and the window left only 125 ms of alignment slack.
 
-Now: RF = 40 samples = **1600 ms** (covers the 1395 ms worst case), window 2.0 s
-(~600 ms of slack). Two pools remains the ceiling; a third leaves too few samples.
+That lesson holds, but the fix changed. The k=39 branch alone spans 1560 ms, and
+with three blocks the stack sees the whole window, so receptive field is no
+longer the binding constraint -- resolution is. Window stays 2.0 s (~600 ms of
+alignment slack).
 
 **The discriminator is oscillation count, not duration.** Singles average 2 peaks,
 doubles 5. Duration overlaps completely between classes -- best duration-only
@@ -311,15 +367,17 @@ split is 73%, peak-count reaches 85%. Those are the baselines the model must bea
 **Clipping is confirmed.** Flicks peak at ~6.5 g against a ±4.09 g range, so
 amplitude saturates on hard gestures and shape has to carry the discrimination.
 
-**Both poolings, concatenated.** Max reports "did the two-peak template match"
-(pattern identity); average reports total activation (energy, correlates with
-count). Neither disambiguates amplitude from count alone -- one hard flick and two
-soft ones give the same mean -- but the classifier reads both and can learn the
-ratio.
+**Three poolings, concatenated.** Max reports pattern identity ("did the two-peak
+template match"), average reports total activation, and **std reports variation
+over time**, which is the closest cheap proxy for oscillation count. Adding std
+alone to the old architecture was worth 5 points -- mean and max both discard it,
+and neither can count.
 
 **No softmax in the model** (CrossEntropyLoss wants logits); it lives in the C++
-daemon. **No RNN** -- the receptive field already spans the gesture, and recurrence
-is disproportionately painful to port.
+daemon. **No RNN** -- originally assumed, now measured: a conv+biGRU scored worst
+of seven architectures (56.2% vs 69.9%). Recurrence was the one mechanism that
+could in principle count events, so this was worth testing rather than asserting.
+It lost, which conveniently removes the only design that was painful to port.
 
 Classes are `none`, `flag` (single flick), `approve` (double flick). `none` is not
 a gesture: it is ~99.99% of windows, and it is why the false-positive budget
