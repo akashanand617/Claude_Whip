@@ -373,6 +373,30 @@ over time**, which is the closest cheap proxy for oscillation count. Adding std
 alone to the old architecture was worth 5 points -- mean and max both discard it,
 and neither can count.
 
+**Ruled out, with numbers.** Each of these is the obvious simpler thing, and
+each is measurably worse at a matched 1 FP/hour budget (7 seeds):
+
+| variant | recall @ 1 FP/hour |
+|---|---|
+| **GestureNet, shape+scale** | **69.9** |
+| GestureNet, raw g | 57.4 |
+| flatten head instead of pooling, shape+scale | 56.0 |
+| flatten head, raw g | 43.8 |
+| flatten head without BatchNorm | 31.0 |
+| MLP, no convolution at all | 27.5 |
+
+- **Removing pooling entirely loses 14 points**, with twice the parameters. A
+  flatten head keeps exact peak positions, which sounds right for counting
+  oscillations, but it is translation-sensitive: with 88% window overlap the same
+  gesture lands at many offsets and each must be learned separately, which
+  divides an already small gesture count. Global pooling is not waste, it is the
+  correct prior -- a flick is the same flick wherever it falls in the window.
+- **BatchNorm is load-bearing, not decoration.** Removing it costs 25 points.
+- **Convolution earns its keep by ~42 points** over a plain MLP.
+- **Raw g loses ~12 points under both architectures.** The penalty being the same
+  size regardless of design is the strongest evidence that the shape/scale split
+  is real rather than an artifact of one model.
+
 **No softmax in the model** (CrossEntropyLoss wants logits); it lives in the C++
 daemon. **No RNN** -- originally assumed, now measured: a conv+biGRU scored worst
 of seven architectures (56.2% vs 69.9%). Recurrence was the one mechanism that
