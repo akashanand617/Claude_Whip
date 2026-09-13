@@ -11,17 +11,57 @@ def a_batch(n=4, channels=None):
 
 def test_output_shape_is_one_logit_per_class():
     assert gm.GestureNet()(a_batch(4)).shape == (4, gm.N_CLASSES)
+    assert gm.CompactNet()(a_batch(4)).shape == (4, gm.N_CLASSES)
 
 
-def test_parameter_count_stays_small():
+def test_parameter_counts():
     """
-    17,939 parameters against a few hundred gestures. The measured failure mode
-    is memorising the session, not underfitting, so growth here needs a reason.
+    CompactNet stayed small on the theory that memorisation, not underfitting,
+    was the risk. Measured at a matched false-positive budget it reached 57.1%
+    recall against GestureNet's 69.9%, so the size was costing reliability
+    rather than protecting it.
     """
-    assert sum(p.numel() for p in gm.GestureNet().parameters()) == 17939
+    assert sum(p.numel() for p in gm.CompactNet().parameters()) == 17939
+    assert sum(p.numel() for p in gm.GestureNet().parameters()) == 225763
 
 
-def test_receptive_field_spans_the_longest_measured_gesture():
+def test_the_trunk_never_pools_away_time():
+    """
+    The reason for the rewrite. The discriminator is oscillation count -- singles
+    average 2 peaks, doubles 5 -- and CompactNet pooled 50 samples down to 12
+    before pooling globally, which puts five distinguishable peaks at the Nyquist
+    limit. GestureNet keeps full resolution to the end.
+    """
+    net = gm.GestureNet()
+    assert not any(isinstance(m, (torch.nn.MaxPool1d, torch.nn.AvgPool1d))
+                   for b in net.blocks for m in b.branches), "branches must not pool"
+    x = a_batch(2)
+    z = x
+    for block in net.blocks:
+        z = block(z)
+    assert z.shape[2] == gm.WINDOW_SAMPLES, "temporal resolution must survive the trunk"
+
+
+def test_pooling_reports_std_not_just_mean_and_max():
+    """
+    Mean says how much total activation, max says how big the largest was.
+    Neither can count. Std is the cheap proxy for variation over time.
+    """
+    net = gm.GestureNet()
+    width = gm.INCEPTION_CHANNELS * (len(gm.INCEPTION_KERNELS) + 1)
+    assert net.head.in_features == width * 3, "mean, max and std"
+
+
+def test_kernels_span_several_time_scales():
+    """
+    At 25 Hz: 9 = 360 ms (one oscillation), 19 = 760 ms (the gap between two),
+    39 = 1560 ms (the whole gesture). A single kernel size is blind to two of them.
+    """
+    ms = [k / 25 * 1000 for k in gm.INCEPTION_KERNELS]
+    assert min(ms) < 500 and max(ms) > 1395
+
+
+def test_compactnet_receptive_field_spans_the_longest_measured_gesture():
     """
     40 samples at 25 Hz is 1600 ms; the longest gesture measured was 1395 ms. If
     the stack ever shrinks below that, the network physically cannot see a whole
@@ -166,3 +206,28 @@ def test_three_channel_models_still_work():
     """The pre-split representation stays loadable, so old checkpoints still run."""
     net = gm.GestureNet(n_channels=3)
     assert net(a_batch(2, channels=3)).shape == (2, gm.N_CLASSES)
+
+
+def test_a_compactnet_checkpoint_loads_back_as_a_compactnet(tmp_path):
+    """
+    Checkpoints record their architecture. Without it a CompactNet checkpoint
+    loaded into a GestureNet fails with an unreadable shape error.
+    """
+    path = tmp_path / "old.pt"
+    gm.save(gm.CompactNet(), path, trained_on=["s1"], held_out=["s2"])
+    loaded, provenance = gm.load(path)
+    assert isinstance(loaded, gm.CompactNet)
+    assert provenance["architecture"] == "CompactNet"
+
+
+def test_a_gesturenet_checkpoint_round_trips(tmp_path):
+    net = gm.GestureNet()
+    net.eval()
+    x = a_batch(3)
+    with torch.no_grad():
+        before = net(x)
+    path = tmp_path / "new.pt"
+    gm.save(net, path, trained_on=["s1"], held_out=["s2"])
+    loaded, _ = gm.load(path)
+    with torch.no_grad():
+        assert torch.allclose(before, loaded(x), atol=1e-6)

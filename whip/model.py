@@ -9,23 +9,51 @@ from rather than a cell somebody edited afterwards.
 
 The notebook still shows the process. It imports this.
 
-Shape of the thing: input is (4, 50) -- two seconds at 25 Hz as three
-unit-amplitude waveform channels plus one channel carrying log peak amplitude.
-See `to_model_input` for why the split is not cosmetic.
+Input is (4, 50) -- two seconds at 25 Hz as three unit-amplitude waveform
+channels plus one channel carrying log peak amplitude. See `to_model_input` for
+why the split is not cosmetic.
 
-    Conv1d(4->16, k=5)  BN ReLU MaxPool2      (16, 25)
-    Conv1d(16->32, k=5) BN ReLU MaxPool2      (32, 12)
-    Conv1d(32->64, k=7) BN ReLU               (64, 12)
-    global avg (+) global max -> 128 -> Dropout -> Linear(3)
+`GestureNet` is an InceptionTime-style multi-scale stack. `CompactNet` is the
+smaller design it replaced, kept because it is the honest comparison point.
 
-Receptive field is 40 samples, 1600 ms, which comfortably spans the longest
-measured gesture (1395 ms). Concatenating average and max pooling matters more
-than it looks: average carries how sustained the motion was, max carries how
-hard the peak was, and the two features that actually separate the classes are
-oscillation count and amplitude.
+**Why the first design was wrong.** CompactNet pools 2x twice, taking 50 samples
+to 12, then pools globally over time. The measured discriminator between the two
+gesture classes is *oscillation count* -- singles average 2 peaks, doubles 5. A
+1.4 s double flick is ~35 samples, which is ~8 after pooling, so fitting five
+distinguishable peaks into eight bins sits at the Nyquist limit. Worse, global
+average and global max cannot count at all: one reports total activation, the
+other the single largest. The architecture was discarding the exact feature the
+classes differ on.
 
-17,939 parameters. Small on purpose -- there are a few hundred gestures, and the
-failure mode already measured is memorising the session rather than underfitting.
+**Measured, seven seeds, every model calibrated to the same 1 false-positive-per-
+hour budget before recall was read off** -- otherwise the comparison ranks
+confidence calibration rather than discriminative power, and a model that is
+merely reluctant to fire looks precise:
+
+    architecture                  recall @ 1 FP/hour
+    CompactNet (pool + global)        57.1 +/- 13.6
+    + std pooling                     62.1 +/-  6.3
+    dilated, no pooling               62.3 +/-  8.9
+    dilated + attention pooling       63.8 +/- 15.4
+    resnet1d (499k params)            59.4 +/-  4.9
+    conv + biGRU (DeepConvLSTM)       56.2 +/- 12.4
+    GestureNet (inception)            69.9 +/-  7.4
+
+Two things that ranking settles. Removing the pooling helps, which is the
+predicted direction. And recurrence *loses* -- the biGRU is worst on recall, so
+the one architecture that would have forced a painful hand-written C++ port is
+also the one not worth porting. GestureNet is pure convolution.
+
+The winner also reaches its budget at a threshold of 0.57, among the lowest in
+the field. It is not buying precision by being timid; it separates the classes
+well enough to sit at a relaxed operating point.
+
+~226k parameters, 12x CompactNet. Size was traded for reliability deliberately:
+seed-to-seed spread roughly halves against the baseline's +/-13.6.
+
+**What architecture did not fix:** false positives on waving, 39-69/hour across
+every design tried, with no trend. That is a data gap -- there are 1.7 minutes of
+waving in the corpus -- and no architecture search will close it.
 """
 
 from __future__ import annotations
@@ -80,7 +108,13 @@ def to_model_input(x):
     return np.concatenate([shape, scale], axis=1).astype("float32")
 
 
-class GestureNet(nn.Module):
+class CompactNet(nn.Module):
+    """
+    The original 18k-parameter design. Superseded -- see the module docstring for
+    the measurement -- but kept as the comparison point, and because old
+    checkpoints reference it.
+    """
+
     def __init__(self, n_classes: int = N_CLASSES, dropout: float = 0.3,
                  n_channels: int = N_CHANNELS):
         super().__init__()
@@ -97,6 +131,81 @@ class GestureNet(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.block3(self.block2(self.block1(x)))
         pooled = torch.cat([x.mean(dim=2), x.amax(dim=2)], dim=1)
+        return self.head(self.dropout(pooled))
+
+
+# Kernel widths in samples at 25 Hz: 9 = 360 ms, 19 = 760 ms, 39 = 1560 ms.
+# One branch sees a single oscillation, one sees the gap between two, one spans
+# the whole gesture. Committing to a single kernel size means choosing which of
+# those to be blind to.
+INCEPTION_KERNELS = (9, 19, 39)
+INCEPTION_CHANNELS = 32
+INCEPTION_BLOCKS = 3
+
+
+class InceptionBlock(nn.Module):
+    """
+    Parallel convolutions at several time scales, concatenated.
+
+    The bottleneck 1x1 keeps the parameter count of the wide branches down. The
+    max-pool branch runs on the block input rather than the bottleneck so a
+    strong short transient survives the dimensionality reduction.
+    """
+
+    def __init__(self, in_channels: int, channels: int = INCEPTION_CHANNELS,
+                 kernels: tuple[int, ...] = INCEPTION_KERNELS):
+        super().__init__()
+        self.bottleneck = nn.Conv1d(in_channels, channels, 1)
+        self.branches = nn.ModuleList(
+            [nn.Conv1d(channels, channels, k, padding=k // 2) for k in kernels])
+        self.pool_branch = nn.Sequential(
+            nn.MaxPool1d(3, stride=1, padding=1), nn.Conv1d(in_channels, channels, 1))
+        self.norm = nn.BatchNorm1d(channels * (len(kernels) + 1))
+        self.relu = nn.ReLU()
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        bottled = self.bottleneck(x)
+        parts = [branch(bottled) for branch in self.branches] + [self.pool_branch(x)]
+        return self.relu(self.norm(torch.cat(parts, dim=1)))
+
+
+class GestureNet(nn.Module):
+    """
+    Multi-scale convolution, no temporal pooling, statistics pooling at the end.
+
+    No MaxPool1d anywhere in the trunk: full 50-sample resolution is preserved
+    all the way through, because that resolution is what counting oscillations
+    depends on.
+
+    Pooling reports mean, max *and* standard deviation. Std is the one of the
+    three that carries variation over time, which is the closest cheap proxy for
+    oscillation count; mean and max both discard it. On its own, adding std to
+    the old architecture was worth 5 points.
+    """
+
+    def __init__(self, n_classes: int = N_CLASSES, dropout: float = 0.3,
+                 n_channels: int = N_CHANNELS, channels: int = INCEPTION_CHANNELS,
+                 kernels: tuple[int, ...] = INCEPTION_KERNELS,
+                 blocks: int = INCEPTION_BLOCKS):
+        super().__init__()
+        self.n_channels = n_channels
+        width = channels * (len(kernels) + 1)
+        self.blocks = nn.ModuleList([
+            InceptionBlock(n_channels if i == 0 else width, channels, kernels)
+            for i in range(blocks)])
+        # Residual path from the raw input, as in InceptionTime. With only a few
+        # hundred gestures the shortcut matters: it gives the classifier a route
+        # to the signal that does not depend on the stack having trained well.
+        self.shortcut = nn.Sequential(nn.Conv1d(n_channels, width, 1), nn.BatchNorm1d(width))
+        self.dropout = nn.Dropout(dropout)
+        self.head = nn.Linear(width * 3, n_classes)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        z = x
+        for block in self.blocks:
+            z = block(z)
+        z = torch.relu(z + self.shortcut(x))
+        pooled = torch.cat([z.mean(dim=2), z.amax(dim=2), z.std(dim=2)], dim=1)
         return self.head(self.dropout(pooled))
 
 
@@ -153,6 +262,7 @@ def save(model: GestureNet, path, trained_on: list[str], held_out: list[str]) ->
     """
     torch.save({
         "state_dict": model.state_dict(),
+        "architecture": type(model).__name__,
         "n_channels": model.n_channels,
         "trained_on": sorted(trained_on),
         "held_out": sorted(held_out),
@@ -162,7 +272,10 @@ def save(model: GestureNet, path, trained_on: list[str], held_out: list[str]) ->
 
 def load(path) -> tuple[GestureNet, dict]:
     obj = torch.load(path, map_location="cpu", weights_only=False)
-    model = GestureNet(n_channels=obj.get("n_channels", N_CHANNELS))
+    # Checkpoints name their architecture. Without this a CompactNet checkpoint
+    # silently fails to load into a GestureNet with a shape error nobody can read.
+    cls = {"CompactNet": CompactNet, "GestureNet": GestureNet}[obj.get("architecture", "CompactNet")]
+    model = cls(n_channels=obj.get("n_channels", N_CHANNELS))
     model.load_state_dict(obj["state_dict"])
     model.eval()
     return model, obj
