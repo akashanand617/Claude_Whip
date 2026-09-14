@@ -9,9 +9,9 @@ from rather than a cell somebody edited afterwards.
 
 The notebook still shows the process. It imports this.
 
-Input is (4, 50) -- two seconds at 25 Hz as three unit-amplitude waveform
-channels plus one channel carrying log peak amplitude. See `to_model_input` for
-why the split is not cosmetic.
+Input is (C, 50) -- two seconds at 25 Hz. Which channels, and why the split is
+not cosmetic, is `to_model_input`; the default is three unit-amplitude waveform
+channels plus one carrying log peak amplitude.
 
 `GestureNet` is an InceptionTime-style multi-scale stack. `CompactNet` is the
 smaller design it replaced, kept because it is the honest comparison point.
@@ -73,9 +73,61 @@ N_CHANNELS = 4
 SCALE_FLOOR_G = 1e-3
 
 
-def to_model_input(x):
+# Samples in the moving average that estimates the gravity component. 9 samples
+# at 25 Hz is roughly a 2.8 Hz cutoff -- below the 4-8 Hz oscillation of a flick,
+# above the 1-3 Hz of a wave and the rate at which the wrist actually reorients.
+GRAVITY_WINDOW = 9
+
+# signed16 full scale divided by the measured counts per g.
+FULL_SCALE_G = 32767 / 8005.0
+
+DEFAULT_CHANNELS = ("shape", "scale")
+
+CHANNEL_WIDTHS = {"shape": 3, "gravity": 3, "linear": 3, "scale": 1, "saturation": 1}
+
+
+def _moving_average(x, width: int):
+    """Centred moving average along the last axis, reflect-padded at the edges."""
+    import numpy as np
+
+    pad = width // 2
+    padded = np.pad(x, [(0, 0)] * (x.ndim - 1) + [(pad, pad)], mode="reflect")
+    kernel = np.ones(width) / width
+    return np.apply_along_axis(lambda row: np.convolve(row, kernel, mode="valid"), -1, padded)
+
+
+def n_channels_for(channels=DEFAULT_CHANNELS) -> int:
+    return sum(CHANNEL_WIDTHS[c] for c in channels)
+
+
+def to_model_input(x, channels=DEFAULT_CHANNELS):
     """
-    Split each window into a unit-amplitude waveform and a separate scale channel.
+    Derive model channels from a stored window.
+
+    Input is (N, 3, W) in g with the DC term already removed by `dataset`.
+    Output is (N, C, W) where C is `n_channels_for(channels)`.
+
+    Groups, each independently selectable so ablations can move one factor at a
+    time -- conflating several changes into one comparison is the specific
+    mistake this project's architecture table made:
+
+    - `shape` (3): the waveform, scaled to unit peak amplitude.
+    - `scale` (1): log peak amplitude, constant across the window.
+    - `gravity` (3): the low-frequency component, which is the gravity vector
+      swinging as the wrist rotates. A flick is a rotation; waving and walking
+      are mostly translation. Static attitude is already gone -- `dataset` strips
+      the DC term -- so what survives here is rotation *dynamics*.
+    - `linear` (3): what is left after removing the gravity component.
+    - `saturation` (1): fraction of samples at the +/-4.09 g rail. Hard flicks
+      clip, which flat-tops the shape channel exactly where shape matters most,
+      and without this the model cannot tell a flat top from a real plateau.
+
+    `gravity + linear == shape` exactly, so passing all three is redundant; the
+    useful comparison is `("shape", "scale")` against
+    `("gravity", "linear", "scale")` -- same information, told apart by frequency.
+
+    Everything is normalised by the same peak, so amplitude stays confined to the
+    scale channel rather than leaking back into the waveform channels.
 
     `dataset` stores windows in g with gravity removed, which is the right
     physical record. It is the wrong *model* input, and measurement says so:
@@ -94,18 +146,36 @@ def to_model_input(x):
     roughly halved the seed-to-seed variance. The network can still use amplitude
     as evidence; it just can't let it drown the waveform.
 
-    Takes (N, 3, W) and returns (N, 4, W).
     """
     import numpy as np
 
+    unknown = set(channels) - set(CHANNEL_WIDTHS)
+    if unknown:
+        raise ValueError(f"unknown channel group(s): {sorted(unknown)}")
+
     x = np.asarray(x, dtype="float32")
-    peak = np.sqrt((x ** 2).sum(axis=1)).max(axis=1)[:, None, None]
-    peak = np.maximum(peak, SCALE_FLOOR_G)
-    shape = x / peak
-    # log, because gesture amplitude spans roughly 0.1 g to 7 g and a linear
-    # channel would let the loud end dominate the gradient.
-    scale = np.repeat(np.log10(peak), x.shape[2], axis=2)
-    return np.concatenate([shape, scale], axis=1).astype("float32")
+    peak = np.maximum(np.sqrt((x ** 2).sum(axis=1)).max(axis=1)[:, None, None], SCALE_FLOOR_G)
+
+    parts = []
+    for name in channels:
+        if name == "shape":
+            parts.append(x / peak)
+        elif name == "gravity":
+            # No further mean removal: `dataset` already stripped the DC term, so
+            # this is a no-op that would only introduce edge-effect error and
+            # break the exact `gravity + linear == shape` decomposition.
+            parts.append(_moving_average(x, GRAVITY_WINDOW) / peak)
+        elif name == "linear":
+            parts.append((x - _moving_average(x, GRAVITY_WINDOW)) / peak)
+        elif name == "scale":
+            # log, because gesture amplitude spans roughly 0.1 g to 7 g and a
+            # linear channel would let the loud end dominate the gradient.
+            parts.append(np.repeat(np.log10(peak), x.shape[2], axis=2))
+        elif name == "saturation":
+            clipped = (np.abs(x) >= 0.98 * FULL_SCALE_G).any(axis=1, keepdims=True)
+            parts.append(np.repeat(clipped.mean(axis=2, keepdims=True), x.shape[2], axis=2))
+
+    return np.concatenate(parts, axis=1).astype("float32")
 
 
 class CompactNet(nn.Module):

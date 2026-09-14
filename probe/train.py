@@ -41,10 +41,16 @@ def main() -> int:
     import torch
     import torch.nn as nn
 
+    from whip import dataset
     from whip import model as gm
 
     device = "mps" if torch.backends.mps.is_available() else "cpu"
     d = np.load(args.windows, allow_pickle=True)
+    try:
+        dataset.check_format_version(d)
+    except dataset.StaleDataset as exc:
+        print(exc)
+        return 1
     X = gm.to_model_input(d["X"])
     y, sessions = d["y"], d["session"]
 

@@ -32,7 +32,7 @@ from pathlib import Path
 
 import numpy as np
 
-from whip import evaluate, events
+from whip import dataset, evaluate, events
 
 WINDOWS = Path("data/windows.npz")
 SESSIONS = Path("data/sessions")
@@ -83,6 +83,11 @@ def main() -> int:
     trained_on = set(args.trained_on) | set(provenance.get("trained_on", []))
 
     d = np.load(args.windows, allow_pickle=True)
+    try:
+        dataset.check_format_version(d)
+    except dataset.StaleDataset as exc:
+        print(exc)
+        return 1
     X, SESS, START = d["X"], d["session"], d["start_s"]
     class_names = [str(s) for s in d["labels"]]
     lo, hi = args.debounce

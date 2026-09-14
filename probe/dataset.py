@@ -24,6 +24,21 @@ from whip import dataset
 SESSIONS_DIR = Path("data/sessions")
 RAW_DIR = Path("data/raw")
 
+# Sessions certified to contain no gestures. Kept in a file rather than passed as
+# flags because the list used to survive only in a shell history: a re-export
+# without it silently dropped six sessions and 42% of the corpus, and said
+# "wrote data/windows.npz" exactly as if nothing were missing.
+NEGATIVES_FILE = Path("data/negative_sessions.txt")
+
+
+def declared_negatives(path: Path = NEGATIVES_FILE) -> set[str]:
+    if not path.exists():
+        return set()
+    return {
+        line.strip() for line in path.read_text().splitlines()
+        if line.strip() and not line.startswith("#")
+    }
+
 
 def report(windows: list[dataset.Window], title: str) -> None:
     s = dataset.summarise(windows)
@@ -51,15 +66,21 @@ def main() -> int:
     parser.add_argument("--gesture-duration", type=float, default=dataset.GESTURE_DURATION_S,
                         help="labelled span after each cue, seconds")
     parser.add_argument("--negative", action="append", default=[],
-                        help="session id you certify contains no gestures; repeatable")
+                        help="extra session id you certify contains no gestures; repeatable")
+    parser.add_argument("--negatives-file", type=Path, default=NEGATIVES_FILE,
+                        help="file of certified-negative session ids")
     args = parser.parse_args()
+
+    negatives = declared_negatives(args.negatives_file) | set(args.negative)
+    print(f"{len(negatives)} session(s) certified negative "
+          f"(from {args.negatives_file} plus {len(args.negative)} on the command line)")
 
     windows: list[dataset.Window] = []
     skipped: list[str] = []
     for d in args.dirs:
         p = Path(d)
         if p.exists():
-            w, sk = dataset.load_all(p, args.gesture_duration, set(args.negative))
+            w, sk = dataset.load_all(p, args.gesture_duration, negatives)
             windows.extend(w)
             skipped.extend(sk)
 
@@ -102,8 +123,10 @@ def main() -> int:
         start = np.array([w.start_s for w in windows], dtype=np.float32)
         args.out.parent.mkdir(parents=True, exist_ok=True)
         np.savez_compressed(args.out, X=X, y=y, session=sess, start_s=start,
-                            labels=np.array(dataset.LABELS))
-        print(f"\nwrote {args.out}  X{X.shape} y{y.shape}")
+                            labels=np.array(dataset.LABELS),
+                            format_version=np.array(dataset.FORMAT_VERSION))
+        print(f"\nwrote {args.out}  X{X.shape} y{y.shape}  "
+              f"format v{dataset.FORMAT_VERSION}")
         print("  split by session, never by window -- windows overlap 88%")
 
     return 0

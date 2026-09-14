@@ -231,3 +231,75 @@ def test_a_gesturenet_checkpoint_round_trips(tmp_path):
     loaded, _ = gm.load(path)
     with torch.no_grad():
         assert torch.allclose(before, loaded(x), atol=1e-6)
+
+
+def test_channel_groups_have_the_advertised_widths():
+    import numpy as np
+
+    raw = np.random.randn(4, gm.N_AXES, gm.WINDOW_SAMPLES).astype("float32")
+    for groups in (("shape", "scale"),
+                   ("gravity", "linear", "scale"),
+                   ("gravity", "linear", "scale", "saturation"),
+                   ("shape", "scale", "saturation")):
+        out = gm.to_model_input(raw, groups)
+        assert out.shape == (4, gm.n_channels_for(groups), gm.WINDOW_SAMPLES)
+
+
+def test_gravity_and_linear_decompose_the_waveform_exactly():
+    """
+    Same information, split by frequency. If they did not sum back to `shape`
+    the comparison between the two representations would be confounded by
+    whatever the split was losing.
+    """
+    import numpy as np
+
+    raw = np.random.randn(3, gm.N_AXES, gm.WINDOW_SAMPLES).astype("float32")
+    g = gm.to_model_input(raw, ("gravity",))
+    lin = gm.to_model_input(raw, ("linear",))
+    shape = gm.to_model_input(raw, ("shape",))
+    assert np.allclose(g + lin, shape, atol=1e-5)
+
+
+def test_gravity_channel_keeps_slow_motion_and_linear_keeps_fast():
+    """
+    A wrist rotation moves the gravity vector slowly; a flick's oscillation is
+    fast. The split is only useful if the cutoff actually separates them.
+    """
+    import numpy as np
+
+    t = np.arange(gm.WINDOW_SAMPLES) / 25.0
+    slow = np.zeros((1, 3, gm.WINDOW_SAMPLES), dtype="float32")
+    slow[0, 0] = np.sin(2 * np.pi * 1.0 * t)          # 1 Hz, below the 2.8 Hz cutoff
+    fast = np.zeros_like(slow)
+    fast[0, 0] = np.sin(2 * np.pi * 8.0 * t)          # 8 Hz, a flick oscillation
+
+    slow_g = np.abs(gm.to_model_input(slow, ("gravity",))).mean()
+    slow_l = np.abs(gm.to_model_input(slow, ("linear",))).mean()
+    fast_g = np.abs(gm.to_model_input(fast, ("gravity",))).mean()
+    fast_l = np.abs(gm.to_model_input(fast, ("linear",))).mean()
+
+    assert slow_g > slow_l, "1 Hz belongs to the gravity channel"
+    assert fast_l > fast_g, "8 Hz belongs to the linear channel"
+
+
+def test_saturation_channel_fires_only_on_clipped_windows():
+    """
+    Hard flicks hit the +/-4.09 g rail, which flat-tops the shape channel exactly
+    where shape carries the discrimination. The model cannot tell a clipped
+    plateau from a real one without being told.
+    """
+    import numpy as np
+
+    quiet = np.zeros((1, gm.N_AXES, gm.WINDOW_SAMPLES), dtype="float32")
+    clipped = quiet.copy()
+    clipped[0, 0, 10:20] = gm.FULL_SCALE_G
+
+    assert gm.to_model_input(quiet, ("saturation",)).max() == 0.0
+    assert gm.to_model_input(clipped, ("saturation",)).max() > 0.0
+
+
+def test_an_unknown_channel_group_is_refused():
+    import numpy as np
+
+    with pytest.raises(ValueError, match="unknown channel"):
+        gm.to_model_input(np.zeros((1, 3, 50), dtype="float32"), ("shpae",))

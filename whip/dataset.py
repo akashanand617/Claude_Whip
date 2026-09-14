@@ -13,13 +13,19 @@ still sits cleanly inside several windows.
 
 from __future__ import annotations
 
-import statistics
 from dataclasses import dataclass
 from pathlib import Path
 
-from whip import accel, capture, protocol, session
+import numpy as np
+
+from whip import accel, capture, despike, protocol, session
 
 SAMPLE_RATE_HZ = 25.0
+
+# Bumped whenever the stored windows change meaning. Version 2 despikes the
+# stream before windowing; a model trained on version 1 data saw artifacts in
+# its amplitude channel and is not comparable.
+FORMAT_VERSION = 2
 
 # 50 samples = 2.0 s. Sized so a 1395 ms worst-case gesture leaves ~600 ms of
 # alignment slack; an earlier 38-sample window left only 125 ms, which meant
@@ -111,6 +117,13 @@ def windows_from_session(
     if len(samples) < WINDOW_SAMPLES:
         return []
 
+    # Despike the whole stream at once rather than per window. The filter is
+    # local, so applying it window by window would treat every window boundary
+    # as a stream edge -- and at 88% overlap each sample would be filtered nine
+    # times, with a different neighbourhood each time.
+    stream = despike.hampel(np.array(
+        [[s.x for s in samples], [s.y for s in samples], [s.z for s in samples]], dtype=float))
+
     rate = _sample_rate(times)
     if abs(rate - SAMPLE_RATE_HZ) > rate_tolerance:
         raise WrongSampleRate(
@@ -150,15 +163,20 @@ def windows_from_session(
         if ambiguous and label == "none":
             continue
 
-        chunk = samples[start:end]
-        axes = []
-        for pick in (lambda s: s.x, lambda s: s.y, lambda s: s.z):
-            vals = [pick(s) for s in chunk]
-            # Remove DC gravity so orientation cannot be a shortcut, but do not
-            # divide by the standard deviation: amplitude genuinely separates a
-            # deliberate gesture from incidental motion.
-            mean = statistics.fmean(vals)
-            axes.append([(v - mean) / accel.COUNTS_PER_G for v in vals])
+        # Remove the DC term so *static* orientation cannot be a shortcut, but do
+        # not divide by the standard deviation: amplitude genuinely separates a
+        # deliberate gesture from incidental motion.
+        #
+        # Note what this does *not* remove. Subtracting the mean kills the average
+        # attitude of the hand, which is a session artifact and worth losing. The
+        # swing of the gravity vector during the window survives it, and that
+        # swing is the wrist rotation a flick is made of. So the gravity dynamics
+        # are still here to be separated out downstream -- see
+        # `model.to_model_input`. An earlier plan called for storing raw g to
+        # recover them, which was unnecessary and would have handed the model back
+        # the orientation shortcut.
+        chunk = stream[:, start:end]
+        axes = [((row - row.mean()) / accel.COUNTS_PER_G).tolist() for row in chunk]
 
         out.append(Window(session_id=session_id, start_s=t0, label=label, axes=axes))
 
@@ -210,6 +228,28 @@ def split_by_session(
         else:
             out["train"].append(w)
     return out
+
+
+class StaleDataset(Exception):
+    """An exported window set produced by an older, incompatible pipeline."""
+
+
+def check_format_version(loaded) -> int:
+    """
+    Refuse a window set whose contents no longer mean what the code expects.
+
+    Version 2 despikes the stream before windowing. A version 1 export has
+    single-sample BLE artifacts in it, which reach the model as a full-scale
+    amplitude channel -- so a model trained on one and evaluated against the
+    other is not comparable, and nothing downstream would notice.
+    """
+    found = int(loaded["format_version"]) if "format_version" in loaded else 1
+    if found != FORMAT_VERSION:
+        raise StaleDataset(
+            f"window set is format v{found}, this code expects v{FORMAT_VERSION}. "
+            f"Re-export with: python -m probe.dataset --out data/windows.npz"
+        )
+    return found
 
 
 def split_session_by_time(
