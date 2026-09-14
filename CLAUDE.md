@@ -373,43 +373,50 @@ over time**, which is the closest cheap proxy for oscillation count. Adding std
 alone to the old architecture was worth 5 points -- mean and max both discard it,
 and neither can count.
 
-**The dataset makes amplitude a 95% solution, and that is the real problem.**
-Peak amplitude alone separates gesture from not-gesture at **AUC 0.953** on the
-training set (0.918 held out). Negative windows have p90 = 2.53 g; gesture
-windows have p10 = 2.48 g. The distributions barely touch. A network trained on
-this learns amplitude because amplitude *is* the optimal answer to the question
-the data asks.
+**The dataset makes amplitude a 95% solution.** Peak amplitude alone separates
+gesture from not-gesture at **AUC 0.953** on the training set (0.918 held out).
+Negatives have p90 = 2.53 g; gestures p10 = 2.48 g. Of 6555 negative windows only
+~134 are gesture-loud, nearly all from one 1.7-minute waving clip. A network
+trained on this leans on amplitude because amplitude answers the question asked.
 
-Why: of 6555 negative windows, only ~134 are as loud as a typical gesture, and
-nearly all of them come from a single 1.7-minute waving session.
+**But "the distinction is not in the data" was wrong, and the reasoning was
+circular.** That claim rested on 13 architectures all failing on waving -- while
+the waving clip was in `HELD` for every one of those runs. No model ever saw a
+wave in training. Models fail on data withheld from them; that is not evidence
+about separability.
 
-| negative session | windows as loud as a median gesture |
+**Amplitude-matched test settles it.** Restrict to windows whose peak lies in
+3.6-7.0 g, so amplitude is matched by construction, de-overlap by taking every
+9th window in time, then score gesture vs waving:
+
+| feature | separation |
 |---|---|
-| typing (n=2492) | 0.0% |
-| walking (n=1231) | 0.6% |
-| idle coding (n=605) | 1.2% |
-| waving (n=438) | **30.6%** |
+| peak amplitude | 0.707 |
+| crest factor | 0.870 |
+| zero crossings | 0.927 |
+| **energy concentration** | **0.972** |
 
-Against a dumb amplitude threshold, everything calibrated to 1 FP/hour on
-held-out typing:
+Medians: zero crossings 6 (gesture) vs 17 (waving); energy concentration 0.47 vs
+0.27. One hand-computed feature, no model, no training. A flick is one impulsive
+lobe then quiet; a wave is periodic for seconds.
 
-| detector | soft | hard | all | FP wave | FP idle |
-|---|---|---|---|---|---|
-| `peak > 3.6 g` | 8.3% | **85.0%** | 56.2% | 68.7 | 74.5 |
-| GestureNet | **48.2%** | 81.1% | **68.8%** | 73.6 | **35.5** |
+So the real diagnosis is an **objective and weighting problem, not an information
+problem**. 134 loud negatives out of 6555 is 2% of the negative set -- under plain
+cross-entropy, getting every one of them wrong costs almost nothing. Fixes are
+oversampling loud negatives, a two-stage amplitude-gate-then-shape-classifier, or
+explicit shape features. Not "collect until the model notices."
 
-Read that carefully before optimising anything. The network is genuinely more
-than an energy detector -- 6x better on soft flicks, half the idle false
-positives. But a twenty-line threshold **beats it on hard flicks**, and on
-**waving it is no better**. The entire value of 226k parameters is concentrated
-in the soft/ambiguous region, which is precisely where the corpus is thinnest.
+Collecting high-energy negatives is still right, for a different reason: 16
+de-overlapped waving windows from one person on one day demonstrates the feature
+exists and cannot train or validate a deployable rejector.
 
-This is also why no architecture ever moved the waving number: 13 configurations
-across two sweeps all landed at 39-157 FP/hour with no trend. The distinction
-between "loud and deliberate" and "loud and incidental" is not present in the
-training data, so nothing can learn it. **High-energy negatives are the binding
-data gap** -- gesticulating while talking, reaching across a desk, stretching,
-hand-shaking. Not more gestures, and not a better model.
+**The loud idle and typing windows are artifacts, not motion.** Windows above
+3.6 g have a median width above half-peak of **1.0 samples (40 ms)**; a real flick
+is ~9 samples. Idle has 27 such windows, typing 2. These are BLE or firmware
+glitches, and the log-peak scale channel has been consuming them. A median-3
+filter removes them (idle 27 -> 1, typing 2 -> 0) at a 17% cost to real gesture
+peaks -- worth doing, but it moves every amplitude threshold, so it invalidates
+existing calibration rather than dropping in.
 
 **Ruled out, with numbers.** Each of these is the obvious simpler thing, and
 each is measurably worse at a matched 1 FP/hour budget (7 seeds):
