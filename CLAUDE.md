@@ -180,6 +180,34 @@ Loss also tracks **motion**, not the link: still chunks read 0.1-0.2%, moving
 chunks up to 6%. A loss figure is partly a statement about how much the wearer
 moved.
 
+### The accelerometer range is one byte too
+
+`write_register(0x0F, 0x05)` at **file offset `0x00bf0a`** -- `RANGESEL` set to
+±4 g, which is why counts-per-g measures 8005.
+
+Found by `probe/accelrange.py`, structurally rather than by hunting immediates:
+counting occurrences of `0x0F` gives 141 sites and settles nothing, and many are
+`movs r1,#0x0f; mov r0,sp; bl`, a 15-byte buffer length. What works is finding a
+*run* of `movs rA,#x; movs rB,#y; bl helper` triples sharing one call target --
+a peripheral init -- which needs no load base. The decisive anchor is
+`write(0x14, 0xB6)`, the documented STK832x soft reset. The same helper writes
+`POWMODE2`, `BWSEL`, `FIFO_CONFIG`, `SWRST`, then the range.
+
+`0x08` would give ±8 g and recover the top fifth of the amplitude information
+now lost to clipping (gesture peaks reach 6-7 g against a ±4.09 g rail).
+
+**The cost is not the flash.** Changing the range changes counts-per-g, so
+`accel.COUNTS_PER_G`, every amplitude threshold derived from it, and the
+comparability of the entire recorded corpus all go with it. That is a decision
+about re-recording. Not patched, not flashed.
+
+Two disassembly traps, both of which produced "nothing found": linear
+disassembly from byte zero yields nothing because the container header is not
+instructions and capstone stops at the first thing it cannot decode -- start at
+`0x450` and resync past data islands. And in a test fixture, a BL with a constant
+delta sends every call to a *different* absolute target, so the grouping never
+fires.
+
 **Never patch `0x007ed4`.** It carries the identical timer idiom but belongs to
 DFU frame reassembly; lowering it can break OTA recovery. It is excluded via
 `fwimage.DO_NOT_PATCH`.
@@ -309,10 +337,10 @@ Kernels span three time scales because one scale cannot cover the problem: at
 25 Hz, k=9 is 360 ms (one oscillation), k=19 is 760 ms (the gap between two),
 k=39 is 1560 ms (the whole gesture).
 
-**Compare architectures only at a matched false-positive budget.** Uncalibrated,
-`resnet1d` and a conv+biGRU looked precise (0.9 FP/hour) when they were merely
-reluctant to fire. Tuning every model's threshold to the same 1 FP/hour budget
-*first*, then reading recall, reverses the ranking. Seven seeds:
+**The architecture table below is PROVISIONAL and mostly ties.** It is kept
+because the reasoning about pooling is sound and the ranking is the best that
+exists, but it was produced under a protocol since found to be broken, and a
+re-rank is pending. Read it with all four caveats.
 
 | architecture | recall @ 1 FP/hour |
 |---|---|
@@ -324,13 +352,74 @@ reluctant to fire. Tuning every model's threshold to the same 1 FP/hour budget
 | conv + biGRU (DeepConvLSTM) | 56.2 ± 12.4 |
 | **GestureNet (inception)** | **69.9 ± 7.4** |
 
-**Recurrence lost.** The biGRU was worst on recall, so the one architecture that
-would have forced a painful hand-written C++ port is also the one not worth
-porting. `GestureNet` is pure convolution.
+**1. Every threshold was chosen by looking at the evaluation negative.** That is
+tuning on test, and it inflates recall too, by a different amount per model. It
+is also unstable in a way that reads as model variance: typing is 10 minutes, so
+a 1/hour budget permits zero events and the threshold becomes an extreme-order
+statistic. A real share of the ± columns is that number moving. `whip/evaluate.py`
+now forbids this; see "Measurement rules" below.
 
-Size bought reliability, not just capacity: seed-to-seed spread roughly halves
-against the baseline's ±13.6. At this sample size (64 held-out gestures)
-**differences under ~8 points are not resolvable** -- treat them as ties.
+**2. Only seed spread is shown. Sampling spread is larger and absent.** At 64
+held-out gestures the binomial interval on 70% recall is about ±11 points. The
+earlier claim that "differences under ~8 points are not resolvable" counted seed
+variance alone and was wrong by roughly half. **Most rows here are ties.**
+
+**3. "+12.8 from fixing the pooling" conflated several changes.** GestureNet also
+changed the block type, the width, and 18k → 226k parameters. The *isolated*
+pooling change is the std-pooling row: **+5, with overlapping intervals.**
+
+**4. Two specific claims do not survive.**
+- *"Recurrence lost"* -- 56.2 ± 12.4 against CompactNet's 57.1 ± 13.6 is a **tie**,
+  not a loss. It remains true that `GestureNet` is pure convolution and needs no
+  recurrent port, but that convenience was doing some of the deciding.
+- *"Size bought reliability"* -- **withdrawn.** `resnet1d` has the tightest spread
+  in the table at 499k params and a lower mean. The claim never held.
+
+The flatten-head comparison elsewhere in this file has the same problem: it used
+its own conv trunk, so it was never a pooling ablation. And the explanation given
+for why it lost -- translation sensitivity against 88% window overlap -- is
+backwards. Overlap supplies every offset during training, and event scoring needs
+only one of ~8 windows to fire. The observation stands; the explanation does not.
+
+---
+
+## Measurement rules
+
+Each of these exists because breaking it produced a confident wrong answer.
+
+**Calibrate on data you do not report on.** `whip/evaluate.py` takes a
+calibration negative and reports on a different one;
+`dataset.split_session_by_time()` splits one session in two when there is only
+one, with a guard band because 2.0 s windows at 88% overlap would otherwise share
+samples across the cut.
+
+**Report a curve, not a point.** A single operating point compares confidence
+calibration as much as discriminative power.
+
+**Report both variances.** Seed spread and sampling spread are different
+quantities; `bootstrap_recall_ci` gives the second.
+
+**A rate is per minute of the activity measured.** Nobody waves for an hour, so
+"73 false positives per hour of waving" was never a meaningful number. Per-hour
+is for ambient wear.
+
+**Zero events is not evidence of a low rate.** By the rule of three, zero in T
+minutes bounds the rate at 3/T. A clean *hour* of ambient wear bounds it at
+3/hour, not 1 -- so it could never have settled the build spec's criterion.
+**Demonstrating < 1/hour takes over three hours of clean wear.** An earlier
+recommendation in this project for "one hour of ambient" was insufficient, and
+`MIN_AMBIENT_MIN` is 190, not 30.
+
+**Count false positives per segment, never on a concatenated stream.**
+`events.detect` has no notion of time, so joining sessions end to end lets the
+tail of one and the head of the next form a run that never happened.
+
+**A model cannot reject what it has never seen.** The claim that the
+loud-deliberate versus loud-incidental distinction was absent from the data
+rested on 13 architectures failing on waving -- with the waving clip held out of
+training in every one of those runs. Split a negative session in half by time and
+train on one half instead. Doing that moved waving false positives from 73.6/hour
+to about 14/hour.
 
 **Shape and scale are separate channels.** Trained on raw g, the network keys on
 amplitude, because amplitude is the easiest feature there. That one shortcut
@@ -457,6 +546,27 @@ Split: PyTorch for training (user), hand-written C++ for inference (~200 lines, 
 dependency). Export weights plus **golden vectors**; the C++ must reproduce them
 to 1e-5 in float. Get float parity first, then quantise -- changing both at once
 makes a discrepancy unattributable.
+
+**Single-sample artifacts were being fed to the model as amplitude.** Windows
+above 3.6 g in the idle and typing sessions have a median width above half-peak
+of **1.0 samples (40 ms)**; a real flick is ~9. They are BLE or firmware
+glitches, and `to_model_input` derives its log-peak channel from the window
+maximum, so every one arrived as "something loud happened here". `whip/despike.py`
+removes them with a Hampel filter: loud idle windows 27 → 0, typing 2 → 0, at a
+cost of 1.3% of gesture peak height. A plain median-3 achieves the same removal
+for **16.9%**, because it smooths every sharp peak including the real ones.
+
+**The wrist rotation axis is measured, not assumed.** A flick is a very clean
+rotation -- eigenvalue ratio 0.008-0.010 on the gravity trajectory -- about an
+axis that every gesture in a session shares (agreement 0.97). That axis is 0.919
+aligned with axis 0, so `model.augment` rotating axes 1 and 2 about axis 0 is
+right. `probe/axes.py` measures it.
+
+**But between sessions the axis agrees only 0.505 -- roughly 60° apart.** The
+augmentation covers ±10°. That is a 6x under-coverage of variation that actually
+occurs, and it means part of the session-holdout gap is **distribution shift from
+the ring sitting differently on the finger, not memorisation**. Those need
+different fixes, and a train/test split alone cannot tell them apart.
 
 **Measured false-positive baselines.** Typing and walking are cleanly separable:
 a conjunction of amplitude, duration and oscillation count gives zero false
