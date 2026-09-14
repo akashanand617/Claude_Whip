@@ -97,6 +97,21 @@ def main() -> int:
     other = ~np.isin(SESS, [GESTURE_HELD_OUT] + list(REPORT_ON.values()))
     train_mask = other | train_half
 
+    # The budget has to be expressible by the amount of negative data being
+    # scored, or every configuration is being ranked on where zero events
+    # happened to fall. `evaluate.calibrate` refuses this; so should the ablation.
+    scoring_minutes = sum(
+        (START[m].max() - START[m].min()) / 60 for m in score_half.values() if m.any())
+    floor = evaluate.min_measurable_rate_per_minute(scoring_minutes)
+    if budget < floor:
+        print(f"WARNING: the {args.budget_per_hour:.2f}/hour budget "
+              f"({budget:.4f}/min) is below what {scoring_minutes:.1f} min of scoring")
+        print(f"negatives can express. The smallest non-zero rate measurable here is")
+        print(f"{floor:.4f}/min = {floor * 60:.1f}/hour, so 'recall at budget' below that")
+        print("means 'recall wherever zero events happened to occur', not a measured")
+        print("false-positive rate. Every row inherits that, and the ranking is")
+        print("dominated by the measurement floor rather than by the models.\n")
+
     print(f"{args.seeds} seeds, {args.epochs} epochs. Held out entirely: {GESTURE_HELD_OUT}.")
     print("Every negative session split in half by time: first half trains, second half scores.")
     print(f"Threshold calibrated on the {CALIBRATION} scoring half, "
