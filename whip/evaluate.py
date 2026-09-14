@@ -207,12 +207,35 @@ class CurvePoint:
         return (k + 1.96 * (k ** 0.5) + 2.0) / self.negative_minutes
 
 
+def count_false_positives(
+    segments,
+    class_names: list[str],
+    threshold: float,
+    min_run: int = events.MIN_RUN,
+    max_run: int = events.MAX_RUN,
+) -> int:
+    """
+    False positives across several negative stretches, counted per stretch.
+
+    `segments` is a list of (probabilities, starts). They must be counted
+    separately and summed, never concatenated: `events.detect` collapses
+    *consecutive* windows into a run and has no notion of time, so joining two
+    sessions end to end lets the last windows of one and the first of the other
+    form a run that never happened. With four sessions that silently invents up
+    to three false positives at every threshold.
+    """
+    return sum(
+        len(events.detect(labels_at(probs, class_names, threshold), starts,
+                          min_run=min_run, max_run=max_run))
+        for probs, starts in segments
+    )
+
+
 def curve(
     gesture_probabilities,
     gesture_starts: list[float],
     truth: list[tuple[float, str]],
-    negative_probabilities,
-    negative_starts: list[float],
+    negative_segments,
     negative_minutes: float,
     class_names: list[str],
     thresholds=DEFAULT_THRESHOLDS,
@@ -223,11 +246,16 @@ def curve(
     """
     The whole recall-versus-false-positive trade-off, one point per threshold.
 
-    The negative session here is the **reporting** negative and must differ from
-    whatever `calibrate` was given. Comparing two models at a single operating
-    point compares their confidence calibration as much as their discriminative
-    power -- which is how a merely reluctant model came to look precise in an
-    earlier version of this project's architecture table.
+    `negative_segments` is a list of (probabilities, starts) -- the **reporting**
+    negatives, which must differ from whatever `calibrate` was given. Several are
+    accepted because a false-positive budget is a claim about mixed realistic
+    wear rather than about one activity, and because they must be counted
+    separately (see `count_false_positives`).
+
+    Comparing two models at a single operating point compares their confidence
+    calibration as much as their discriminative power -- which is how a merely
+    reluctant model came to look precise in an earlier version of this project's
+    architecture table. Read recall at a matched false-positive rate instead.
     """
     points = []
     for threshold in thresholds:
@@ -235,12 +263,11 @@ def curve(
             labels_at(gesture_probabilities, class_names, threshold), gesture_starts,
             min_run=min_run, max_run=max_run)
         hits = gesture_hits(found, truth, require_class=require_class)
-        fp = events.detect(
-            labels_at(negative_probabilities, class_names, threshold), negative_starts,
-            min_run=min_run, max_run=max_run)
+        fp = count_false_positives(negative_segments, class_names, threshold,
+                                   min_run=min_run, max_run=max_run)
         points.append(CurvePoint(
             threshold=float(threshold), hits=sum(hits), total=len(hits),
-            false_positives=len(fp), negative_minutes=negative_minutes))
+            false_positives=fp, negative_minutes=negative_minutes))
     return points
 
 

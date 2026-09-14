@@ -187,7 +187,7 @@ def main() -> int:
         gid = with_gestures[0]
         gp, gs, _ = stream(gid)
         np_, ns_, nm_ = stream(calib_id, second)
-        points = evaluate.curve(gp, gs, truth_for(gid), np_, ns_, nm_, class_names,
+        points = evaluate.curve(gp, gs, truth_for(gid), [(np_, ns_)], nm_, class_names,
                                 min_run=lo, max_run=hi)
         best = evaluate.recall_at_budget(points, budget_per_minute)
 

@@ -106,10 +106,14 @@ def main() -> int:
           f"{info['n_loud_negatives']} loud negatives of {info['n_negatives']} "
           f"({info['loud_negative_share'] * 100:.1f}%)\n")
 
+    channel_cache: dict[tuple, np.ndarray] = {}
+
     def run(channels, loud_factor, seed):
         torch.manual_seed(seed)
         np.random.seed(seed)
-        X = gm.to_model_input(raw, channels)
+        if channels not in channel_cache:
+            channel_cache[channels] = gm.to_model_input(raw, channels)
+        X = channel_cache[channels]
         Xtr, ytr = X[train_mask], y[train_mask]
         net = gm.GestureNet(n_channels=X.shape[1]).to(device)
         opt = torch.optim.AdamW(net.parameters(), lr=3e-3, weight_decay=1e-3)
@@ -142,46 +146,83 @@ def main() -> int:
             st = START[order].tolist()
             return p, st, (st[-1] - st[0]) / 60 if len(st) > 1 else 0.0
 
-        cal = probs(score_half["typing"])
-        thr = evaluate.calibrate(*cal[:2], cal[2], class_names, budget,
-                                 min_run=events.MIN_RUN, max_run=events.MAX_RUN, strict=False)
+        # Score false positives on the pooled scoring halves, not on one activity.
+        # A budget is a statement about mixed realistic wear, and pooling also
+        # makes the curve comparable across configurations -- reading recall at a
+        # matched false-positive rate is the only way to compare two models
+        # without comparing their confidence calibration instead.
         gp, gs, _ = probs(SESS == GESTURE_HELD_OUT)
+        truth = truth_for(GESTURE_HELD_OUT)
+
+        # One segment per session, never concatenated: events.detect has no notion
+        # of time, so joining sessions end to end lets windows from different
+        # recordings form a run that never happened.
+        segments, pooled_minutes = [], 0.0
+        for mask in score_half.values():
+            if not mask.any():
+                continue
+            p_, st_, mins_ = probs(mask)
+            segments.append((p_, st_))
+            pooled_minutes += mins_
+
+        points = evaluate.curve(gp, gs, truth, segments, pooled_minutes, class_names,
+                                min_run=events.MIN_RUN, max_run=events.MAX_RUN)
+        best = evaluate.recall_at_budget(points, budget)
+        auc = evaluate.area_under_curve(points, budget)
+
+        thr = best.threshold if best else 0.999
         hits = evaluate.gesture_hits(
-            events.detect(evaluate.labels_at(gp, class_names, thr), gs), truth_for(GESTURE_HELD_OUT))
+            events.detect(evaluate.labels_at(gp, class_names, thr), gs), truth)
         fps = {}
         for name, mask in score_half.items():
-            if name == "typing":
-                continue
             p, st, mins = probs(mask)
             n = len(events.detect(evaluate.labels_at(p, class_names, thr), st))
             fps[name] = evaluate.rate_per_minute(n, mins)
-        return thr, hits, fps
+        return thr, hits, fps, auc, pooled_minutes
 
-    print(f"{'configuration':<32} {'thr':>5} {'recall':>8} {'95% CI':>15} "
-          f"{'wave/min':>9} {'idle/min':>9} {'walk/min':>9}")
-    print("-" * 100)
+    print(f"{'configuration':<32} {'AUC':>6} {'recall@budget':>14} {'95% CI':>15} "
+          f"{'thr':>5} {'wave/min':>9} {'idle/min':>9}")
+    print("-" * 104)
+    rows = []
     for label, channels, factor in CONFIGS:
-        all_hits, thrs, fp_acc, pooled = [], [], {}, []
+        all_hits, thrs, fp_acc, pooled, aucs = [], [], {}, [], []
+        minutes = 0.0
         for seed in range(args.seeds):
-            thr, hits, fps = run(channels, factor, seed)
+            thr, hits, fps, auc, minutes = run(channels, factor, seed)
             thrs.append(thr)
             all_hits.append(np.mean(hits))
             pooled.extend(hits)
+            aucs.append(auc)
             for k, v in fps.items():
                 fp_acc.setdefault(k, []).append(v)
         # Sampling interval over gestures, pooled across seeds; seed spread
         # reported separately. They are different quantities and both belong here.
         ci = evaluate.bootstrap_recall_ci(pooled)
-        print(f"{label:<32} {np.mean(thrs):5.2f} "
-              f"{np.mean(all_hits) * 100:6.1f}+/-{np.std(all_hits) * 100:<3.1f} "
+        rows.append((label, np.mean(aucs), np.mean(all_hits), ci))
+        print(f"{label:<32} {np.mean(aucs) * 100:5.1f}% "
+              f"{np.mean(all_hits) * 100:7.1f}+/-{np.std(all_hits) * 100:<4.1f} "
               f"{ci[0] * 100:6.1f}-{ci[1] * 100:5.1f}% "
+              f"{np.mean(thrs):5.2f} "
               f"{np.mean(fp_acc.get('waving', [np.nan])):9.2f} "
-              f"{np.mean(fp_acc.get('idle', [np.nan])):9.2f} "
-              f"{np.mean(fp_acc.get('walking', [np.nan])):9.2f}", flush=True)
+              f"{np.mean(fp_acc.get('idle', [np.nan])):9.2f}", flush=True)
 
-    print("\n  recall +/- is seed spread; the bracket is the sampling interval over gestures.")
-    print("  Both are needed: at 64 gestures the sampling interval alone is about +/-11 points.")
-    print("  Waving halves are from one 1.7-minute clip, so a good number there is")
+    print(f"\n  AUC is mean recall across the curve up to the budget, on {minutes:.1f} min of")
+    print("  pooled scoring halves. It is the comparable number: reading recall at a")
+    print("  matched false-positive rate is the only way to compare two models without")
+    print("  comparing their confidence calibration instead.")
+    print("\n  recall +/- is seed spread; the bracket is the sampling interval over")
+    print("  gestures. Both are needed, and both are wide: at 64 gestures the sampling")
+    print("  interval alone is about +/-5 points here.")
+
+    best = max(rows, key=lambda r: r[1])
+    contenders = [r for r in rows if r[3][1] >= best[3][0]]
+    print(f"\n  Best AUC: {best[0]} ({best[1] * 100:.1f}%).")
+    if len(contenders) > 1:
+        print(f"  {len(contenders)} of {len(rows)} configurations have overlapping recall")
+        print("  intervals with it, so this is a tie, not a winner:")
+        for r in contenders:
+            print(f"    {r[0]}")
+    print("\n  Waving halves come from one 1.7-minute clip, so a good number there is")
     print("  necessary and not sufficient.")
     return 0
 

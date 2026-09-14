@@ -115,7 +115,7 @@ def test_curve_returns_a_point_per_threshold_not_a_single_estimate():
     gp = probs(["none"] * 10 + ["flag"] * 6 + ["none"] * 24, confidence=0.8)
     ng = probs(["none"] * n)
     pts = evaluate.curve(gp, starts(n), [(10 * events.STRIDE_S + 2.0, "flag")],
-                         ng, starts(n), 5.0, CLASSES,
+                         [(ng, starts(n))], 5.0, CLASSES,
                          thresholds=(0.4, 0.6, 0.9, 0.99))
     assert len(pts) == 4
     assert [p.threshold for p in pts] == [0.4, 0.6, 0.9, 0.99]
@@ -126,7 +126,7 @@ def test_raising_the_threshold_never_increases_recall():
     gp = probs(["none"] * 10 + ["flag"] * 6 + ["none"] * 44, confidence=0.7)
     ng = probs(["none"] * n)
     pts = evaluate.curve(gp, starts(n), [(10 * events.STRIDE_S + 2.0, "flag")],
-                         ng, starts(n), 5.0, CLASSES, thresholds=(0.4, 0.75, 0.95))
+                         [(ng, starts(n))], 5.0, CLASSES, thresholds=(0.4, 0.75, 0.95))
     recalls = [p.recall for p in pts]
     assert recalls == sorted(recalls, reverse=True)
 
@@ -194,3 +194,29 @@ def test_split_by_time_ignores_other_sessions():
 
 def test_split_by_time_of_a_missing_session_is_empty_not_an_error():
     assert dataset.split_session_by_time([], "nope") == ([], [])
+
+
+def test_negative_segments_are_counted_separately_not_concatenated():
+    """
+    events.detect collapses *consecutive* windows into a run and has no notion of
+    time. Concatenating two sessions lets the tail of one and the head of the
+    other form a run that never happened -- silently inventing a false positive
+    at every threshold, once per session boundary.
+    """
+    tail = probs(["flag"] * 2, confidence=0.9)
+    head = probs(["flag"] * 2, confidence=0.9)
+    st = starts(2)
+
+    separate = evaluate.count_false_positives([(tail, st), (head, st)], CLASSES, 0.5)
+    joined = evaluate.count_false_positives(
+        [(np.concatenate([tail, head]), starts(4))], CLASSES, 0.5)
+
+    assert separate == 0, "two runs of 2 are each below the debounce floor"
+    assert joined == 1, "concatenating them fabricates a run of 4"
+
+
+def test_false_positives_sum_across_segments():
+    run = probs(["none"] * 3 + ["flag"] * 6 + ["none"] * 3, confidence=0.9)
+    st = starts(12)
+    assert evaluate.count_false_positives([(run, st)], CLASSES, 0.5) == 1
+    assert evaluate.count_false_positives([(run, st), (run, st)], CLASSES, 0.5) == 2
