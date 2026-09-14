@@ -212,6 +212,32 @@ def split_by_session(
     return out
 
 
+def split_session_by_time(
+    windows: list[Window], session_id: str, fraction: float = 0.5, guard_s: float = WINDOW_SAMPLES / SAMPLE_RATE_HZ
+) -> tuple[list[Window], list[Window]]:
+    """
+    Cut one session in two along the time axis.
+
+    Exists so a threshold can be calibrated on data it is not then reported on.
+    There is only one long negative session (10 minutes of typing), and using it
+    for both jobs is what made every previous false-positive figure optimistic.
+    Splitting it by time gives two disjoint stretches of the same activity.
+
+    `guard_s` drops windows straddling the cut. Windows overlap 88% and each
+    spans 2.0 s, so without a guard band the last window of the first half and
+    the first of the second share most of their samples -- which is precisely
+    the leak the split is meant to close.
+    """
+    chosen = sorted((w for w in windows if w.session_id == session_id), key=lambda w: w.start_s)
+    if not chosen:
+        return [], []
+    span_start, span_end = chosen[0].start_s, chosen[-1].start_s
+    cut = span_start + (span_end - span_start) * fraction
+    first = [w for w in chosen if w.start_s + WINDOW_SAMPLES / SAMPLE_RATE_HZ <= cut]
+    second = [w for w in chosen if w.start_s >= cut + guard_s]
+    return first, second
+
+
 def summarise(windows: list[Window]) -> dict:
     counts = {name: 0 for name in LABELS}
     sessions: dict[str, int] = {}
