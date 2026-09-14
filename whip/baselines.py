@@ -86,6 +86,116 @@ def predict(
     return "flag" if peak_count(window) <= single_max_peaks else "approve"
 
 
+# --- shape features, measured amplitude-matched ----------------------------
+#
+# These exist because they are *strong*, not for completeness. Restricted to
+# windows whose peak lies in 3.6-7.0 g -- so amplitude is matched by construction
+# and carries no information -- they separate flicks from waving at:
+#
+#     energy concentration   0.972
+#     zero crossings         0.927
+#     crest factor           0.870
+#     peak amplitude         0.707   (the control, deliberately weak here)
+#
+# No model, no training. This is what refuted the claim that the distinction was
+# absent from the data, and it means any network has to beat a hand-computed
+# feature before its parameters are justified.
+#
+# The physical content: a flick is one impulsive lobe of 100-200 ms followed by
+# quiet. A wave is periodic at 1-3 Hz for seconds. Those differ in how many times
+# the signal crosses zero, and in how much of the window's energy sits near the
+# single largest peak.
+
+CONCENTRATION_HALF_WIDTH = 5
+"""Samples either side of the peak, 400 ms total at 25 Hz -- about one lobe."""
+
+
+def energy_concentration(window: list[list[float]], half_width: int = CONCENTRATION_HALF_WIDTH) -> float:
+    """
+    Share of the window's total magnitude lying within ~400 ms of its peak.
+
+    High for an impulse, low for sustained oscillation. The strongest single
+    amplitude-matched discriminator measured: 0.972 against waving.
+    """
+    mag = magnitude(window)
+    total = sum(mag)
+    if total <= 0:
+        return 0.0
+    k = max(range(len(mag)), key=lambda i: mag[i])
+    lo, hi = max(0, k - half_width), min(len(mag), k + half_width + 1)
+    return sum(mag[lo:hi]) / total
+
+
+ZERO_CROSSING_HYSTERESIS = 0.1
+"""Fraction of peak the signal must reach before a reversal counts."""
+
+
+def zero_crossings(window: list[list[float]],
+                   hysteresis: float = ZERO_CROSSING_HYSTERESIS) -> int:
+    """
+    How many times the most active axis genuinely reverses direction.
+
+    Medians measured amplitude-matched: 6 for a flick, 17 for waving. Windows
+    arrive with the DC term removed, so zero is the resting level.
+
+    **Hysteresis is not optional.** Counting raw sign changes makes a quiet
+    stretch of sensor noise look like violent oscillation -- noise straddles zero
+    constantly, so a window that is 90% silence can out-score a genuine wave. The
+    signal must reach a tenth of its own peak on one side before a crossing to
+    the other is counted, which is what makes this a measure of reversals rather
+    than of how close the trace sits to zero.
+    """
+    axis = max(window, key=lambda a: statistics.pstdev(a) if len(a) > 1 else 0.0)
+    cut = hysteresis * max((abs(v) for v in axis), default=0.0)
+    if cut <= 0:
+        return 0
+
+    count, state = 0, 0
+    for value in axis:
+        if value > cut:
+            if state == -1:
+                count += 1
+            state = 1
+        elif value < -cut:
+            if state == 1:
+                count += 1
+            state = -1
+    return count
+
+
+def crest_factor(window: list[list[float]]) -> float:
+    """Peak over mean magnitude. Impulsive motion is peaky; sustained motion is not."""
+    mag = magnitude(window)
+    mean = sum(mag) / len(mag) if mag else 0.0
+    return max(mag) / mean if mean > 0 else 0.0
+
+
+def burst_duration_samples(window: list[list[float]], threshold_fraction: float = 0.5) -> int:
+    """
+    Width of the main excursion, measured above a fraction of its own peak.
+
+    Amplitude-relative rather than absolute, so a soft flick and a hard one
+    measure the same -- which is the point, since an absolute threshold would
+    just re-measure amplitude. ~9 samples for a flick, ~1 for a BLE artifact.
+    """
+    mag = magnitude(window)
+    if not mag or max(mag) <= 0:
+        return 0
+    cut = threshold_fraction * max(mag)
+    return sum(1 for m in mag if m > cut)
+
+
+def shape_features(window: list[list[float]]) -> dict[str, float]:
+    """All of the above at once, for scoring a corpus without four passes."""
+    return {
+        "energy_concentration": energy_concentration(window),
+        "zero_crossings": float(zero_crossings(window)),
+        "crest_factor": crest_factor(window),
+        "burst_duration": float(burst_duration_samples(window)),
+        "peak_g": max(magnitude(window)) if window[0] else 0.0,
+    }
+
+
 def evaluate(windows: list[list[list[float]]], labels: list[str]) -> dict:
     """Accuracy overall and per class, plus the confusion matrix."""
     names = ("none", "flag", "approve")

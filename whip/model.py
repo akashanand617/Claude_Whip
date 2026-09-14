@@ -322,7 +322,8 @@ def augment(batch: torch.Tensor,
     return out
 
 
-def save(model: GestureNet, path, trained_on: list[str], held_out: list[str]) -> None:
+def save(model: GestureNet, path, trained_on: list[str], held_out: list[str],
+         channels=DEFAULT_CHANNELS) -> None:
     """
     State dict plus provenance -- never the pickled module.
 
@@ -334,6 +335,7 @@ def save(model: GestureNet, path, trained_on: list[str], held_out: list[str]) ->
         "state_dict": model.state_dict(),
         "architecture": type(model).__name__,
         "n_channels": model.n_channels,
+        "channels": list(channels),
         "trained_on": sorted(trained_on),
         "held_out": sorted(held_out),
         "window_samples": WINDOW_SAMPLES,

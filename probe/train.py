@@ -35,6 +35,14 @@ def main() -> int:
     parser.add_argument("--batch", type=int, default=128)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--architecture", default="GestureNet", choices=("GestureNet", "CompactNet"))
+    parser.add_argument("--channels", default="shape,scale",
+                        help="comma-separated channel groups; see model.to_model_input")
+    parser.add_argument("--loud-factor", type=float, default=1.0,
+                        help="how much more a loud negative is worth than a quiet one. "
+                             "1.0 disables the reweighting")
+    parser.add_argument("--loud-g", type=float, default=None,
+                        help="amplitude boundary of the overlap region; "
+                             "default is the 10th percentile of gesture peaks")
     parser.add_argument("--quiet", action="store_true")
     args = parser.parse_args()
 
@@ -43,6 +51,7 @@ def main() -> int:
 
     from whip import dataset
     from whip import model as gm
+    from whip import sampling
 
     device = "mps" if torch.backends.mps.is_available() else "cpu"
     d = np.load(args.windows, allow_pickle=True)
@@ -51,8 +60,11 @@ def main() -> int:
     except dataset.StaleDataset as exc:
         print(exc)
         return 1
-    X = gm.to_model_input(d["X"])
+    channels = tuple(c.strip() for c in args.channels.split(",") if c.strip())
+    raw = d["X"]
+    X = gm.to_model_input(raw, channels)
     y, sessions = d["y"], d["session"]
+    peaks = sampling.window_peaks(raw)
 
     held = set(args.held_out)
     unknown = held - set(sessions.tolist())
@@ -68,7 +80,7 @@ def main() -> int:
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
 
-    net = getattr(gm, args.architecture)().to(device)
+    net = getattr(gm, args.architecture)(n_channels=X.shape[1]).to(device)
     opt = torch.optim.AdamW(net.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, args.epochs)
 
@@ -78,10 +90,25 @@ def main() -> int:
     # unweighted loss is nearly satisfied by predicting it always.
     weights = torch.tensor(len(ytr) / (3 * np.maximum(counts, 1)),
                            dtype=torch.float32, device=device)
-    loss_fn = nn.CrossEntropyLoss(weight=weights)
+    loss_fn = nn.CrossEntropyLoss(weight=weights, reduction="none")
+
+    # Per-sample weights on top of the class weights, correcting a different
+    # imbalance. Class weights fix "there are 8x more none windows than gestures".
+    # These fix "the ~5% of negatives that are as loud as a gesture are the ones
+    # that decide the false-positive rate, and cross-entropy is nearly
+    # indifferent to all of them".
+    loud_g = args.loud_g if args.loud_g is not None else sampling.gesture_peak_percentile(
+        peaks[train_mask], ytr, 10.0)
+    sample_w = sampling.loud_negative_weights(peaks[train_mask], ytr, loud_g, args.loud_factor)
+    if args.loud_factor != 1.0 and not args.quiet:
+        info = sampling.describe(peaks[train_mask], ytr, loud_g)
+        print(f"  loud negatives: {info['n_loud_negatives']} of {info['n_negatives']} "
+              f"({info['loud_negative_share'] * 100:.1f}%) at >= {loud_g:.2f} g, "
+              f"weighted x{args.loud_factor:g}")
 
     xt = torch.tensor(Xtr, device=device)
     yt = torch.tensor(ytr, device=device)
+    wt = torch.tensor(sample_w, dtype=torch.float32, device=device)
 
     for epoch in range(args.epochs):
         net.train()
@@ -90,7 +117,8 @@ def main() -> int:
         for i in range(0, len(perm), args.batch):
             idx = perm[i:i + args.batch]
             opt.zero_grad()
-            loss = loss_fn(net(gm.augment(xt[idx])), yt[idx])
+            per_sample = loss_fn(net(gm.augment(xt[idx])), yt[idx])
+            loss = (per_sample * wt[idx]).sum() / wt[idx].sum()
             loss.backward()
             opt.step()
             total += float(loss.detach()) * len(idx)
@@ -102,10 +130,11 @@ def main() -> int:
     args.out.parent.mkdir(parents=True, exist_ok=True)
     gm.save(net, args.out,
             trained_on=[s for s in sorted(set(sessions.tolist())) if s not in held],
-            held_out=sorted(held))
+            held_out=sorted(held), channels=channels)
 
     n_params = sum(p.numel() for p in net.parameters())
-    print(f"\nwrote {args.out}  {args.architecture} ({n_params:,} params)")
+    print(f"\nwrote {args.out}  {args.architecture} ({n_params:,} params), "
+          f"channels {','.join(channels)}")
     print(f"  trained on {train_mask.sum()} windows from "
           f"{len(set(sessions[train_mask].tolist()))} sessions")
     print(f"  held out   {', '.join(sorted(held)) if held else '(nothing)'}")
