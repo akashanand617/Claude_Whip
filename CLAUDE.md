@@ -373,6 +373,44 @@ over time**, which is the closest cheap proxy for oscillation count. Adding std
 alone to the old architecture was worth 5 points -- mean and max both discard it,
 and neither can count.
 
+**The dataset makes amplitude a 95% solution, and that is the real problem.**
+Peak amplitude alone separates gesture from not-gesture at **AUC 0.953** on the
+training set (0.918 held out). Negative windows have p90 = 2.53 g; gesture
+windows have p10 = 2.48 g. The distributions barely touch. A network trained on
+this learns amplitude because amplitude *is* the optimal answer to the question
+the data asks.
+
+Why: of 6555 negative windows, only ~134 are as loud as a typical gesture, and
+nearly all of them come from a single 1.7-minute waving session.
+
+| negative session | windows as loud as a median gesture |
+|---|---|
+| typing (n=2492) | 0.0% |
+| walking (n=1231) | 0.6% |
+| idle coding (n=605) | 1.2% |
+| waving (n=438) | **30.6%** |
+
+Against a dumb amplitude threshold, everything calibrated to 1 FP/hour on
+held-out typing:
+
+| detector | soft | hard | all | FP wave | FP idle |
+|---|---|---|---|---|---|
+| `peak > 3.6 g` | 8.3% | **85.0%** | 56.2% | 68.7 | 74.5 |
+| GestureNet | **48.2%** | 81.1% | **68.8%** | 73.6 | **35.5** |
+
+Read that carefully before optimising anything. The network is genuinely more
+than an energy detector -- 6x better on soft flicks, half the idle false
+positives. But a twenty-line threshold **beats it on hard flicks**, and on
+**waving it is no better**. The entire value of 226k parameters is concentrated
+in the soft/ambiguous region, which is precisely where the corpus is thinnest.
+
+This is also why no architecture ever moved the waving number: 13 configurations
+across two sweeps all landed at 39-157 FP/hour with no trend. The distinction
+between "loud and deliberate" and "loud and incidental" is not present in the
+training data, so nothing can learn it. **High-energy negatives are the binding
+data gap** -- gesticulating while talking, reaching across a desk, stretching,
+hand-shaking. Not more gestures, and not a better model.
+
 **Ruled out, with numbers.** Each of these is the obvious simpler thing, and
 each is measurably worse at a matched 1 FP/hour budget (7 seeds):
 
