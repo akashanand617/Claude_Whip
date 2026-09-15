@@ -254,6 +254,8 @@ async def stream(
     capture: Capture | None = None,
     quiet_optical: bool = False,
     disable_logging: bool = False,
+    stop: "asyncio.Event | None" = None,
+    on_record=None,
 ) -> list[tuple[float, bytes]]:
     """
     Enable raw sensor streaming, record every notification for `duration`
@@ -261,6 +263,13 @@ async def stream(
 
     If `sink` is given, records are also flushed to a JSONL file as they arrive
     so a long capture survives a crash or a disconnect.
+
+    If `stop` is given, `duration` is ignored and the stream runs until the
+    event is set -- the live-tracking mode, where nobody knows the end time in
+    advance. `on_record` (if given) is called with each (t, payload) from the
+    notification callback's thread of control; it must be as cheap as an
+    append -- the design rule that the callback only stamps and stores extends
+    to it, because any work here contaminates the arrival timing being recorded.
     """
     records: list[tuple[float, bytes]] = capture.records if capture else []
     t0 = time.perf_counter()
@@ -273,7 +282,10 @@ async def stream(
 
     def on_notify(_sender, data: bytearray) -> None:
         # Nothing but a timestamp and a copy. Any work here shows up as jitter.
-        records.append((time.perf_counter() - t0, bytes(data)))
+        record = (time.perf_counter() - t0, bytes(data))
+        records.append(record)
+        if on_record is not None:
+            on_record(record)
 
     handle = None
     if sink is not None:
@@ -321,7 +333,10 @@ async def stream(
 
     flush_task = asyncio.create_task(flusher()) if handle else None
     try:
-        await asyncio.sleep(duration)
+        if stop is not None:
+            await stop.wait()
+        else:
+            await asyncio.sleep(duration)
     finally:
         if flush_task:
             flush_task.cancel()

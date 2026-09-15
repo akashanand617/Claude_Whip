@@ -105,6 +105,83 @@ def hampel(x, half_window: int = HALF_WINDOW, n_sigmas: float = N_SIGMAS):
     return np.where(outlier, local_median, x)
 
 
+class StreamingHampel:
+    """
+    The same filter, one sample at a time, for the live engine.
+
+    `push(sample) -> list[despiked]`. Empty until a full window of lookahead
+    exists; the first non-empty push also flushes the leading `half_window`
+    samples (unfiltered -- they never had a full backward neighbourhood, and the
+    batch filter's reflection trick has no streaming equivalent), then exactly
+    one filtered sample per push, `half_window` behind the input: a fixed
+    3-sample (120 ms) lag. `drain()` flushes the unfiltered tail at stream end,
+    so the output stream has the same length as the input.
+
+    **Parity with the batch filter is close, not exact, and deliberately so.**
+    The batch floor is the median of *every* local MAD in the trace, which needs
+    the whole recording; a stream only has the past. This keeps a running median
+    of the MADs seen so far, which converges to the batch value within seconds
+    and is identical in the only case that matters -- a genuine spike, whose
+    deviation dwarfs the threshold however the floor is estimated. The realtime
+    engine's parity test therefore feeds the engine already-despiked samples, so
+    the windowing/model/tracker chain is proven bit-exact and the despiker is
+    checked separately against batch with a tolerance.
+    """
+
+    def __init__(self, half_window: int = HALF_WINDOW, n_sigmas: float = N_SIGMAS,
+                 n_axes: int = 3):
+        self.half_window = half_window
+        self.n_sigmas = n_sigmas
+        self.n_axes = n_axes
+        self._buf: list[np.ndarray] = []          # recent samples, each (n_axes,)
+        self._mads: list[float] = []              # per-axis MADs seen, for the floor
+        self._started = False                     # has the leading edge been flushed
+
+    def _filter_centre(self) -> np.ndarray:
+        """Filter the centre sample of the current (2*hw+1) buffer."""
+        hw = self.half_window
+        window = np.stack(self._buf, axis=1)                    # (n_axes, 2*hw+1)
+        centre = window[:, hw]
+        neighbours = np.concatenate([window[:, :hw], window[:, hw + 1:]], axis=1)
+        med = np.median(neighbours, axis=1)
+        mad = np.median(np.abs(neighbours - med[:, None]), axis=1)
+        self._mads.append(float(np.median(mad)))
+        floor = np.median(self._mads)
+        threshold = self.n_sigmas * MAD_TO_SIGMA * np.maximum(mad, floor)
+        return np.where(np.abs(centre - med) > threshold, med, centre)
+
+    def push(self, sample) -> list[np.ndarray]:
+        self._buf.append(np.asarray(sample, dtype="float64"))
+        if len(self._buf) < 2 * self.half_window + 1:
+            return []
+        out: list[np.ndarray] = []
+        if not self._started:
+            # The leading half_window samples pass through unfiltered, exactly
+            # as the tail does in drain(): a truncated neighbourhood is the edge
+            # hypersensitivity the batch filter avoids with reflection.
+            out.extend(self._buf[:self.half_window])
+            self._started = True
+        out.append(self._filter_centre())
+        self._buf.pop(0)
+        return out
+
+    def drain(self) -> list[np.ndarray]:
+        """
+        Emit the final `half_window` samples, unfiltered.
+
+        They never accumulated a full forward neighbourhood, so filtering them
+        would use a truncated window -- exactly the edge hypersensitivity the
+        batch filter avoids with reflection. Passing them through untouched is
+        the honest choice at the very end of a stream.
+        """
+        hw = self.half_window
+        # A stream shorter than one window never started; everything unfiltered.
+        tail = list(self._buf) if not self._started else (self._buf[-hw:] if hw else [])
+        self._buf = []
+        self._started = False
+        return tail
+
+
 def count_replaced(x, half_window: int = HALF_WINDOW, n_sigmas: float = N_SIGMAS) -> int:
     """How many samples the filter would replace. For reporting, not decisions."""
     x = np.asarray(x, dtype="float64")
