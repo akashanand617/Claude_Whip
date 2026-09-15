@@ -23,9 +23,11 @@ from whip import accel, capture, despike, protocol, session
 SAMPLE_RATE_HZ = 25.0
 
 # Bumped whenever the stored windows change meaning. Version 2 despikes the
-# stream before windowing; a model trained on version 1 data saw artifacts in
-# its amplitude channel and is not comparable.
-FORMAT_VERSION = 2
+# stream before windowing, so a model trained on version 1 saw artifacts in its
+# amplitude channel. Version 3 adds the `motion` class, which changes the label
+# indices -- a v2 checkpoint loaded against v3 labels would silently mean
+# something else.
+FORMAT_VERSION = 3
 
 # 50 samples = 2.0 s. Sized so a 1395 ms worst-case gesture leaves ~600 ms of
 # alignment slack; an earlier 38-sample window left only 125 ms, which meant
@@ -42,8 +44,34 @@ MAX_NEGATIVE_COVERAGE = 0.30
 # Measured span of a real gesture: 480-1395 ms across 33 recordings.
 GESTURE_DURATION_S = 1.2
 
-LABELS = ("none", "flag", "approve")
+LABELS = ("none", "motion", "flag", "approve")
 LABEL_INDEX = {name: i for i, name in enumerate(LABELS)}
+
+# The two classes that actually fire the ring. Membership is tested by name, not
+# by index, because `motion` sits between `none` and the gestures and every
+# `index > 0 means gesture` test in the codebase would otherwise be quietly wrong.
+GESTURE_LABELS = ("flag", "approve")
+
+MOTION_LABEL = "motion"
+
+# Above this, a window in a gesture-free session is deliberate movement rather
+# than stillness. The default is the measured 10th percentile of gesture peaks,
+# so `motion` means "as loud as a real gesture, and not one".
+#
+# **Why a separate class rather than more loss weight.** `none` was carrying two
+# unrelated things: silence, and a hand moving violently in a way that is not a
+# flick. Those have nothing in common, and asking one class to cover both makes
+# the model learn a harder function than the problem requires. The loud windows
+# were also only 4.7% of `none`, so class weighting could not reach them -- the
+# reweighting in `whip/sampling.py` exists to work around exactly that, and a
+# real class does the job properly, since class weights then apply to it
+# directly.
+#
+# Amplitude is fine as a *labelling* rule even though it is a bad feature. The
+# label is ground truth about what the wearer was doing; what the model must
+# learn is to separate `motion` from a gesture at the *same* amplitude, which is
+# a shape problem by construction.
+MOTION_THRESHOLD_G = 2.3
 
 
 @dataclass
@@ -94,6 +122,7 @@ def windows_from_session(
     gesture_duration_s: float = GESTURE_DURATION_S,
     rate_tolerance: float = 1.0,
     declared_negative: bool = False,
+    motion_threshold_g: float = MOTION_THRESHOLD_G,
 ) -> list[Window]:
     """
     Slice one session into labelled windows.
@@ -176,9 +205,23 @@ def windows_from_session(
         # recover them, which was unnecessary and would have handed the model back
         # the orientation shortcut.
         chunk = stream[:, start:end]
-        axes = [((row - row.mean()) / accel.COUNTS_PER_G).tolist() for row in chunk]
+        centred = np.stack([(row - row.mean()) / accel.COUNTS_PER_G for row in chunk])
 
-        out.append(Window(session_id=session_id, start_s=t0, label=label, axes=axes))
+        # Deliberate movement that is not a gesture gets its own class, but only
+        # in sessions that contain no gestures at all.
+        #
+        # In a prompted session a loud non-gesture window is usually the run-up
+        # or the run-out of a flick -- the hand travelling to position, or
+        # settling afterwards. Labelling those `motion` would teach the model
+        # that the beginning of a gesture is not a gesture, which is the opposite
+        # of what is wanted. So the rule applies only where nothing was cued.
+        if label == "none" and not marks:
+            peak = float(np.sqrt((centred ** 2).sum(axis=0)).max())
+            if peak >= motion_threshold_g:
+                label = MOTION_LABEL
+
+        out.append(Window(session_id=session_id, start_s=t0, label=label,
+                          axes=[row.tolist() for row in centred]))
 
     return out
 
@@ -187,6 +230,7 @@ def load_all(
     directory: Path,
     gesture_duration_s: float = GESTURE_DURATION_S,
     declared_negative: set[str] | None = None,
+    motion_threshold_g: float = MOTION_THRESHOLD_G,
 ) -> tuple[list[Window], list[str]]:
     """
     Every usable session in a directory, plus why each of the others was skipped.
@@ -202,7 +246,8 @@ def load_all(
         try:
             out.extend(windows_from_session(
                 cap, notes if notes.exists() else None, gesture_duration_s,
-                declared_negative=cap.stem in declared_negative))
+                declared_negative=cap.stem in declared_negative,
+                motion_threshold_g=motion_threshold_g))
         except (UnlabelledCapture, WrongSampleRate) as exc:
             skipped.append(str(exc))
     return out, skipped
@@ -238,10 +283,10 @@ def check_format_version(loaded) -> int:
     """
     Refuse a window set whose contents no longer mean what the code expects.
 
-    Version 2 despikes the stream before windowing. A version 1 export has
-    single-sample BLE artifacts in it, which reach the model as a full-scale
-    amplitude channel -- so a model trained on one and evaluated against the
-    other is not comparable, and nothing downstream would notice.
+    Version 2 despikes the stream before windowing; a version 1 export carries
+    single-sample BLE artifacts that reach the model as a full-scale amplitude
+    channel. Version 3 adds the `motion` class, shifting every label index.
+    Either mismatch is silent and changes what the numbers mean.
     """
     found = int(loaded["format_version"]) if "format_version" in loaded else 1
     if found != FORMAT_VERSION:

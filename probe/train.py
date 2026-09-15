@@ -97,8 +97,10 @@ def main() -> int:
     # These fix "the ~5% of negatives that are as loud as a gesture are the ones
     # that decide the false-positive rate, and cross-entropy is nearly
     # indifferent to all of them".
+    from whip import dataset as ds
+    gesture_ids = [ds.LABEL_INDEX[n] for n in ds.GESTURE_LABELS]
     loud_g = args.loud_g if args.loud_g is not None else sampling.gesture_peak_percentile(
-        peaks[train_mask], ytr, 10.0)
+        peaks[train_mask], ytr, 10.0, gesture_indices=gesture_ids)
     sample_w = sampling.loud_negative_weights(peaks[train_mask], ytr, loud_g, args.loud_factor)
     if args.loud_factor != 1.0 and not args.quiet:
         info = sampling.describe(peaks[train_mask], ytr, loud_g)

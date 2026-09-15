@@ -97,3 +97,20 @@ def test_no_detections_and_no_gestures_is_not_an_error():
     r = events.score([], [], hours=1.0)
     assert r["false_positives"] == 0
     assert r["fp_per_hour"] == 0.0
+
+
+def test_motion_is_predicted_but_never_fires():
+    """
+    `motion` is a real class -- the wearer is moving -- but it is not something
+    the ring reports. Testing `!= "none"` here would make every wave an event,
+    which is the failure the class was added to prevent.
+    """
+    preds = ["none"] * 3 + ["motion"] * 8 + ["none"] * 3
+    assert events.detect(preds, starts_for(len(preds))) == []
+
+
+def test_motion_does_not_join_two_gestures_into_one_run():
+    """A stretch of motion between two flicks must break the run, not extend it."""
+    preds = run_of("flag", 5) + run_of("motion", 4) + run_of("flag", 5)
+    ev = events.detect(preds, starts_for(len(preds)))
+    assert [e.label for e in ev] == ["flag", "flag"]

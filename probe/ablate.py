@@ -42,13 +42,20 @@ REPORT_ON = {
     "walking": "negative_20260908_200022",
 }
 
+# (label, channels, loud_factor, motion_class)
+#
+# The motion axis is the question: is a separate class for "moving, but not a
+# gesture" better than leaving those windows in `none` and reweighting them?
+# The reweighting exists only because loud windows were 4.7% of `none` and class
+# weights could not reach them. A real class gets a class weight directly, and
+# stops `none` having to mean both silence and a violently moving hand.
 CONFIGS = [
-    ("baseline  shape+scale",            ("shape", "scale"), 1.0),
-    ("+ loud-negative weight x10",       ("shape", "scale"), 10.0),
-    ("+ loud-negative weight x30",       ("shape", "scale"), 30.0),
-    ("gravity/linear split",             ("gravity", "linear", "scale"), 1.0),
-    ("gravity/linear + weight x10",      ("gravity", "linear", "scale"), 10.0),
-    ("+ saturation channel",             ("shape", "scale", "saturation"), 1.0),
+    ("none-only, no weight",        ("shape", "scale"), 1.0, False),
+    ("none-only, weight x10",       ("shape", "scale"), 10.0, False),
+    ("motion class",                ("shape", "scale"), 1.0, True),
+    ("motion class + weight x10",   ("shape", "scale"), 10.0, True),
+    ("motion + saturation",         ("shape", "scale", "saturation"), 1.0, True),
+    ("motion + gravity/linear",     ("gravity", "linear", "scale"), 1.0, True),
 ]
 
 
@@ -78,7 +85,21 @@ def main() -> int:
     d = np.load(args.windows, allow_pickle=True)
     dataset.check_format_version(d)
     raw, y, SESS, START = d["X"], d["y"], d["session"], d["start_s"]
-    class_names = [str(s) for s in d["labels"]]
+    all_names = [str(s) for s in d["labels"]]
+
+    def labelling(with_motion: bool):
+        """Labels and class names with the `motion` class kept or folded back in."""
+        if with_motion:
+            return y, all_names
+        # Fold `motion` back into `none` and renumber so the classes stay
+        # contiguous -- this reproduces the pre-motion labelling exactly, which
+        # is what makes the comparison an A/B on one factor rather than on the
+        # dataset.
+        mi = all_names.index(dataset.MOTION_LABEL)
+        kept = [i for i in range(len(all_names)) if i != mi]
+        remap = {old: new for new, old in enumerate(kept)}
+        remap[mi] = 0
+        return np.array([remap[int(v)] for v in y]), [all_names[i] for i in kept]
     peaks = sampling.window_peaks(raw)
     budget = args.budget_per_hour / 60.0
 
@@ -123,21 +144,25 @@ def main() -> int:
 
     channel_cache: dict[tuple, np.ndarray] = {}
 
-    def run(channels, loud_factor, seed):
+    def run(channels, loud_factor, with_motion, seed):
         torch.manual_seed(seed)
         np.random.seed(seed)
         if channels not in channel_cache:
             channel_cache[channels] = gm.to_model_input(raw, channels)
         X = channel_cache[channels]
-        Xtr, ytr = X[train_mask], y[train_mask]
-        net = gm.GestureNet(n_channels=X.shape[1]).to(device)
+        y_used, class_names = labelling(with_motion)
+        Xtr, ytr = X[train_mask], y_used[train_mask]
+        net = gm.GestureNet(n_channels=X.shape[1], n_classes=len(class_names)).to(device)
         opt = torch.optim.AdamW(net.parameters(), lr=3e-3, weight_decay=1e-3)
         sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, args.epochs)
-        counts = np.bincount(ytr, minlength=3)
-        cw = torch.tensor(len(ytr) / (3 * np.maximum(counts, 1)),
+        n_cls = len(class_names)
+        counts = np.bincount(ytr, minlength=n_cls)
+        cw = torch.tensor(len(ytr) / (n_cls * np.maximum(counts, 1)),
                           dtype=torch.float32, device=device)
         loss_fn = nn.CrossEntropyLoss(weight=cw, reduction="none")
-        loud_g = sampling.gesture_peak_percentile(peaks[train_mask], ytr, 10.0)
+        gesture_ids = [class_names.index(n) for n in dataset.GESTURE_LABELS]
+        loud_g = sampling.gesture_peak_percentile(peaks[train_mask], ytr, 10.0,
+                                                  gesture_indices=gesture_ids)
         sw = sampling.loud_negative_weights(peaks[train_mask], ytr, loud_g, loud_factor)
         xt = torch.tensor(Xtr, device=device)
         yt = torch.tensor(ytr, device=device)
@@ -168,6 +193,8 @@ def main() -> int:
         # without comparing their confidence calibration instead.
         gp, gs, _ = probs(SESS == GESTURE_HELD_OUT)
         truth = truth_for(GESTURE_HELD_OUT)
+        # `motion` never fires, so recall and false positives mean the same thing
+        # in both arms and the comparison stays honest.
 
         # One segment per session, never concatenated: events.detect has no notion
         # of time, so joining sessions end to end lets windows from different
@@ -199,11 +226,11 @@ def main() -> int:
           f"{'thr':>5} {'wave/min':>9} {'idle/min':>9}")
     print("-" * 104)
     rows = []
-    for label, channels, factor in CONFIGS:
+    for label, channels, factor, with_motion in CONFIGS:
         all_hits, thrs, fp_acc, pooled, aucs = [], [], {}, [], []
         minutes = 0.0
         for seed in range(args.seeds):
-            thr, hits, fps, auc, minutes = run(channels, factor, seed)
+            thr, hits, fps, auc, minutes = run(channels, factor, with_motion, seed)
             thrs.append(thr)
             all_hits.append(np.mean(hits))
             pooled.extend(hits)

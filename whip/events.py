@@ -20,6 +20,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from whip.dataset import GESTURE_LABELS
+
 STRIDE_S = 0.24   # 6 samples at 25 Hz
 WINDOW_S = 2.0    # 50 samples at 25 Hz
 
@@ -68,7 +70,11 @@ def detect(
     i = 0
     while i < len(predictions):
         label = predictions[i]
-        if label == "none":
+        # Only the gesture classes fire. `motion` is a real prediction -- the
+        # wearer is moving -- but it is not a thing the ring reports, so it is
+        # skipped here exactly like `none`. Testing `!= "none"` would make every
+        # wave an event.
+        if label not in GESTURE_LABELS:
             i += 1
             continue
         j = i

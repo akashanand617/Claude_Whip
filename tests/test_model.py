@@ -21,8 +21,8 @@ def test_parameter_counts():
     recall against GestureNet's 69.9%, so the size was costing reliability
     rather than protecting it.
     """
-    assert sum(p.numel() for p in gm.CompactNet().parameters()) == 17939
-    assert sum(p.numel() for p in gm.GestureNet().parameters()) == 225763
+    assert sum(p.numel() for p in gm.CompactNet().parameters()) == 18068
+    assert sum(p.numel() for p in gm.GestureNet().parameters()) == 226148
 
 
 def test_the_trunk_never_pools_away_time():

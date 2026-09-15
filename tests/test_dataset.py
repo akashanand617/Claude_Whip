@@ -152,3 +152,50 @@ def test_load_all_reports_why_it_skipped(tmp_path):
     assert len(skipped) == 2
     assert any("not declared negative" in s for s in skipped)
     assert any("Hz" in s for s in skipped)
+
+
+def test_loud_windows_in_a_gesture_free_session_become_motion(tmp_path):
+    """
+    `none` was carrying two unrelated things: silence, and a hand moving hard in
+    a way that is not a flick. The loud windows were 4.7% of that class, so class
+    weighting could not reach them.
+    """
+    cap = tmp_path / "s.jsonl"
+    write_capture(cap, seconds=12.0, gestures=[(4.0, "flag")])   # amp used, no marks file
+    w = dataset.windows_from_session(cap, declared_negative=True, motion_threshold_g=0.05)
+    labels = {x.label for x in w}
+    assert dataset.MOTION_LABEL in labels
+    assert not (labels & set(dataset.GESTURE_LABELS)), "a negative session has no gestures"
+
+
+def test_motion_is_not_applied_in_a_prompted_session(tmp_path):
+    """
+    In a cued session a loud non-gesture window is usually the run-up or run-out
+    of a flick. Labelling those `motion` would teach the model that the start of
+    a gesture is not a gesture.
+    """
+    cap, notes = tmp_path / "s.jsonl", tmp_path / "s.notes.json"
+    gestures = [(5.0, "flag")]
+    write_capture(cap, seconds=20.0, gestures=gestures)
+    write_notes(notes, "s", gestures)
+    w = dataset.windows_from_session(cap, notes, motion_threshold_g=0.01)
+    assert dataset.MOTION_LABEL not in {x.label for x in w}
+
+
+def test_gesture_labels_are_named_not_indexed():
+    """
+    `motion` sits between `none` and the gestures, so every `index > 0 means
+    gesture` test in the codebase would be quietly wrong.
+    """
+    assert dataset.LABELS[0] == "none"
+    assert dataset.GESTURE_LABELS == ("flag", "approve")
+    assert dataset.LABEL_INDEX["motion"] < dataset.LABEL_INDEX["flag"]
+    assert dataset.MOTION_LABEL not in dataset.GESTURE_LABELS
+
+
+def test_format_version_rejects_a_pre_motion_export():
+    import numpy as np
+
+    stale = {"format_version": np.array(2)}
+    with pytest.raises(dataset.StaleDataset):
+        dataset.check_format_version(stale)

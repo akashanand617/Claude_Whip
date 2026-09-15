@@ -53,15 +53,26 @@ def window_peaks(x) -> np.ndarray:
     return np.sqrt((x[:, :3] ** 2).sum(axis=1)).max(axis=1)
 
 
-def gesture_peak_percentile(peaks, labels, percentile: float = 10.0) -> float:
+def gesture_peak_percentile(peaks, labels, percentile: float = 10.0,
+                            gesture_indices=None) -> float:
     """
     The amplitude below which gestures rarely fall.
 
     Used as the boundary of the overlap region. Derived from the data rather than
     fixed, because it moves with the despike filter and with any future change to
     the accelerometer range.
+
+    `gesture_indices` must be given once the label set contains a class that is
+    positive-indexed but not a gesture. `motion` is index 1, so a bare
+    `labels > 0` would count every wave as a gesture and drag the boundary down
+    to whatever the quietest wave happens to be.
     """
-    gesture = np.asarray(peaks)[np.asarray(labels) > 0]
+    labels = np.asarray(labels)
+    if gesture_indices is None:
+        mask = labels > 0
+    else:
+        mask = np.isin(labels, list(gesture_indices))
+    gesture = np.asarray(peaks)[mask]
     return float(np.percentile(gesture, percentile)) if len(gesture) else DEFAULT_LOUD_G
 
 
@@ -74,11 +85,17 @@ def loud_negative_weights(
     """
     Per-sample loss weights that make loud negatives expensive to get wrong.
 
-    Returns 1.0 everywhere except negatives at or above `loud_g`, which get
+    Returns 1.0 everywhere except `none` windows at or above `loud_g`, which get
     `factor`. Multiply these into a per-sample loss; they are deliberately
     independent of the class weights, which correct a different imbalance (there
     are eight times more `none` windows than gesture windows) and would otherwise
     be entangled with this one.
+
+    Note this touches class 0 only. Once `motion` exists as its own class its
+    windows are no longer `none`, so they are reached by an ordinary class weight
+    and this reweighting has nothing left to do -- which is the point of adding
+    the class, and why the two are worth measuring against each other rather than
+    stacking.
     """
     peaks = np.asarray(peaks, dtype="float64")
     labels = np.asarray(labels)

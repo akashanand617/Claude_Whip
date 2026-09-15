@@ -63,7 +63,7 @@ import math
 import torch
 import torch.nn as nn
 
-N_CLASSES = 3
+N_CLASSES = 4
 N_AXES = 3
 WINDOW_SAMPLES = 50
 
