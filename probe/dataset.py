@@ -20,6 +20,7 @@ import argparse
 from pathlib import Path
 
 from whip import dataset
+from whip.registry import DIRECTION_INDEX, DIRECTIONS, load_registry
 
 SESSIONS_DIR = Path("data/sessions")
 RAW_DIR = Path("data/raw")
@@ -40,16 +41,19 @@ def declared_negatives(path: Path = NEGATIVES_FILE) -> set[str]:
     }
 
 
-def report(windows: list[dataset.Window], title: str) -> None:
+def report(windows: list[dataset.Window], labels: list[str], title: str) -> None:
     s = dataset.summarise(windows)
     print(f"\n=== {title} ===")
     print(f"  windows       {s['total']}")
-    for name in dataset.LABELS:
-        n = s["counts"][name]
-        print(f"    {name:<10} {n:7d}  {s['balance'][name] * 100:5.1f}%")
-    if s["counts"]["none"] and (s["counts"]["flag"] + s["counts"]["approve"]):
-        ratio = s["counts"]["none"] / (s["counts"]["flag"] + s["counts"]["approve"])
-        print(f"  neg:pos       {ratio:.1f}:1")
+    for name in labels:
+        n = s["counts"].get(name, 0)
+        print(f"    {name:<14} {n:7d}  {s['balance'].get(name, 0) * 100:5.1f}%")
+    positives = sum(s["counts"].get(name, 0) for name in dataset.gesture_names(labels))
+    if s["counts"].get("none") and positives:
+        print(f"  neg:pos       {s['counts']['none'] / positives:.1f}:1")
+    if s["directions"]:
+        parts = "  ".join(f"{d}:{s['directions'].get(d, 0)}" for d in DIRECTIONS if d != "none")
+        print(f"  directions    {parts}")
     print(f"  sessions      {len(s['sessions'])}")
     for sid, n in sorted(s["sessions"].items()):
         print(f"    {sid:<44} {n:6d}")
@@ -63,8 +67,8 @@ def main() -> int:
                         help="session id to hold out for test; repeatable")
     parser.add_argument("--val-session", action="append", default=[])
     parser.add_argument("--out", type=Path, help="write an .npz for PyTorch")
-    parser.add_argument("--gesture-duration", type=float, default=dataset.GESTURE_DURATION_S,
-                        help="labelled span after each cue, seconds")
+    parser.add_argument("--gesture-duration", type=float, default=None,
+                        help="override the per-gesture labelled span, seconds")
     parser.add_argument("--negative", action="append", default=[],
                         help="extra session id you certify contains no gestures; repeatable")
     parser.add_argument("--negatives-file", type=Path, default=NEGATIVES_FILE,
@@ -75,12 +79,13 @@ def main() -> int:
     print(f"{len(negatives)} session(s) certified negative "
           f"(from {args.negatives_file} plus {len(args.negative)} on the command line)")
 
+    registry = load_registry()
     windows: list[dataset.Window] = []
     skipped: list[str] = []
     for d in args.dirs:
         p = Path(d)
         if p.exists():
-            w, sk = dataset.load_all(p, args.gesture_duration, negatives)
+            w, sk = dataset.load_all(p, args.gesture_duration, negatives, registry=registry)
             windows.extend(w)
             skipped.extend(sk)
 
@@ -94,13 +99,23 @@ def main() -> int:
         print("  python -m probe.collect --prompts 150 --ring-position 'middle, logo up'")
         return 1
 
-    report(windows, "all windows")
+    # Classes materialise from data: the registry declares what MAY exist, the
+    # corpus decides what does. Declared-but-absent classes are reported rather
+    # than silently missing, because "the model cannot detect snaps" and "nobody
+    # has recorded a snap" deserve to look different.
+    present = {w.label for w in windows} - {"none"}
+    labels = registry.labels_for(present)
+    absent = [g for g in registry.names if g not in present]
+    if absent:
+        print(f"declared but no data yet (record with probe.collect): {', '.join(absent)}")
+
+    report(windows, labels, "all windows")
 
     if args.test_session or args.val_session:
         parts = dataset.split_by_session(windows, set(args.test_session), set(args.val_session))
         for name in ("train", "val", "test"):
             if parts[name]:
-                report(parts[name], name)
+                report(parts[name], labels, name)
 
     positives = sum(1 for w in windows if w.label != "none")
     if positives == 0:
@@ -114,18 +129,21 @@ def main() -> int:
             print("\nnumpy is required to export. pip install numpy")
             return 1
 
+        label_index = {name: i for i, name in enumerate(labels)}
         X = np.array([w.axes for w in windows], dtype=np.float32)
-        y = np.array([w.label_index for w in windows], dtype=np.int64)
+        y = np.array([label_index[w.label] for w in windows], dtype=np.int64)
         sess = np.array([w.session_id for w in windows])
         # Window start times, so a single session can be split temporally when
         # there is not yet a second session to hold out. Without these the only
         # available split leaves the test set with no positives at all.
         start = np.array([w.start_s for w in windows], dtype=np.float32)
+        direction = np.array([DIRECTION_INDEX[w.direction] for w in windows], dtype=np.int64)
         args.out.parent.mkdir(parents=True, exist_ok=True)
         np.savez_compressed(args.out, X=X, y=y, session=sess, start_s=start,
-                            labels=np.array(dataset.LABELS),
+                            labels=np.array(labels), direction=direction,
+                            direction_names=np.array(DIRECTIONS),
                             format_version=np.array(dataset.FORMAT_VERSION))
-        print(f"\nwrote {args.out}  X{X.shape} y{y.shape}  "
+        print(f"\nwrote {args.out}  X{X.shape} y{y.shape}  labels {labels}  "
               f"format v{dataset.FORMAT_VERSION}")
         print("  split by session, never by window -- windows overlap 88%")
 

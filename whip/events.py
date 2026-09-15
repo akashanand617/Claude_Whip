@@ -6,32 +6,61 @@ gesture spans ~6 overlapping windows, so window metrics count it six times; and
 a single isolated negative window scored as a failure may never survive
 debouncing to become a real false positive.
 
-What the build spec asks for is event-level: did a gesture get detected, and how
-many false detections occur per hour of normal wear.
+**Impulsive gestures need a band, not a floor.** A flick fires roughly 6-8
+consecutive windows. Requiring `>= k consecutive` alone would make sustained
+motion *more* likely to trigger, not less; the upper bound rejects it.
 
-**Debouncing needs a band, not a floor.** A gesture fires roughly 6-8 consecutive
-windows. Sustained motion -- a three-second wave -- fires 15 or more. Requiring
-`>= k consecutive` therefore makes waving *more* likely to trigger, not less,
-which is the opposite of the intent. Accepting only a plausible run length
-rejects isolated noise and sustained oscillation with one mechanism.
+**Sustained gestures need the opposite.** A wave IS sustained motion -- the very
+thing `max_run` rejects -- so a bounded band makes it unfirable by construction.
+A sustained policy fires once its run passes `min_run`, stays silent for the
+rest of that run, and a refractory period absorbs brief dips so one long wave is
+one event rather than one per dip.
+
+Both behaviours live in one incremental `RunTracker`, and the batch `detect()`
+is a loop over it. That is deliberate: the realtime engine uses the same tracker
+sample by sample, so live and offline cannot drift apart -- they are one
+implementation, not two that started identical.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-
-from whip.dataset import GESTURE_LABELS
+from dataclasses import dataclass, field
 
 STRIDE_S = 0.24   # 6 samples at 25 Hz
 WINDOW_S = 2.0    # 50 samples at 25 Hz
 
-# A 1.2 s gesture inside a 2.0 s window at 0.24 s stride produces ~6 positive
-# windows. Sustained motion produces far more.
+# The impulsive default band: a 1.2 s gesture inside a 2.0 s window at 0.24 s
+# stride produces ~6 positive windows; sustained motion produces far more.
 MIN_RUN = 3
 MAX_RUN = 14
 
 # How close a detection must be to a labelled gesture to count as finding it.
 MATCH_TOLERANCE_S = 0.75
+
+NONE_LABEL = "none"
+
+
+@dataclass(frozen=True)
+class RunPolicy:
+    """How a run of same-class windows becomes (or fails to become) an event."""
+
+    min_run: int = MIN_RUN
+    max_run: int | None = MAX_RUN      # None = unbounded, for sustained gestures
+    refractory_s: float = 0.0
+
+    def __post_init__(self):
+        # A sustained run fires mid-stream; a fresh run always has length 1, so
+        # min_run >= 2 guarantees a fire can never coincide with the close of
+        # the previous run inside one RunTracker.feed call.
+        if self.max_run is None and self.min_run < 2:
+            raise ValueError("a sustained policy needs min_run >= 2")
+
+    @property
+    def sustained(self) -> bool:
+        return self.max_run is None
+
+
+DEFAULT_POLICY = RunPolicy()
 
 
 @dataclass(frozen=True)
@@ -54,36 +83,115 @@ class Event:
         return (self.start_s + self.end_s) / 2 + WINDOW_S / 2
 
 
+@dataclass
+class RunTracker:
+    """
+    Incremental run-to-event logic, one prediction at a time.
+
+    `feed(label, start)` returns an Event when one fires, else None. Call
+    `finish()` after the last prediction: an impulsive run is only judged when it
+    *ends* (its length is unknowable before that), so a run still open at the end
+    of the stream is closed and judged there.
+
+    Timing note for impulsive gestures: the event is emitted one stride after the
+    run breaks, because that is the earliest its length -- and therefore whether
+    it is inside the band -- is known. Sustained gestures fire mid-run at
+    `min_run`, because waiting for a wave to end would mean a 20-second latency.
+    """
+
+    policies: dict[str, RunPolicy] = field(default_factory=dict)
+    default: RunPolicy = DEFAULT_POLICY
+
+    _label: str | None = None
+    _starts: list[float] = field(default_factory=list)
+    _judged_this_run: bool = False
+    # Last time a fired run ended, per label. Refractory is measured from run
+    # end, not from the fire: a dip in the middle of one wave breaks the run,
+    # and measuring from the fire would let a long wave re-fire after its own
+    # refractory while still in progress.
+    _suppressed_until: dict[str, float] = field(default_factory=dict)
+
+    def policy_for(self, label: str) -> RunPolicy:
+        return self.policies.get(label, self.default)
+
+    def feed(self, label: str, start_s: float) -> Event | None:
+        if label != self._label:
+            closed = self._close_run(end_at=start_s)
+            self._label = label
+            self._starts = [start_s]
+            self._judged_this_run = False
+            if closed is not None:
+                # A close and a sustained fire cannot coincide: a fresh run has
+                # length 1 and sustained policies require min_run >= 2 (enforced
+                # in RunPolicy), so returning the closed event loses nothing.
+                return closed
+        else:
+            self._starts.append(start_s)
+
+        if self._label != NONE_LABEL and not self._judged_this_run:
+            policy = self.policy_for(self._label)
+            # Judged exactly once, at min_run. Re-evaluating on every later
+            # window would let a run outlive its suppression and fire anyway --
+            # a mid-wave dip would then split one wave into two events, which is
+            # the exact failure the refractory exists to prevent. A run that is
+            # suppressed at its judgement moment is *absorbed*: it never fires,
+            # and on close it extends the suppression, so a long dip-riddled
+            # wave stays one event however long it lasts.
+            if policy.sustained and len(self._starts) == policy.min_run:
+                self._judged_this_run = True
+                if start_s >= self._suppressed_until.get(self._label, float("-inf")):
+                    return Event(self._label, self._starts[0], start_s, len(self._starts))
+        return None
+
+    def finish(self) -> Event | None:
+        """Close the stream: judge any still-open impulsive run."""
+        end = self._starts[-1] + STRIDE_S if self._starts else 0.0
+        return self._close_run(end_at=end)
+
+    def _close_run(self, end_at: float) -> Event | None:
+        label, starts, judged = self._label, self._starts, self._judged_this_run
+        self._label, self._starts, self._judged_this_run = None, [], False
+        if label is None or label == NONE_LABEL or not starts:
+            return None
+
+        policy = self.policy_for(label)
+        if policy.sustained:
+            if judged:
+                # This run either fired or was absorbed into a previous event;
+                # either way the refractory rolls forward from its end, so a
+                # dip-riddled wave stays one event however long it lasts.
+                self._suppressed_until[label] = end_at + policy.refractory_s
+            return None
+
+        run = len(starts)
+        if policy.min_run <= run <= (policy.max_run or run):
+            return Event(label, starts[0], starts[-1], run)
+        return None
+
+
 def detect(
     predictions: list[str],
     starts: list[float],
     min_run: int = MIN_RUN,
-    max_run: int = MAX_RUN,
+    max_run: int | None = MAX_RUN,
+    policies: dict[str, RunPolicy] | None = None,
 ) -> list[Event]:
     """
-    Collapse consecutive same-class positive windows into events.
+    Collapse per-window predictions into events.
 
-    Runs shorter than `min_run` are isolated flickers; runs longer than `max_run`
-    are sustained motion, not a gesture. Both are discarded.
+    `policies` gives each label its own rule (from `registry.policies()`); labels
+    without one use the (`min_run`, `max_run`) band, preserving the original
+    behaviour for impulsive gestures. Any label other than `none` can fire.
     """
+    tracker = RunTracker(policies=policies or {}, default=RunPolicy(min_run, max_run))
     events: list[Event] = []
-    i = 0
-    while i < len(predictions):
-        label = predictions[i]
-        # Only the gesture classes fire. `motion` is a real prediction -- the
-        # wearer is moving -- but it is not a thing the ring reports, so it is
-        # skipped here exactly like `none`. Testing `!= "none"` would make every
-        # wave an event.
-        if label not in GESTURE_LABELS:
-            i += 1
-            continue
-        j = i
-        while j + 1 < len(predictions) and predictions[j + 1] == label:
-            j += 1
-        run = j - i + 1
-        if min_run <= run <= max_run:
-            events.append(Event(label=label, start_s=starts[i], end_s=starts[j], run_length=run))
-        i = j + 1
+    for label, start in zip(predictions, starts):
+        event = tracker.feed(label, start)
+        if event is not None:
+            events.append(event)
+    tail = tracker.finish()
+    if tail is not None:
+        events.append(tail)
     return events
 
 
@@ -139,3 +247,17 @@ def score(
         "macro_f1": macro_f1,
         "hours": hours,
     }
+
+
+def span_hits(events: list[Event], spans: list[tuple[float, float, str]]) -> list[bool]:
+    """
+    One boolean per cued span: did at least one matching event fire inside it?
+
+    Event-recall F1 is only meaningful for impulsive gestures -- a 20 s wave is
+    one cue but has no single "moment" to match against. For sustained gestures
+    the honest question is per span: was the wave noticed at all.
+    """
+    hits = []
+    for lo, hi, label in spans:
+        hits.append(any(e.label == label and lo <= e.centre_s <= hi for e in events))
+    return hits

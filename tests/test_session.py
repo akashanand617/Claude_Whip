@@ -209,7 +209,7 @@ def test_preview_and_record_build_the_same_schedule():
 
     from probe.collect import schedule_for
 
-    args = argparse.Namespace(structured=True, soft=5, hard=8, seed=11, prompts=40)
+    args = argparse.Namespace(gestures=None, structured=True, soft=5, hard=8, seed=11, prompts=40)
     a = schedule_for(args)
     b = schedule_for(args)
     assert len(a) == len(b) == 104

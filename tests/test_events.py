@@ -99,18 +99,50 @@ def test_no_detections_and_no_gestures_is_not_an_error():
     assert r["fp_per_hour"] == 0.0
 
 
-def test_motion_is_predicted_but_never_fires():
+def wave_policy(refractory_s=2.0):
+    return {"wave": events.RunPolicy(min_run=3, max_run=None, refractory_s=refractory_s)}
+
+
+def test_a_sustained_gesture_fires_mid_run_not_at_the_end():
     """
-    `motion` is a real class -- the wearer is moving -- but it is not something
-    the ring reports. Testing `!= "none"` here would make every wave an event,
-    which is the failure the class was added to prevent.
+    A wave IS sustained motion -- the very thing max_run rejects -- so the band
+    would make it unfirable, and waiting for the run to end would mean a
+    20-second latency. It fires once its run passes min_run.
     """
-    preds = ["none"] * 3 + ["motion"] * 8 + ["none"] * 3
+    preds = ["none"] * 3 + run_of("wave", 80) + ["none"] * 3   # ~19 s of waving
+    ev = events.detect(preds, starts_for(len(preds)), policies=wave_policy())
+    assert len(ev) == 1, "one long wave is one event"
+    assert ev[0].run_length == 3, "fired at min_run, not at run end"
+
+
+def test_a_brief_dip_does_not_split_one_wave_into_two():
+    """Refractory is measured from run end, so a mid-wave dip cannot re-fire."""
+    preds = run_of("wave", 10) + ["none"] * 2 + run_of("wave", 10)
+    ev = events.detect(preds, starts_for(len(preds)), policies=wave_policy(refractory_s=2.0))
+    assert len(ev) == 1
+
+
+def test_a_new_wave_after_the_refractory_fires_again():
+    gap = int(3.0 / events.STRIDE_S)   # well past a 2 s refractory
+    preds = run_of("wave", 10) + ["none"] * gap + run_of("wave", 10)
+    ev = events.detect(preds, starts_for(len(preds)), policies=wave_policy(refractory_s=2.0))
+    assert len(ev) == 2
+
+
+def test_without_a_policy_a_sustained_run_is_still_rejected_by_the_band():
+    """The default band is unchanged: an unregistered label over max_run drops."""
+    preds = ["none"] * 3 + run_of("mystery", 20) + ["none"] * 3
     assert events.detect(preds, starts_for(len(preds))) == []
 
 
-def test_motion_does_not_join_two_gestures_into_one_run():
-    """A stretch of motion between two flicks must break the run, not extend it."""
-    preds = run_of("flag", 5) + run_of("motion", 4) + run_of("flag", 5)
-    ev = events.detect(preds, starts_for(len(preds)))
-    assert [e.label for e in ev] == ["flag", "flag"]
+def test_a_sustained_policy_requires_a_plausible_min_run():
+    import pytest
+
+    with pytest.raises(ValueError):
+        events.RunPolicy(min_run=1, max_run=None)
+
+
+def test_impulsive_and_sustained_policies_coexist():
+    preds = run_of("flag", 5) + ["none"] * 2 + run_of("wave", 8)
+    ev = events.detect(preds, starts_for(len(preds)), policies=wave_policy())
+    assert [e.label for e in ev] == ["flag", "wave"]

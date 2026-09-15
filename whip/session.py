@@ -78,7 +78,10 @@ class Prompt:
         slightly off is harmless since the point is decorrelating them from the
         label, not teaching them.
         """
-        kind = "SINGLE" if self.label == "flag" else "DOUBLE"
+        legacy = {"flag": "SINGLE", "approve": "DOUBLE"}
+        kind = legacy.get(self.label, self.label.upper().replace("_", " "))
+        if self.direction == "any":
+            return f"{kind}  |  {self.amplitude}"
         return f"{kind}  |  {self.amplitude}, {self.direction}"
 
 
@@ -138,6 +141,34 @@ def build_structured_schedule(
             index += 1
 
     return prompts
+
+
+def build_gesture_schedule(
+    gestures: list[str], count: int, seed: int | None = None
+) -> list[Prompt]:
+    """
+    An interleaved prompt schedule over arbitrary registry gestures.
+
+    This is how data for a new gesture class gets made -- e.g.
+    `--gestures snap,double_snap --prompts 100` -- with the same discipline the
+    flick sessions used: classes interleaved in shuffled groups so session
+    drift cannot correlate with the label, amplitude varied, direction marked
+    "any" because a snap has no meaningful direction to cue.
+    """
+    rng = random.Random(seed)
+    labels: list[str] = []
+    while len(labels) < count:
+        group = list(gestures)
+        rng.shuffle(group)
+        labels.extend(group)
+    labels = labels[:count]
+
+    return [
+        Prompt(index=i, label=label, direction="any",
+               amplitude=rng.choice(("soft", "hard")), windup="natural",
+               posture="as you are", tempo=rng.choice(TEMPOS))
+        for i, label in enumerate(labels)
+    ]
 
 
 def build_schedule(count: int, seed: int | None = None) -> list[Prompt]:

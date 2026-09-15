@@ -165,19 +165,18 @@ def test_shape_features_of_silence_do_not_divide_by_zero():
     assert all(np.isfinite(v) for v in f.values())
 
 
-def test_the_loud_boundary_ignores_the_motion_class():
+def test_the_loud_boundary_can_be_scoped_to_chosen_classes():
     """
-    `motion` is index 1, so a bare `labels > 0` counts every wave as a gesture
-    and drags the amplitude boundary down to the quietest wave recorded.
+    The amplitude boundary for the impulsive gestures should not be dragged
+    down by a quiet sustained class -- gesture_indices scopes it. (This caught a
+    real bug once: an interloper class at index 1 made `labels > 0` count every
+    wave as a gesture.)
     """
-    from whip import dataset
-
     peaks = np.array([1.0, 0.5, 4.0, 5.0])
-    labels = np.array([0, 1, 2, 3])          # none, motion, flag, approve
-    gesture_ids = [dataset.LABEL_INDEX[n] for n in dataset.GESTURE_LABELS]
+    labels = np.array([0, 3, 1, 2])          # none, wave, flick, double_flick
 
-    naive = sampling.gesture_peak_percentile(peaks, labels, 0.0)
-    correct = sampling.gesture_peak_percentile(peaks, labels, 0.0,
-                                               gesture_indices=gesture_ids)
-    assert naive == pytest.approx(0.5), "the bug: the quietest wave sets the boundary"
-    assert correct == pytest.approx(4.0), "only real gestures should set it"
+    unscoped = sampling.gesture_peak_percentile(peaks, labels, 0.0)
+    scoped = sampling.gesture_peak_percentile(peaks, labels, 0.0,
+                                              gesture_indices=[1, 2])
+    assert unscoped == pytest.approx(0.5)
+    assert scoped == pytest.approx(4.0)

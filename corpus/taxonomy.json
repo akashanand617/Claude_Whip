@@ -1,0 +1,173 @@
+{
+  "version": 1,
+  "dimensions": [
+    {
+      "key": "scope",
+      "question": "When a change is requested, how much of the surrounding code should the model touch?",
+      "poles": {
+        "minimal": {
+          "summary": "Touch only what the request requires.",
+          "context_statement": "Change only what the request requires; leave adjacent code alone even when it could be improved."
+        },
+        "opportunistic": {
+          "summary": "Clean up adjacent code while editing.",
+          "context_statement": "While making a change, also tidy the code you touch: naming, dead code, small inconsistencies."
+        }
+      }
+    },
+    {
+      "key": "verbosity",
+      "question": "How much explanation should accompany an answer?",
+      "poles": {
+        "terse": {
+          "summary": "Answer, then stop.",
+          "context_statement": "Give the answer or the fix directly; skip background explanation unless asked."
+        },
+        "explanatory": {
+          "summary": "Teach the why alongside the answer.",
+          "context_statement": "Explain the underlying cause and reasoning alongside every answer, not just the fix."
+        }
+      }
+    },
+    {
+      "key": "comments",
+      "question": "How densely should generated code be commented?",
+      "poles": {
+        "sparse": {
+          "summary": "Comment only non-obvious constraints.",
+          "context_statement": "Comment only constraints the code cannot express; never narrate what a line does."
+        },
+        "narrated": {
+          "summary": "Comment each step of the logic.",
+          "context_statement": "Comment generated code step by step so it can be followed without reading the code closely."
+        }
+      }
+    },
+    {
+      "key": "abstraction",
+      "question": "Should code be written concretely for the case at hand, or generalized for reuse?",
+      "poles": {
+        "concrete": {
+          "summary": "Inline and direct; abstract only when forced.",
+          "context_statement": "Write the concrete, direct version; do not introduce helpers, classes, or configurability until a second caller exists."
+        },
+        "generalized": {
+          "summary": "Build the reusable structure up front.",
+          "context_statement": "Structure new code for reuse and extension up front, even if only one caller exists today."
+        }
+      }
+    },
+    {
+      "key": "defensiveness",
+      "question": "How much validation and error handling should internal code carry?",
+      "poles": {
+        "trusting": {
+          "summary": "Happy path; let bad input crash loudly.",
+          "context_statement": "For internal code, write the happy path and let bad input fail loudly; do not add validation layers."
+        },
+        "defensive": {
+          "summary": "Validate inputs and handle errors explicitly.",
+          "context_statement": "Validate inputs and handle failure modes explicitly, with actionable error messages, even in internal code."
+        }
+      }
+    },
+    {
+      "key": "dependencies",
+      "question": "Hand-roll small functionality, or pull the established package?",
+      "poles": {
+        "handroll": {
+          "summary": "Stdlib and own code for small needs.",
+          "context_statement": "Prefer the standard library and a few lines of own code over adding a dependency for small functionality."
+        },
+        "library": {
+          "summary": "Use the well-known package.",
+          "context_statement": "Prefer the established, well-tested package over hand-rolling functionality it already provides."
+        }
+      }
+    },
+    {
+      "key": "initiative",
+      "question": "When the request is ambiguous, ask first or act on a stated assumption?",
+      "poles": {
+        "ask-first": {
+          "summary": "Ask one targeted question before proceeding.",
+          "context_statement": "When a request is ambiguous in a way that changes the work, ask a targeted question before doing it."
+        },
+        "act-first": {
+          "summary": "Proceed with a stated, reversible assumption.",
+          "context_statement": "When a request is ambiguous, pick the most likely reading, state the assumption, and proceed; do not block on questions."
+        }
+      }
+    },
+    {
+      "key": "proactivity",
+      "question": "Do exactly what was asked, or also deliver adjacent collateral (tests, docs, types) unasked?",
+      "poles": {
+        "exact": {
+          "summary": "Deliver the ask, nothing else.",
+          "context_statement": "Deliver exactly what was asked; do not add tests, docs, or type annotations unless requested."
+        },
+        "collateral": {
+          "summary": "Bring tests and docs along by default.",
+          "context_statement": "When implementing a change, also add the matching test and documentation update without being asked."
+        }
+      }
+    },
+    {
+      "key": "idiom",
+      "question": "Match the surrounding codebase's style, or write to current best practice?",
+      "poles": {
+        "conform": {
+          "summary": "Match the file's existing style, even if dated.",
+          "context_statement": "Match the surrounding code's style and idioms exactly, even when they are dated; consistency beats modernity."
+        },
+        "modernize": {
+          "summary": "Write new code to current best practice.",
+          "context_statement": "Write new code to current best practice even inside legacy files, and note the inconsistency it introduces."
+        }
+      }
+    },
+    {
+      "key": "hedging",
+      "question": "Report conclusions plainly, or wrap them in caveats?",
+      "poles": {
+        "committed": {
+          "summary": "State what the evidence supports, plainly.",
+          "context_statement": "State conclusions plainly with the supporting evidence; do not pad findings with qualifiers beyond genuine uncertainty."
+        },
+        "cautious": {
+          "summary": "Flag uncertainty and alternatives explicitly.",
+          "context_statement": "Present conclusions with explicit uncertainty, alternative explanations, and suggested confirmation steps."
+        }
+      }
+    },
+    {
+      "key": "cleverness",
+      "question": "Plain imperative code, or concise idiomatic constructs?",
+      "poles": {
+        "explicit": {
+          "summary": "Plain loops and named intermediates.",
+          "context_statement": "Prefer plain loops and named intermediate variables over dense one-liners, even when the one-liner is idiomatic."
+        },
+        "dense": {
+          "summary": "Idiomatic comprehensions and one-liners.",
+          "context_statement": "Prefer concise idiomatic constructs (comprehensions, stdlib combinators) over spelled-out loops."
+        }
+      }
+    },
+    {
+      "key": "testing",
+      "question": "When tests are asked for, a few representative cases or an exhaustive suite?",
+      "poles": {
+        "focused": {
+          "summary": "Few tests, one per behavior.",
+          "context_statement": "Write a small number of tests, one per distinct behavior; skip permutations that exercise the same path."
+        },
+        "exhaustive": {
+          "summary": "Parameterized coverage of the edge cases.",
+          "context_statement": "Write parameterized tests covering edge cases systematically: empty, unicode, boundaries, idempotency."
+        }
+      }
+    }
+  ]
+}

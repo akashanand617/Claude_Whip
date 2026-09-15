@@ -71,7 +71,7 @@ def test_a_gesture_produces_several_positive_windows(tmp_path):
     write_notes(notes, "s", gestures)
 
     w = dataset.windows_from_session(cap, notes)
-    positives = [x for x in w if x.label == "flag"]
+    positives = [x for x in w if x.label == "flick"]   # canonical name, not the legacy alias
     assert 3 <= len(positives) <= 8, f"expected ~5 positive windows, got {len(positives)}"
 
 
@@ -92,8 +92,11 @@ def test_ambiguous_windows_are_dropped_not_guessed(tmp_path):
 
 
 def test_labels_are_ordered_with_none_first():
-    assert dataset.LABELS[0] == "none"
-    assert dataset.LABEL_INDEX["none"] == 0
+    from whip.registry import Registry
+
+    labels = Registry().labels_for({"flick", "wave"})
+    assert labels[0] == "none"
+    assert labels == ["none", "flick", "wave"], "registry order, not discovery order"
 
 
 def test_split_is_by_session(tmp_path):
@@ -154,48 +157,123 @@ def test_load_all_reports_why_it_skipped(tmp_path):
     assert any("Hz" in s for s in skipped)
 
 
-def test_loud_windows_in_a_gesture_free_session_become_motion(tmp_path):
-    """
-    `none` was carrying two unrelated things: silence, and a hand moving hard in
-    a way that is not a flick. The loud windows were 4.7% of that class, so class
-    weighting could not reach them.
-    """
-    cap = tmp_path / "s.jsonl"
-    write_capture(cap, seconds=12.0, gestures=[(4.0, "flag")])   # amp used, no marks file
-    w = dataset.windows_from_session(cap, declared_negative=True, motion_threshold_g=0.05)
+def write_span_notes(path, session_id, spans, kind="negative"):
+    """Cued motion blocks, as SessionNotes.add_cue writes them."""
+    import json
+
+    path.write_text(json.dumps({
+        "session_id": session_id, "started_wall": 0.0, "kind": kind,
+        "hand": "left", "ring_position": "middle", "note": "",
+        "marks": [{"label": "none", "motion": m, "cue_at": lo, "until": hi}
+                  for lo, hi, m in spans],
+    }))
+
+
+def test_a_cued_span_labels_its_windows_with_the_gesture(tmp_path):
+    """A 'waving' span from the negative session becomes wave training data."""
+    cap, notes = tmp_path / "s.jsonl", tmp_path / "s.notes.json"
+    write_capture(cap, seconds=30.0, gestures=[(8.0, "x"), (9.5, "x"), (11.0, "x"),
+                                               (12.5, "x"), (14.0, "x")])
+    write_span_notes(notes, "s", [(8.0, 16.0, "waving")])
+    w = dataset.windows_from_session(cap, notes)
     labels = {x.label for x in w}
-    assert dataset.MOTION_LABEL in labels
-    assert not (labels & set(dataset.GESTURE_LABELS)), "a negative session has no gestures"
+    assert "wave" in labels, "the alias 'waving' must resolve to the wave class"
+    assert "waving" not in labels, "classes are canonical names"
 
 
-def test_motion_is_not_applied_in_a_prompted_session(tmp_path):
+def test_unrecognised_motions_stay_attribution_only(tmp_path):
     """
-    In a cued session a loud non-gesture window is usually the run-up or run-out
-    of a flick. Labelling those `motion` would teach the model that the start of
-    a gesture is not a gesture.
+    'dismissive flick' and 'so-so wobble' were recorded as deliberate
+    near-gesture NEGATIVES. Promoting every cued motion to a class would
+    quietly convert hard negatives into positives.
     """
     cap, notes = tmp_path / "s.jsonl", tmp_path / "s.notes.json"
-    gestures = [(5.0, "flag")]
+    write_capture(cap, seconds=20.0, gestures=[(6.0, "x"), (8.0, "x")])
+    write_span_notes(notes, "s", [(5.0, 12.0, "dismissive flick")])
+    w = dataset.windows_from_session(cap, notes)
+    assert {x.label for x in w} == {"none"}
+
+
+def test_quiet_windows_inside_a_span_stay_none(tmp_path):
+    """
+    The hygiene floor. A 20 s 'keep waving' block contains pauses, and labelling
+    silence as wave teaches exactly the wrong thing. This is not the removed
+    amplitude->class rule: the label source is the human cue, amplitude only
+    gates whether the cued motion was happening at that moment.
+    """
+    cap, notes = tmp_path / "s.jsonl", tmp_path / "s.notes.json"
+    # motion only in the middle of the span; the rest of the span is still
+    write_capture(cap, seconds=30.0, gestures=[(12.0, "x"), (13.5, "x")])
+    write_span_notes(notes, "s", [(5.0, 25.0, "waving")])
+    w = dataset.windows_from_session(cap, notes)
+    labels = [x.label for x in w]
+    assert "wave" in labels
+    assert "none" in labels, "the quiet stretches of the span must stay none"
+
+
+def test_windows_straddling_a_span_edge_are_dropped(tmp_path):
+    cap, notes = tmp_path / "s.jsonl", tmp_path / "s.notes.json"
+    write_capture(cap, seconds=20.0, gestures=[(7.5, "x"), (9.0, "x")])
+    write_span_notes(notes, "s", [(8.0, 14.0, "waving")])
+    with_span = dataset.windows_from_session(cap, notes)
+    without = dataset.windows_from_session(cap, declared_negative=True)
+    assert len(with_span) < len(without), "edge windows are ambiguous, not guessed at"
+
+
+def test_gesture_names_excludes_only_none():
+    assert dataset.gesture_names(["none", "flick", "wave"]) == ["flick", "wave"]
+    assert dataset.gesture_names(["none"]) == []
+
+
+def test_legacy_labels_resolve_to_canonical_names(tmp_path):
+    """Old sessions on disk say flag/approve; classes are flick/double_flick."""
+    cap, notes = tmp_path / "s.jsonl", tmp_path / "s.notes.json"
+    gestures = [(5.0, "flag"), (10.0, "approve")]
     write_capture(cap, seconds=20.0, gestures=gestures)
     write_notes(notes, "s", gestures)
-    w = dataset.windows_from_session(cap, notes, motion_threshold_g=0.01)
-    assert dataset.MOTION_LABEL not in {x.label for x in w}
+    labels = {x.label for x in dataset.windows_from_session(cap, notes)}
+    assert "flick" in labels and "double_flick" in labels
+    assert "flag" not in labels and "approve" not in labels
 
 
-def test_gesture_labels_are_named_not_indexed():
-    """
-    `motion` sits between `none` and the gestures, so every `index > 0 means
-    gesture` test in the codebase would be quietly wrong.
-    """
-    assert dataset.LABELS[0] == "none"
-    assert dataset.GESTURE_LABELS == ("flag", "approve")
-    assert dataset.LABEL_INDEX["motion"] < dataset.LABEL_INDEX["flag"]
-    assert dataset.MOTION_LABEL not in dataset.GESTURE_LABELS
+def test_prompted_windows_carry_their_direction(tmp_path):
+    import json
+
+    cap, notes = tmp_path / "s.jsonl", tmp_path / "s.notes.json"
+    write_capture(cap, seconds=15.0, gestures=[(5.0, "flag")])
+    notes.write_text(json.dumps({
+        "session_id": "s", "started_wall": 0.0, "kind": "prompted",
+        "hand": "left", "ring_position": "middle", "note": "",
+        "marks": [{"label": "flag", "direction": "up", "amplitude": "hard",
+                   "windup": "none", "posture": "raised", "tempo": "natural",
+                   "index": 0, "cue_at": 5.0}],
+    }))
+    positives = [x for x in dataset.windows_from_session(cap, notes) if x.label == "flick"]
+    assert positives
+    assert all(x.direction == "up" for x in positives)
 
 
-def test_format_version_rejects_a_pre_motion_export():
+def test_a_direction_outside_the_canonical_set_becomes_none(tmp_path):
+    """'any' from generic gesture schedules, free text from early sessions."""
+    import json
+
+    cap, notes = tmp_path / "s.jsonl", tmp_path / "s.notes.json"
+    write_capture(cap, seconds=15.0, gestures=[(5.0, "flag")])
+    notes.write_text(json.dumps({
+        "session_id": "s", "started_wall": 0.0, "kind": "prompted",
+        "hand": "left", "ring_position": "middle", "note": "",
+        "marks": [{"label": "snap", "direction": "any", "amplitude": "hard",
+                   "windup": "none", "posture": "raised", "tempo": "natural",
+                   "index": 0, "cue_at": 5.0}],
+    }))
+    positives = [x for x in dataset.windows_from_session(cap, notes) if x.label == "snap"]
+    assert positives
+    assert all(x.direction == "none" for x in positives)
+
+
+def test_format_version_rejects_stale_exports():
     import numpy as np
 
-    stale = {"format_version": np.array(2)}
-    with pytest.raises(dataset.StaleDataset):
-        dataset.check_format_version(stale)
+    for old in (1, 2, 3):
+        with pytest.raises(dataset.StaleDataset):
+            dataset.check_format_version({"format_version": np.array(old)})

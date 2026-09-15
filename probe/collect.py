@@ -44,6 +44,17 @@ def schedule_for(args) -> list[session.Prompt]:
     prompts and the session ran 200. A preview that disagrees with the run is
     worse than either number being wrong.
     """
+    if args.gestures:
+        names = [g.strip() for g in args.gestures.split(",") if g.strip()]
+        from whip.registry import load_registry
+
+        registry = load_registry()
+        unknown = [n for n in names if registry.resolve(n) is None]
+        if unknown:
+            raise SystemExit(f"unknown gesture(s): {', '.join(unknown)} -- "
+                             f"declared vocabulary: {', '.join(registry.names)}")
+        canonical = [registry.canonical(n) for n in names]
+        return session.build_gesture_schedule(canonical, args.prompts, seed=args.seed)
     if args.structured:
         return session.build_structured_schedule(
             {"soft": args.soft, "hard": args.hard}, seed=args.seed
@@ -86,6 +97,8 @@ async def run(args: argparse.Namespace) -> int:
     device = await capture.find_ring(address=args.address, timeout=args.timeout)
 
     schedule: list[session.Prompt] = []
+    if args.gestures:
+        args.kind = "prompted"
     if args.kind == "prompted":
         schedule = schedule_for(args)
         mean_gap = (args.gap_min + args.gap_max) / 2
@@ -129,8 +142,10 @@ async def run(args: argparse.Namespace) -> int:
         print(f"hand        {args.hand}   ring {args.ring_position}")
         print(f"duration    {duration / 60:.1f} min -> {sink}")
         if schedule:
-            flags = sum(1 for p in schedule if p.label == "flag")
-            print(f"schedule    {len(schedule)} prompts ({flags} flag / {len(schedule) - flags} approve), interleaved")
+            from collections import Counter
+            mix = Counter(p.label for p in schedule)
+            counts = " / ".join(f"{n} {lab}" for lab, n in sorted(mix.items()))
+            print(f"schedule    {len(schedule)} prompts ({counts}), interleaved")
             print(f"pacing      {args.gap_min:.1f}-{args.gap_max:.1f}s randomised gaps")
         elif args.cues:
             print(f"motions     {len([m for m in args.cues.split(',') if m.strip()])} x {args.cue_seconds:.0f}s, all labelled `none`")
@@ -196,6 +211,9 @@ def main() -> int:
     parser.add_argument("--gap-max", type=float, default=session.MAX_GAP_S,
                         help="maximum quiet after a cue; randomised so no rhythm is learnable")
     parser.add_argument("--minutes", type=float, default=20.0, help="non-prompted modes: length")
+    parser.add_argument("--gestures",
+                        help="prompted mode over arbitrary registry gestures, "
+                             "e.g. 'snap,double_snap' -- how a new class gets data")
     parser.add_argument("--cues", help="comma-separated motions to cycle through, e.g. 'wave,snap,wobble'")
     parser.add_argument("--cue-seconds", type=float, default=20.0, help="seconds per cued motion")
     parser.add_argument("--hand", default="left", help="which hand wears the ring")
@@ -217,11 +235,13 @@ def main() -> int:
 
     if args.preview:
         schedule = schedule_for(args)
-        flags = sum(1 for p in schedule if p.label == "flag")
+        from collections import Counter
+        mix = Counter(p.label for p in schedule)
         for p in schedule:
             print(f"  [{p.index + 1:>3}]  {p.spoken()}")
         pace = COUNTDOWN_S + (args.gap_min + args.gap_max) / 2
-        print(f"\n  {len(schedule)} prompts ({flags} flag / {len(schedule) - flags} approve)")
+        counts = " / ".join(f"{n} {lab}" for lab, n in sorted(mix.items()))
+        print(f"\n  {len(schedule)} prompts ({counts})")
         print(f"  ~{pace:.1f}s each -> ~{len(schedule) * pace / 60:.0f} min")
         print("  (no ring needed; re-run without --preview to record)")
         return 0

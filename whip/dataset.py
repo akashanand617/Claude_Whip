@@ -19,15 +19,18 @@ from pathlib import Path
 import numpy as np
 
 from whip import accel, capture, despike, protocol, session
+from whip.registry import DIRECTIONS, NONE_LABEL, Registry, load_registry
 
 SAMPLE_RATE_HZ = 25.0
 
 # Bumped whenever the stored windows change meaning. Version 2 despikes the
 # stream before windowing, so a model trained on version 1 saw artifacts in its
-# amplitude channel. Version 3 adds the `motion` class, which changes the label
-# indices -- a v2 checkpoint loaded against v3 labels would silently mean
-# something else.
-FORMAT_VERSION = 3
+# amplitude channel. Version 3 added a `motion` class; version 4 removes it in
+# favour of the registry vocabulary (flick, double_flick, wave, snap, clap, ...)
+# with data-driven labels, span labelling for sustained gestures, and a
+# per-window direction. Label indices move at every one of these steps, so a
+# stale export read by newer code silently means something else.
+FORMAT_VERSION = 4
 
 # 50 samples = 2.0 s. Sized so a 1395 ms worst-case gesture leaves ~600 ms of
 # alignment slack; an earlier 38-sample window left only 125 ms, which meant
@@ -41,37 +44,24 @@ STRIDE_SAMPLES = 6  # 0.24 s
 MIN_POSITIVE_COVERAGE = 0.70
 MAX_NEGATIVE_COVERAGE = 0.30
 
-# Measured span of a real gesture: 480-1395 ms across 33 recordings.
+# Measured span of a real gesture: 480-1395 ms across 33 recordings. The
+# registry carries a per-gesture duration; this is the default.
 GESTURE_DURATION_S = 1.2
 
-LABELS = ("none", "motion", "flag", "approve")
-LABEL_INDEX = {name: i for i, name in enumerate(LABELS)}
-
-# The two classes that actually fire the ring. Membership is tested by name, not
-# by index, because `motion` sits between `none` and the gestures and every
-# `index > 0 means gesture` test in the codebase would otherwise be quietly wrong.
-GESTURE_LABELS = ("flag", "approve")
-
-MOTION_LABEL = "motion"
-
-# Above this, a window in a gesture-free session is deliberate movement rather
-# than stillness. The default is the measured 10th percentile of gesture peaks,
-# so `motion` means "as loud as a real gesture, and not one".
+# Windows inside a cued sustained span (a 20 s "keep waving" block) quieter than
+# this stay `none`. A span contains moments of stillness, and labelling silence
+# as `wave` teaches exactly the wrong thing.
 #
-# **Why a separate class rather than more loss weight.** `none` was carrying two
-# unrelated things: silence, and a hand moving violently in a way that is not a
-# flick. Those have nothing in common, and asking one class to cover both makes
-# the model learn a harder function than the problem requires. The loud windows
-# were also only 4.7% of `none`, so class weighting could not reach them -- the
-# reweighting in `whip/sampling.py` exists to work around exactly that, and a
-# real class does the job properly, since class weights then apply to it
-# directly.
-#
-# Amplitude is fine as a *labelling* rule even though it is a bad feature. The
-# label is ground truth about what the wearer was doing; what the model must
-# learn is to separate `motion` from a gesture at the *same* amplitude, which is
-# a shape problem by construction.
-MOTION_THRESHOLD_G = 2.3
+# Deliberately NOT the removed amplitude->class rule: that rule *invented* a
+# class from loudness alone. This one only gates whether a window inside a
+# human-labelled span was actually performing the labelled motion at that
+# moment. The label source is the cue; amplitude is just hygiene.
+HYGIENE_FLOOR_G = 0.5
+
+
+def gesture_names(labels) -> list[str]:
+    """Every class that fires an event -- everything except `none`."""
+    return [str(name) for name in labels if str(name) != NONE_LABEL]
 
 
 @dataclass
@@ -81,10 +71,8 @@ class Window:
     label: str
     # (3, WINDOW_SAMPLES) in g, gravity removed
     axes: list[list[float]]
-
-    @property
-    def label_index(self) -> int:
-        return LABEL_INDEX[self.label]
+    # "none" unless this window is a directed gesture from a prompted session.
+    direction: str = "none"
 
 
 def _decode_stream(path: Path) -> tuple[list[float], list[accel.AccelSample]]:
@@ -116,20 +104,61 @@ def _sample_rate(times: list[float]) -> float:
     return (len(times) - 1) / span if span > 0 else 0.0
 
 
+def _marks_from_notes(notes, registry: Registry, duration_override: float | None):
+    """
+    Split a session's marks into point marks and span marks, canonically named.
+
+    Point marks are prompted gestures: `{"label": "flag", "direction": "up",
+    "cue_at": t}`. The cue fires when the instruction is given, so the gesture
+    follows it -- the labelled span runs `cue_at .. cue_at + duration`.
+
+    Span marks are cued motion blocks: `{"label": "none", "motion": "waving",
+    "cue_at": t, "until": u}` -- twenty seconds of "keep doing this". If the
+    motion name resolves in the registry the whole block is that gesture;
+    unrecognised motions ("chin on hand", "dismissive flick") stay attribution
+    only, exactly as before. That last part matters: the adversarial cues were
+    *deliberate near-gestures recorded as negatives*, and promoting every cued
+    motion to a class would quietly convert hard negatives into positives.
+    """
+    points: list[tuple[float, float, str, str]] = []
+    spans: list[tuple[float, float, str]] = []
+    for m in notes.marks:
+        motion = m.get("motion")
+        if motion is not None and "until" in m:
+            spec = registry.resolve(motion)
+            if spec is not None:
+                spans.append((m["cue_at"], m["until"], spec.name))
+            continue
+        spec = registry.resolve(m.get("label", NONE_LABEL))
+        if spec is not None:
+            duration = duration_override if duration_override is not None else spec.duration_s
+            # Direction values outside the canonical set ("any" from generic
+            # gesture schedules, free text from early sessions) mean "no
+            # direction supervision for this window", which is what "none" is.
+            direction = m.get("direction", "none")
+            if direction not in DIRECTIONS:
+                direction = "none"
+            points.append((m["cue_at"], m["cue_at"] + duration, spec.name, direction))
+    return points, spans
+
+
 def windows_from_session(
     capture_path: Path,
     notes_path: Path | None = None,
-    gesture_duration_s: float = GESTURE_DURATION_S,
+    gesture_duration_s: float | None = None,
     rate_tolerance: float = 1.0,
     declared_negative: bool = False,
-    motion_threshold_g: float = MOTION_THRESHOLD_G,
+    registry: Registry | None = None,
+    hygiene_floor_g: float = HYGIENE_FLOOR_G,
 ) -> list[Window]:
     """
     Slice one session into labelled windows.
 
-    Gestures are located by cue timestamp. The cue fires when the instruction is
-    given, so the gesture follows it -- the labelled span runs from the cue to
-    cue + duration.
+    Two labelling modes, decided by the *mark's* shape rather than the gesture's
+    kind. Point marks use the coverage rule: >= 70% of the gesture inside the
+    window labels it, 30-70% is ambiguous and dropped rather than guessed at.
+    Span marks label every window fully inside the span, subject to the hygiene
+    floor; windows straddling a span edge are ambiguous and dropped.
 
     Raises rather than guessing in two cases, both of which silently corrupt a
     training set:
@@ -142,6 +171,7 @@ def windows_from_session(
     gestures from the flick probe captures into the `none` class. A capture is
     negative only if it says so.
     """
+    registry = registry or load_registry()
     times, samples = _decode_stream(capture_path)
     if len(samples) < WINDOW_SAMPLES:
         return []
@@ -160,13 +190,16 @@ def windows_from_session(
         )
 
     session_id = capture_path.stem
-    marks: list[tuple[float, float, str]] = []
+    points: list[tuple[float, float, str, str]] = []
+    spans: list[tuple[float, float, str]] = []
     if notes_path and notes_path.exists():
         notes = session.load_notes(notes_path)
-        for m in notes.marks:
-            label = m.get("label", "none")
-            if label in ("flag", "approve"):
-                marks.append((m["cue_at"], m["cue_at"] + gesture_duration_s, label))
+        points, spans = _marks_from_notes(notes, registry, gesture_duration_s)
+        if not points and not spans and notes.kind not in ("negative",) and not declared_negative:
+            raise UnlabelledCapture(
+                f"{capture_path.name} has notes but no usable marks and is not declared "
+                "negative; it may contain unlabelled gestures"
+            )
     else:
         header, _ = capture.load_capture(capture_path)
         kind = (header or {}).get("session_kind") or (header or {}).get("kind")
@@ -181,56 +214,51 @@ def windows_from_session(
         end = start + WINDOW_SAMPLES
         t0, t1 = times[start], times[end - 1]
 
-        label, ambiguous = "none", False
-        for ges_start, ges_end, ges_label in marks:
-            cov = _coverage(t0, t1, ges_start, ges_end)
-            if cov >= MIN_POSITIVE_COVERAGE:
-                label = ges_label
-                break
-            if cov > MAX_NEGATIVE_COVERAGE:
-                ambiguous = True
-        if ambiguous and label == "none":
-            continue
-
         # Remove the DC term so *static* orientation cannot be a shortcut, but do
         # not divide by the standard deviation: amplitude genuinely separates a
-        # deliberate gesture from incidental motion.
-        #
-        # Note what this does *not* remove. Subtracting the mean kills the average
-        # attitude of the hand, which is a session artifact and worth losing. The
-        # swing of the gravity vector during the window survives it, and that
-        # swing is the wrist rotation a flick is made of. So the gravity dynamics
-        # are still here to be separated out downstream -- see
-        # `model.to_model_input`. An earlier plan called for storing raw g to
-        # recover them, which was unnecessary and would have handed the model back
-        # the orientation shortcut.
+        # deliberate gesture from incidental motion. The swing of the gravity
+        # vector during the window -- the wrist rotation a flick is made of --
+        # survives the mean removal; see `model.to_model_input`.
         chunk = stream[:, start:end]
         centred = np.stack([(row - row.mean()) / accel.COUNTS_PER_G for row in chunk])
 
-        # Deliberate movement that is not a gesture gets its own class, but only
-        # in sessions that contain no gestures at all.
-        #
-        # In a prompted session a loud non-gesture window is usually the run-up
-        # or the run-out of a flick -- the hand travelling to position, or
-        # settling afterwards. Labelling those `motion` would teach the model
-        # that the beginning of a gesture is not a gesture, which is the opposite
-        # of what is wanted. So the rule applies only where nothing was cued.
-        if label == "none" and not marks:
-            peak = float(np.sqrt((centred ** 2).sum(axis=0)).max())
-            if peak >= motion_threshold_g:
-                label = MOTION_LABEL
+        label, direction, ambiguous = NONE_LABEL, "none", False
+        for ges_start, ges_end, ges_label, ges_dir in points:
+            cov = _coverage(t0, t1, ges_start, ges_end)
+            if cov >= MIN_POSITIVE_COVERAGE:
+                label, direction = ges_label, ges_dir
+                break
+            if cov > MAX_NEGATIVE_COVERAGE:
+                ambiguous = True
+
+        if label == NONE_LABEL:
+            for span_start, span_end, span_label in spans:
+                if t0 >= span_start and t1 <= span_end:
+                    peak = float(np.sqrt((centred ** 2).sum(axis=0)).max())
+                    # Inside the span but quiet: the wearer paused. `none` is
+                    # correct, and unambiguous.
+                    if peak >= hygiene_floor_g:
+                        label = span_label
+                    break
+                if min(t1, span_end) > max(t0, span_start):
+                    # Straddles a span edge: contains an unknown amount of the
+                    # motion, so no label is defensible.
+                    ambiguous = True
+
+        if ambiguous and label == NONE_LABEL:
+            continue
 
         out.append(Window(session_id=session_id, start_s=t0, label=label,
-                          axes=[row.tolist() for row in centred]))
+                          axes=[row.tolist() for row in centred], direction=direction))
 
     return out
 
 
 def load_all(
     directory: Path,
-    gesture_duration_s: float = GESTURE_DURATION_S,
+    gesture_duration_s: float | None = None,
     declared_negative: set[str] | None = None,
-    motion_threshold_g: float = MOTION_THRESHOLD_G,
+    registry: Registry | None = None,
 ) -> tuple[list[Window], list[str]]:
     """
     Every usable session in a directory, plus why each of the others was skipped.
@@ -238,6 +266,7 @@ def load_all(
     Skipping is reported rather than silent: a capture quietly dropped from the
     training set is as surprising as one quietly mislabelled.
     """
+    registry = registry or load_registry()
     declared_negative = declared_negative or set()
     out: list[Window] = []
     skipped: list[str] = []
@@ -246,8 +275,7 @@ def load_all(
         try:
             out.extend(windows_from_session(
                 cap, notes if notes.exists() else None, gesture_duration_s,
-                declared_negative=cap.stem in declared_negative,
-                motion_threshold_g=motion_threshold_g))
+                declared_negative=cap.stem in declared_negative, registry=registry))
         except (UnlabelledCapture, WrongSampleRate) as exc:
             skipped.append(str(exc))
     return out, skipped
@@ -285,8 +313,9 @@ def check_format_version(loaded) -> int:
 
     Version 2 despikes the stream before windowing; a version 1 export carries
     single-sample BLE artifacts that reach the model as a full-scale amplitude
-    channel. Version 3 adds the `motion` class, shifting every label index.
-    Either mismatch is silent and changes what the numbers mean.
+    channel. Version 3 added a `motion` class; version 4 replaces it with the
+    registry vocabulary and adds per-window direction. Every step moves the
+    label indices, and every mismatch is silent about it.
     """
     found = int(loaded["format_version"]) if "format_version" in loaded else 1
     if found != FORMAT_VERSION:
@@ -324,15 +353,19 @@ def split_session_by_time(
 
 
 def summarise(windows: list[Window]) -> dict:
-    counts = {name: 0 for name in LABELS}
+    counts: dict[str, int] = {}
+    directions: dict[str, int] = {}
     sessions: dict[str, int] = {}
     for w in windows:
-        counts[w.label] += 1
+        counts[w.label] = counts.get(w.label, 0) + 1
+        if w.direction != "none":
+            directions[w.direction] = directions.get(w.direction, 0) + 1
         sessions[w.session_id] = sessions.get(w.session_id, 0) + 1
     total = len(windows) or 1
     return {
         "total": len(windows),
         "counts": counts,
         "balance": {k: v / total for k, v in counts.items()},
+        "directions": directions,
         "sessions": sessions,
     }

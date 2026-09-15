@@ -42,7 +42,6 @@ from dataclasses import dataclass
 import numpy as np
 
 from whip import events
-from whip.dataset import GESTURE_LABELS
 
 # Operating points to evaluate. Below ~0.34 an argmax over three classes cannot
 # be thresholded at all, so starting there covers the full usable range.
@@ -83,9 +82,11 @@ def labels_at(probabilities, class_names: list[str], threshold: float) -> list[s
     for row in np.asarray(probabilities):
         k = int(np.argmax(row))
         name = class_names[k]
-        # Membership by name, never `k > 0`: `motion` sits between `none` and the
-        # gestures, so an index test would report every wave as a detection.
-        out.append(name if name in GESTURE_LABELS and row[k] >= threshold else "none")
+        # Membership by name, never by index: the `motion`-class episode proved
+        # that any `k > 0 means gesture` test rots the moment the label set
+        # changes. With the registry vocabulary, everything except `none` is a
+        # gesture -- but the comparison stays on the name.
+        out.append(name if name != "none" and row[k] >= threshold else "none")
     return out
 
 
