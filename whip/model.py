@@ -339,7 +339,8 @@ def augment(batch: torch.Tensor,
 
 def save(model, path, trained_on: list[str], held_out: list[str],
          labels: list[str], channels=DEFAULT_CHANNELS,
-         direction_names=("none", "up", "down", "left", "right")) -> None:
+         direction_names=("none", "up", "down", "left", "right"),
+         direction_trained: bool = True) -> None:
     """
     State dict plus provenance -- never the pickled module.
 
@@ -358,6 +359,9 @@ def save(model, path, trained_on: list[str], held_out: list[str],
         "channels": list(channels),
         "labels": [str(l) for l in labels],
         "direction_names": list(direction_names),
+        # An untrained direction head still produces argmaxes -- deterministic
+        # garbage. Consumers must know not to route on them.
+        "direction_trained": bool(direction_trained),
         "trained_on": sorted(trained_on),
         "held_out": sorted(held_out),
         "window_samples": WINDOW_SAMPLES,

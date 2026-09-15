@@ -83,6 +83,9 @@ class Engine:
         self.channels = tuple(provenance.get("channels", ("shape", "scale")))
         self.direction_names = [str(d) for d in provenance.get(
             "direction_names", ["none", "up", "down", "left", "right"])]
+        # A head trained with weight 0 emits deterministic garbage; routing a
+        # "flick:up" mapping on it would fire the wrong action confidently.
+        self.direction_trained = bool(provenance.get("direction_trained", True))
         self.threshold = threshold
         registry = registry or load_registry()
         self.tracker = events.RunTracker(policies=registry.policies(self.labels))
@@ -164,7 +167,8 @@ class Engine:
             gesture_logits, direction_logits = self.model.forward_heads(
                 torch.tensor(x, dtype=torch.float32))
             probs = torch.softmax(gesture_logits, dim=1)[0].numpy()
-            dir_idx = int(torch.argmax(direction_logits, dim=1)[0])
+            dir_idx = int(torch.argmax(direction_logits, dim=1)[0]) \
+                if self.direction_trained else 0
         self._last_probs = probs
 
         k = int(np.argmax(probs))

@@ -35,8 +35,12 @@ def main() -> int:
     parser.add_argument("--batch", type=int, default=128)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--architecture", default="GestureNet", choices=("GestureNet", "CompactNet"))
-    parser.add_argument("--direction-weight", type=float, default=0.3,
-                        help="auxiliary direction-head loss weight; 0 disables")
+    # Default 0: measured (2 seeds, held out), training the direction head at
+    # 0.3 cost ~10 points of gesture recall at the current 264-gesture scale --
+    # the trunk cannot afford the second objective yet. The head stays in the
+    # architecture; enable with more data and re-measure.
+    parser.add_argument("--direction-weight", type=float, default=0.0,
+                        help="auxiliary direction-head loss weight; 0 disables (measured default)")
     parser.add_argument("--channels", default="shape,scale,saturation",
                         help="comma-separated channel groups; see model.to_model_input")
     parser.add_argument("--loud-factor", type=float, default=1.0,
@@ -154,7 +158,8 @@ def main() -> int:
     gm.save(net, args.out,
             trained_on=[s for s in sorted(set(sessions.tolist())) if s not in held],
             held_out=sorted(held), labels=labels, channels=channels,
-            direction_names=direction_names)
+            direction_names=direction_names,
+            direction_trained=args.direction_weight > 0)
 
     n_params = sum(p.numel() for p in net.parameters())
     print(f"\nwrote {args.out}  {args.architecture} ({n_params:,} params)")

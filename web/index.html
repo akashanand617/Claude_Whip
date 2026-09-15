@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Whip ring console</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header>
+  <h1>Whip <span class="sub">ring console</span></h1>
+  <div id="conn">
+    <span id="state-pill" class="pill idle">idle</span>
+    <span id="device-line"></span>
+    <span id="battery-line"></span>
+    <button id="btn-connect">Connect</button>
+    <button id="btn-disconnect" hidden>Disconnect</button>
+  </div>
+</header>
+
+<nav>
+  <button class="tab active" data-tab="live">Live</button>
+  <button class="tab" data-tab="flash">Firmware</button>
+  <button class="tab" data-tab="settings">Settings</button>
+</nav>
+
+<main>
+  <!-- ================================================================ Live -->
+  <section id="tab-live" class="panel">
+    <div class="row">
+      <button id="btn-stream" disabled>Start tracking</button>
+      <span id="model-line" class="muted"></span>
+    </div>
+    <canvas id="wave" height="160"></canvas>
+    <div id="probs"></div>
+    <div class="row">
+      <h3>Events</h3>
+      <span class="muted">detection latency is ~1&thinsp;s by design (windowing + debounce)</span>
+    </div>
+    <ul id="events"></ul>
+  </section>
+
+  <!-- =============================================================== Flash -->
+  <section id="tab-flash" class="panel" hidden>
+    <p id="mode-line" class="big"></p>
+    <div id="targets"></div>
+    <div id="flash-flow" hidden>
+      <h3 id="flash-title"></h3>
+      <ol class="steps">
+        <li id="step-validate">Validate the image (checksums, frame-by-frame dry run
+          &mdash; nothing touches the ring) <button id="btn-validate">Validate</button>
+          <span id="validate-result"></span></li>
+        <li id="step-confirm" class="dim">Type <code>FLASH</code> to confirm.
+          There is <strong>no recovery path</strong> if the transfer breaks:
+          keep the ring near the machine, keep the machine awake, do not close
+          this tab.
+          <input id="confirm-word" placeholder="type FLASH" disabled>
+          <button id="btn-flash" disabled>Flash now</button></li>
+      </ol>
+      <pre id="flash-log" hidden></pre>
+      <progress id="flash-progress" max="100" value="0" hidden></progress>
+    </div>
+  </section>
+
+  <!-- ============================================================ Settings -->
+  <section id="tab-settings" class="panel" hidden>
+    <h3>Gesture &rarr; action mapping</h3>
+    <p class="muted">The model reports every gesture; the app acts only on mapped
+      ones. A direction-qualified entry like <code>flick:up</code> beats the bare
+      gesture name.</p>
+    <table id="mappings"><thead><tr><th>gesture</th><th>action</th><th></th></tr></thead>
+      <tbody></tbody></table>
+    <div class="row">
+      <input id="map-gesture" placeholder="gesture (e.g. flick:up)">
+      <input id="map-action" placeholder="action (e.g. approve)">
+      <button id="btn-add-mapping">Add</button>
+    </div>
+    <h3>Detection threshold</h3>
+    <div class="row">
+      <input type="range" id="threshold" min="0.35" max="0.95" step="0.05">
+      <span id="threshold-value"></span>
+    </div>
+    <p class="muted">Higher = fewer false fires, more missed gestures.
+      Applies immediately to a running stream.</p>
+    <button id="btn-save-settings">Save settings</button>
+    <span id="settings-result"></span>
+  </section>
+</main>
+
+<footer class="muted">local only (127.0.0.1) &middot; events are logged to
+  <code>data/live/</code> for the preference-labeling loop</footer>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
