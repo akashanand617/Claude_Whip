@@ -35,37 +35,37 @@ SESSIONS = Path("data/sessions")
 
 GESTURE_HELD_OUT = "prompted_20260912_013715"
 CALIBRATION = "gate_imm4_20260906_210533"          # typing, the longest negative
+# Pure negatives only. The waving/snapping/clapping session is now POSITIVE
+# content (its cued spans are classes), so it can no longer serve as a
+# false-positive meter -- a correct wave detection there is a hit, not a FP.
 REPORT_ON = {
     "typing": "gate_imm4_20260906_210533",
-    "waving": "negative_20260908_202143",
     "idle": "negative_20260908_201610",
     "walking": "negative_20260908_200022",
+    "ambient": "negative_20260915_021616",
 }
 
-# (label, channels, loud_factor, motion_class)
-#
-# The motion axis is the question: is a separate class for "moving, but not a
-# gesture" better than leaving those windows in `none` and reweighting them?
-# The reweighting exists only because loud windows were 4.7% of `none` and class
-# weights could not reach them. A real class gets a class weight directly, and
-# stops `none` having to mean both silence and a violently moving hand.
+# (label, channels, loud_factor, direction_weight)
 CONFIGS = [
-    ("none-only, no weight",        ("shape", "scale"), 1.0, False),
-    ("none-only, weight x10",       ("shape", "scale"), 10.0, False),
-    ("motion class",                ("shape", "scale"), 1.0, True),
-    ("motion class + weight x10",   ("shape", "scale"), 10.0, True),
-    ("motion + saturation",         ("shape", "scale", "saturation"), 1.0, True),
-    ("motion + gravity/linear",     ("gravity", "linear", "scale"), 1.0, True),
+    ("shape+scale, no dir head",    ("shape", "scale"), 1.0, 0.0),
+    ("shape+scale, dir 0.3",        ("shape", "scale"), 1.0, 0.3),
+    ("+saturation, no dir head",    ("shape", "scale", "saturation"), 1.0, 0.0),
+    ("+saturation, dir 0.3",        ("shape", "scale", "saturation"), 1.0, 0.3),
+    ("+saturation, loud x10",       ("shape", "scale", "saturation"), 10.0, 0.0),
 ]
 
 
 def truth_for(session_id: str) -> list[tuple[float, str]]:
+    from whip.registry import load_registry
+
+    registry = load_registry()
     path = SESSIONS / f"{session_id}.notes.json"
     if not path.exists():
         return []
     notes = json.loads(path.read_text())
-    return [(m["cue_at"] + 0.6, m["label"]) for m in notes.get("marks", [])
-            if m.get("label") in ("flag", "approve")]
+    return [(m["cue_at"] + 0.6, registry.canonical(m["label"]))
+            for m in notes.get("marks", [])
+            if "until" not in m and registry.resolve(m.get("label", "none"))]
 
 
 def main() -> int:
@@ -86,20 +86,10 @@ def main() -> int:
     dataset.check_format_version(d)
     raw, y, SESS, START = d["X"], d["y"], d["session"], d["start_s"]
     all_names = [str(s) for s in d["labels"]]
-
-    def labelling(with_motion: bool):
-        """Labels and class names with the `motion` class kept or folded back in."""
-        if with_motion:
-            return y, all_names
-        # Fold `motion` back into `none` and renumber so the classes stay
-        # contiguous -- this reproduces the pre-motion labelling exactly, which
-        # is what makes the comparison an A/B on one factor rather than on the
-        # dataset.
-        mi = all_names.index(dataset.MOTION_LABEL)
-        kept = [i for i in range(len(all_names)) if i != mi]
-        remap = {old: new for new, old in enumerate(kept)}
-        remap[mi] = 0
-        return np.array([remap[int(v)] for v in y]), [all_names[i] for i in kept]
+    direction = d["direction"] if "direction" in d else np.zeros(len(y), dtype=np.int64)
+    from whip.registry import load_registry
+    registry = load_registry()
+    policies = registry.policies(all_names)
     peaks = sampling.window_peaks(raw)
     budget = args.budget_per_hour / 60.0
 
@@ -144,14 +134,15 @@ def main() -> int:
 
     channel_cache: dict[tuple, np.ndarray] = {}
 
-    def run(channels, loud_factor, with_motion, seed):
+    def run(channels, loud_factor, direction_weight, seed):
         torch.manual_seed(seed)
         np.random.seed(seed)
         if channels not in channel_cache:
             channel_cache[channels] = gm.to_model_input(raw, channels)
         X = channel_cache[channels]
-        y_used, class_names = labelling(with_motion)
+        y_used, class_names = y, all_names
         Xtr, ytr = X[train_mask], y_used[train_mask]
+        dtr = direction[train_mask]
         net = gm.GestureNet(n_channels=X.shape[1], n_classes=len(class_names)).to(device)
         opt = torch.optim.AdamW(net.parameters(), lr=3e-3, weight_decay=1e-3)
         sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, args.epochs)
@@ -160,21 +151,29 @@ def main() -> int:
         cw = torch.tensor(len(ytr) / (n_cls * np.maximum(counts, 1)),
                           dtype=torch.float32, device=device)
         loss_fn = nn.CrossEntropyLoss(weight=cw, reduction="none")
-        gesture_ids = [class_names.index(n) for n in dataset.GESTURE_LABELS]
+        gesture_ids = [class_names.index(n) for n in dataset.gesture_names(class_names)]
         loud_g = sampling.gesture_peak_percentile(peaks[train_mask], ytr, 10.0,
                                                   gesture_indices=gesture_ids)
         sw = sampling.loud_negative_weights(peaks[train_mask], ytr, loud_g, loud_factor)
         xt = torch.tensor(Xtr, device=device)
         yt = torch.tensor(ytr, device=device)
         wt = torch.tensor(sw, dtype=torch.float32, device=device)
+        dt = torch.tensor(dtr, device=device)
+        directed = dt > 0
+        direction_loss = nn.CrossEntropyLoss()
         for _ in range(args.epochs):
             net.train()
             perm = torch.randperm(len(yt), device=device)
             for i in range(0, len(perm), 128):
                 idx = perm[i:i + 128]
                 opt.zero_grad()
-                per = loss_fn(net(gm.augment(xt[idx])), yt[idx])
-                ((per * wt[idx]).sum() / wt[idx].sum()).backward()
+                gl, dl = net.forward_heads(gm.augment(xt[idx]))
+                per = loss_fn(gl, yt[idx])
+                loss = (per * wt[idx]).sum() / wt[idx].sum()
+                mask = directed[idx]
+                if direction_weight and mask.any():
+                    loss = loss + direction_weight * direction_loss(dl[mask], dt[idx][mask])
+                loss.backward()
                 opt.step()
             sched.step()
         net.eval()
@@ -208,29 +207,32 @@ def main() -> int:
             pooled_minutes += mins_
 
         points = evaluate.curve(gp, gs, truth, segments, pooled_minutes, class_names,
-                                min_run=events.MIN_RUN, max_run=events.MAX_RUN)
+                                min_run=events.MIN_RUN, max_run=events.MAX_RUN,
+                                policies=policies)
         best = evaluate.recall_at_budget(points, budget)
         auc = evaluate.area_under_curve(points, budget)
 
         thr = best.threshold if best else 0.999
         hits = evaluate.gesture_hits(
-            events.detect(evaluate.labels_at(gp, class_names, thr), gs), truth)
+            events.detect(evaluate.labels_at(gp, class_names, thr), gs,
+                          policies=policies), truth)
         fps = {}
         for name, mask in score_half.items():
             p, st, mins = probs(mask)
-            n = len(events.detect(evaluate.labels_at(p, class_names, thr), st))
+            n = len(events.detect(evaluate.labels_at(p, class_names, thr), st,
+                                  policies=policies))
             fps[name] = evaluate.rate_per_minute(n, mins)
         return thr, hits, fps, auc, pooled_minutes
 
     print(f"{'configuration':<32} {'AUC':>6} {'recall@budget':>14} {'95% CI':>15} "
-          f"{'thr':>5} {'wave/min':>9} {'idle/min':>9}")
+          f"{'thr':>5} {'idle/min':>9} {'amb/min':>9}")
     print("-" * 104)
     rows = []
-    for label, channels, factor, with_motion in CONFIGS:
+    for label, channels, factor, dweight in CONFIGS:
         all_hits, thrs, fp_acc, pooled, aucs = [], [], {}, [], []
         minutes = 0.0
         for seed in range(args.seeds):
-            thr, hits, fps, auc, minutes = run(channels, factor, with_motion, seed)
+            thr, hits, fps, auc, minutes = run(channels, factor, dweight, seed)
             thrs.append(thr)
             all_hits.append(np.mean(hits))
             pooled.extend(hits)
@@ -245,8 +247,8 @@ def main() -> int:
               f"{np.mean(all_hits) * 100:7.1f}+/-{np.std(all_hits) * 100:<4.1f} "
               f"{ci[0] * 100:6.1f}-{ci[1] * 100:5.1f}% "
               f"{np.mean(thrs):5.2f} "
-              f"{np.mean(fp_acc.get('waving', [np.nan])):9.2f} "
-              f"{np.mean(fp_acc.get('idle', [np.nan])):9.2f}", flush=True)
+              f"{np.mean(fp_acc.get('idle', [np.nan])):9.2f} "
+              f"{np.mean(fp_acc.get('ambient', [np.nan])):9.2f}", flush=True)
 
     print(f"\n  AUC is mean recall across the curve up to the budget, on {minutes:.1f} min of")
     print("  pooled scoring halves. It is the comparable number: reading recall at a")
@@ -264,8 +266,8 @@ def main() -> int:
         print("  intervals with it, so this is a tie, not a winner:")
         for r in contenders:
             print(f"    {r[0]}")
-    print("\n  Waving halves come from one 1.7-minute clip, so a good number there is")
-    print("  necessary and not sufficient.")
+    print("\n  The waving session no longer appears here: its cued spans are now")
+    print("  positive classes, so it cannot serve as a false-positive meter.")
     return 0
 
 

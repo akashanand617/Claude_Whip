@@ -35,7 +35,9 @@ def main() -> int:
     parser.add_argument("--batch", type=int, default=128)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--architecture", default="GestureNet", choices=("GestureNet", "CompactNet"))
-    parser.add_argument("--channels", default="shape,scale",
+    parser.add_argument("--direction-weight", type=float, default=0.3,
+                        help="auxiliary direction-head loss weight; 0 disables")
+    parser.add_argument("--channels", default="shape,scale,saturation",
                         help="comma-separated channel groups; see model.to_model_input")
     parser.add_argument("--loud-factor", type=float, default=1.0,
                         help="how much more a loud negative is worth than a quiet one. "
@@ -64,6 +66,10 @@ def main() -> int:
     raw = d["X"]
     X = gm.to_model_input(raw, channels)
     y, sessions = d["y"], d["session"]
+    labels = [str(l) for l in d["labels"]]
+    direction = d["direction"] if "direction" in d else np.zeros(len(y), dtype=np.int64)
+    direction_names = ([str(n) for n in d["direction_names"]]
+                       if "direction_names" in d else ["none", "up", "down", "left", "right"])
     peaks = sampling.window_peaks(raw)
 
     held = set(args.held_out)
@@ -80,25 +86,27 @@ def main() -> int:
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
 
-    net = getattr(gm, args.architecture)(n_channels=X.shape[1]).to(device)
+    net = getattr(gm, args.architecture)(n_channels=X.shape[1], n_classes=len(labels)).to(device)
     opt = torch.optim.AdamW(net.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, args.epochs)
 
     Xtr, ytr = X[train_mask], y[train_mask]
-    counts = np.bincount(ytr, minlength=3)
+    dtr = direction[train_mask]
+    counts = np.bincount(ytr, minlength=len(labels))
     # Class weights, because `none` outnumbers the gestures roughly 8:1 and an
     # unweighted loss is nearly satisfied by predicting it always.
-    weights = torch.tensor(len(ytr) / (3 * np.maximum(counts, 1)),
+    weights = torch.tensor(len(ytr) / (len(labels) * np.maximum(counts, 1)),
                            dtype=torch.float32, device=device)
     loss_fn = nn.CrossEntropyLoss(weight=weights, reduction="none")
+    direction_loss_fn = nn.CrossEntropyLoss()
 
     # Per-sample weights on top of the class weights, correcting a different
     # imbalance. Class weights fix "there are 8x more none windows than gestures".
     # These fix "the ~5% of negatives that are as loud as a gesture are the ones
     # that decide the false-positive rate, and cross-entropy is nearly
     # indifferent to all of them".
-    from whip import dataset as ds
-    gesture_ids = [ds.LABEL_INDEX[n] for n in ds.GESTURE_LABELS]
+    from whip.dataset import gesture_names
+    gesture_ids = [labels.index(n) for n in gesture_names(labels)]
     loud_g = args.loud_g if args.loud_g is not None else sampling.gesture_peak_percentile(
         peaks[train_mask], ytr, 10.0, gesture_indices=gesture_ids)
     sample_w = sampling.loud_negative_weights(peaks[train_mask], ytr, loud_g, args.loud_factor)
@@ -111,6 +119,11 @@ def main() -> int:
     xt = torch.tensor(Xtr, device=device)
     yt = torch.tensor(ytr, device=device)
     wt = torch.tensor(sample_w, dtype=torch.float32, device=device)
+    dt = torch.tensor(dtr, device=device)
+    # Direction supervision exists only where a prompt recorded one; everything
+    # else (negatives, spans, "any"-direction prompts) is masked out rather than
+    # trained toward a fake "none" answer it would then predict everywhere.
+    directed = dt > 0
 
     for epoch in range(args.epochs):
         net.train()
@@ -119,8 +132,16 @@ def main() -> int:
         for i in range(0, len(perm), args.batch):
             idx = perm[i:i + args.batch]
             opt.zero_grad()
-            per_sample = loss_fn(net(gm.augment(xt[idx])), yt[idx])
+            gesture_logits, direction_logits = net.forward_heads(gm.augment(xt[idx]))
+            per_sample = loss_fn(gesture_logits, yt[idx])
             loss = (per_sample * wt[idx]).sum() / wt[idx].sum()
+            mask = directed[idx]
+            if mask.any():
+                # 0.3: enough for the trunk to be pushed toward encoding which
+                # way the wrist rotated, small enough that the gesture head --
+                # the one that actually fires events -- stays the objective.
+                loss = loss + args.direction_weight * direction_loss_fn(
+                    direction_logits[mask], dt[idx][mask])
             loss.backward()
             opt.step()
             total += float(loss.detach()) * len(idx)
@@ -132,11 +153,13 @@ def main() -> int:
     args.out.parent.mkdir(parents=True, exist_ok=True)
     gm.save(net, args.out,
             trained_on=[s for s in sorted(set(sessions.tolist())) if s not in held],
-            held_out=sorted(held), channels=channels)
+            held_out=sorted(held), labels=labels, channels=channels,
+            direction_names=direction_names)
 
     n_params = sum(p.numel() for p in net.parameters())
-    print(f"\nwrote {args.out}  {args.architecture} ({n_params:,} params), "
-          f"channels {','.join(channels)}")
+    print(f"\nwrote {args.out}  {args.architecture} ({n_params:,} params)")
+    print(f"  classes    {', '.join(labels)}")
+    print(f"  channels   {','.join(channels)}   direction weight {args.direction_weight}")
     print(f"  trained on {train_mask.sum()} windows from "
           f"{len(set(sessions[train_mask].tolist()))} sessions")
     print(f"  held out   {', '.join(sorted(held)) if held else '(nothing)'}")

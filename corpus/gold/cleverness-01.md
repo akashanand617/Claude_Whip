@@ -36,13 +36,10 @@ for r in records:
     groups[r["request_id"]].append(r)
 ```
 
-Or, if the records are already sorted by request id,
-`itertools.groupby(records, key=itemgetter("request_id"))` avoids building
-the dict at all.
-
 # Notes
 
 Identical result for identical input. A spells out the membership check with
-long names; B reaches for `defaultdict` and mentions the `groupby` idiom.
-Both are common professional Python; the axis is taste for density, not
-correctness or even asymptotics.
+long names; B reaches for `defaultdict` and single-letter iteration. Both are
+common professional Python; the axis is taste for density, not correctness or
+even asymptotics. Note the dense variant is the *shorter* one here — the
+cleverness dimension must not let length stand in for the pole.

@@ -13,7 +13,8 @@
           "summary": "Clean up adjacent code while editing.",
           "context_statement": "While making a change, also tidy the code you touch: naming, dead code, small inconsistencies."
         }
-      }
+      },
+      "length_constitutive": true
     },
     {
       "key": "verbosity",
@@ -27,7 +28,8 @@
           "summary": "Teach the why alongside the answer.",
           "context_statement": "Explain the underlying cause and reasoning alongside every answer, not just the fix."
         }
-      }
+      },
+      "length_constitutive": true
     },
     {
       "key": "comments",
@@ -41,7 +43,8 @@
           "summary": "Comment each step of the logic.",
           "context_statement": "Comment generated code step by step so it can be followed without reading the code closely."
         }
-      }
+      },
+      "length_constitutive": true
     },
     {
       "key": "abstraction",
@@ -55,7 +58,8 @@
           "summary": "Build the reusable structure up front.",
           "context_statement": "Structure new code for reuse and extension up front, even if only one caller exists today."
         }
-      }
+      },
+      "length_constitutive": true
     },
     {
       "key": "defensiveness",
@@ -69,7 +73,8 @@
           "summary": "Validate inputs and handle errors explicitly.",
           "context_statement": "Validate inputs and handle failure modes explicitly, with actionable error messages, even in internal code."
         }
-      }
+      },
+      "length_constitutive": true
     },
     {
       "key": "dependencies",
@@ -83,7 +88,8 @@
           "summary": "Use the well-known package.",
           "context_statement": "Prefer the established, well-tested package over hand-rolling functionality it already provides."
         }
-      }
+      },
+      "length_constitutive": false
     },
     {
       "key": "initiative",
@@ -97,7 +103,8 @@
           "summary": "Proceed with a stated, reversible assumption.",
           "context_statement": "When a request is ambiguous, pick the most likely reading, state the assumption, and proceed; do not block on questions."
         }
-      }
+      },
+      "length_constitutive": false
     },
     {
       "key": "proactivity",
@@ -111,7 +118,8 @@
           "summary": "Bring tests and docs along by default.",
           "context_statement": "When implementing a change, also add the matching test and documentation update without being asked."
         }
-      }
+      },
+      "length_constitutive": true
     },
     {
       "key": "idiom",
@@ -125,7 +133,8 @@
           "summary": "Write new code to current best practice.",
           "context_statement": "Write new code to current best practice even inside legacy files, and note the inconsistency it introduces."
         }
-      }
+      },
+      "length_constitutive": false
     },
     {
       "key": "hedging",
@@ -139,7 +148,8 @@
           "summary": "Flag uncertainty and alternatives explicitly.",
           "context_statement": "Present conclusions with explicit uncertainty, alternative explanations, and suggested confirmation steps."
         }
-      }
+      },
+      "length_constitutive": false
     },
     {
       "key": "cleverness",
@@ -153,7 +163,8 @@
           "summary": "Idiomatic comprehensions and one-liners.",
           "context_statement": "Prefer concise idiomatic constructs (comprehensions, stdlib combinators) over spelled-out loops."
         }
-      }
+      },
+      "length_constitutive": false
     },
     {
       "key": "testing",
@@ -167,7 +178,8 @@
           "summary": "Parameterized coverage of the edge cases.",
           "context_statement": "Write parameterized tests covering edge cases systematically: empty, unicode, boundaries, idempotency."
         }
-      }
+      },
+      "length_constitutive": true
     }
   ]
 }

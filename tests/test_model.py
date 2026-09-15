@@ -22,7 +22,8 @@ def test_parameter_counts():
     rather than protecting it.
     """
     assert sum(p.numel() for p in gm.CompactNet().parameters()) == 18068
-    assert sum(p.numel() for p in gm.GestureNet().parameters()) == 226148
+    # 226,148 for the trunk + gesture head; the direction head adds 1,925.
+    assert sum(p.numel() for p in gm.GestureNet().parameters()) == 228073
 
 
 def test_the_trunk_never_pools_away_time():
@@ -90,7 +91,8 @@ def test_checkpoint_round_trips(tmp_path):
         before = net(x)
 
     path = tmp_path / "m.pt"
-    gm.save(net, path, trained_on=["s1", "s0"], held_out=["s2"])
+    gm.save(net, path, trained_on=["s1", "s0"], held_out=["s2"],
+            labels=["none", "flick", "double_flick", "wave"])
     loaded, provenance = gm.load(path)
 
     with torch.no_grad():
@@ -105,7 +107,8 @@ def test_checkpoint_records_what_it_trained_on(tmp_path):
     Session 1 scores 200/200 and session 2 scores 44/64 from the same model.
     """
     path = tmp_path / "m.pt"
-    gm.save(gm.GestureNet(), path, trained_on=["a"], held_out=["b"])
+    gm.save(gm.GestureNet(), path, trained_on=["a"], held_out=["b"],
+            labels=["none", "flick", "double_flick", "wave"])
     _, provenance = gm.load(path)
     assert "trained_on" in provenance and provenance["trained_on"]
 
@@ -214,7 +217,8 @@ def test_a_compactnet_checkpoint_loads_back_as_a_compactnet(tmp_path):
     loaded into a GestureNet fails with an unreadable shape error.
     """
     path = tmp_path / "old.pt"
-    gm.save(gm.CompactNet(), path, trained_on=["s1"], held_out=["s2"])
+    gm.save(gm.CompactNet(), path, trained_on=["s1"], held_out=["s2"],
+            labels=["none", "flick", "double_flick", "wave"])
     loaded, provenance = gm.load(path)
     assert isinstance(loaded, gm.CompactNet)
     assert provenance["architecture"] == "CompactNet"
@@ -227,10 +231,42 @@ def test_a_gesturenet_checkpoint_round_trips(tmp_path):
     with torch.no_grad():
         before = net(x)
     path = tmp_path / "new.pt"
-    gm.save(net, path, trained_on=["s1"], held_out=["s2"])
-    loaded, _ = gm.load(path)
+    gm.save(net, path, trained_on=["s1"], held_out=["s2"],
+            labels=["none", "flick", "double_flick", "wave"])
+    loaded, provenance = gm.load(path)
     with torch.no_grad():
         assert torch.allclose(before, loaded(x), atol=1e-6)
+    assert provenance["labels"] == ["none", "flick", "double_flick", "wave"]
+
+
+def test_the_checkpoint_class_count_follows_its_labels(tmp_path):
+    """Six recorded classes, six logits -- the model is sized by the data."""
+    net = gm.GestureNet(n_classes=6)
+    path = tmp_path / "six.pt"
+    gm.save(net, path, trained_on=["s"], held_out=[],
+            labels=["none", "flick", "double_flick", "snap", "wave", "clap"])
+    loaded, _ = gm.load(path)
+    assert loaded(a_batch(2)).shape == (2, 6)
+
+
+def test_a_checkpoint_without_labels_is_refused(tmp_path):
+    """Pre-vocabulary checkpoints mean something else; fail with instructions."""
+    path = tmp_path / "old.pt"
+    torch.save({"state_dict": gm.GestureNet().state_dict(),
+                "architecture": "GestureNet", "n_channels": gm.N_CHANNELS}, path)
+    with pytest.raises(ValueError, match="Retrain"):
+        gm.load(path)
+
+
+def test_direction_head_shares_the_trunk():
+    net = gm.GestureNet()
+    net.eval()
+    x = a_batch(2)
+    with torch.no_grad():
+        gesture, direction = net.forward_heads(x)
+        assert gesture.shape == (2, gm.N_CLASSES)
+        assert direction.shape == (2, 5)
+        assert torch.allclose(gesture, net(x), atol=1e-6), "same trunk, same logits"
 
 
 def test_channel_groups_have_the_advertised_widths():

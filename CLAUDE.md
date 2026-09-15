@@ -16,7 +16,7 @@ preferences written into a context file as context fills.
 |---|---|
 | M0 hardware gate | **PASSED** on `#4`: 25.00 Hz, 0.24% loss, 10 min worn |
 | M1 gesture classifier | protocol designed (`docs/COLLECTION.md`); harness not built |
-| M2 calibration corpus | not started, **not blocked on hardware** |
+| M2 calibration corpus | designed (`docs/CALIBRATION.md`); 12-dimension taxonomy + 12 gold / 48 spec items in `corpus/`, planner in `whip/corpus.py` |
 | M3 labeling session | not started, **not blocked on hardware** |
 | M4 reward model | not started |
 | M5 LoRA adapter | not started |
@@ -649,5 +649,13 @@ the data it is scored on.
 - If M1's false-positive target proves hard, `#3` offers 33% more samples at
   the cost of the loss criterion. Revisit then, not now.
 - LED: find and NOP the optical enable in the raw path.
-- **M2: pull the calibration corpus from the FDD pipeline and AsyncWorld repos.**
-  This is the actual next milestone and needs none of the above.
+- **M2 is a curated contrastive corpus, not mined repo data.** The earlier plan
+  to pull interactions from the FDD pipeline and AsyncWorld repos is replaced
+  (2026-09-15): mined responses differ from their alternatives on many axes at
+  once with no counterfactual, so a flag cannot identify *which* property was
+  disliked, and correctness confounds taste. Each corpus item is instead a pair
+  of equally-correct responses differing on exactly one of 12 taste dimensions;
+  the gesture identifies the class by construction. Design and confound table:
+  `docs/CALIBRATION.md`. Next: expand the 48 specs in `corpus/specs.jsonl` to
+  gold (following the same-dimension exemplar in `corpus/gold/`), then run
+  session 1 via `python -m probe.calibrate plan`.

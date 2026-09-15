@@ -124,7 +124,7 @@ Every item must survive all five, and the validator enforces what it can:
 | Confound | How it bites | Fix |
 |---|---|---|
 | Correctness leak | one variant subtly buggy; label measures bugs, not taste | both variants reviewed correct before any session |
-| Length leak | the pole is guessable from response length alone | balance which pole is longer across items within each dimension; validator flags a dimension whose longer-pole is constant |
+| Length leak | the pole is guessable from response length alone | balance which pole is longer across items within each dimension; validator flags a dimension whose longer-pole is constant. Exempt: dimensions marked `length_constitutive` in the taxonomy (verbosity, comments, testing, scope, proactivity, abstraction, defensiveness), where the poles differ in length *by definition* -- reacting to length there is reacting to the axis. For the rest (cleverness, dependencies, idiom, initiative, hedging) the balance is enforceable and required -- e.g. the dense `cleverness` variant should usually be the *shorter* one |
 | Order / anchoring | second member of a pair judged relative to the first | members ≥ 4 slots apart; which pole shows first is balanced exactly 50/50 per session |
 | Dimension blocking | consecutive same-axis items teach the labeler the axis; they start answering the *policy* question instead of reacting | round-robin dimensions; no two same-dimension pairs adjacent |
 | Domain leak | a dimension always arrives in one language/domain | cross domains within every dimension |

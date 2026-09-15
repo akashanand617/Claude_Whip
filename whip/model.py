@@ -256,7 +256,7 @@ class GestureNet(nn.Module):
     def __init__(self, n_classes: int = N_CLASSES, dropout: float = 0.3,
                  n_channels: int = N_CHANNELS, channels: int = INCEPTION_CHANNELS,
                  kernels: tuple[int, ...] = INCEPTION_KERNELS,
-                 blocks: int = INCEPTION_BLOCKS):
+                 blocks: int = INCEPTION_BLOCKS, n_directions: int = 5):
         super().__init__()
         self.n_channels = n_channels
         width = channels * (len(kernels) + 1)
@@ -269,14 +269,29 @@ class GestureNet(nn.Module):
         self.shortcut = nn.Sequential(nn.Conv1d(n_channels, width, 1), nn.BatchNorm1d(width))
         self.dropout = nn.Dropout(dropout)
         self.head = nn.Linear(width * 3, n_classes)
+        # Direction is a second head, not extra classes. Splitting flick by
+        # direction would make eight classes at ~200 windows each -- a 4x data
+        # starvation of the two best-supported gestures -- while a head shares
+        # every flick window and still lets events carry (gesture, direction).
+        # It also acts as free regularisation: the trunk must encode WHICH WAY
+        # the wrist rotated, not just that it did, which is structure a
+        # 264-gesture corpus cannot afford to leave on the table.
+        self.direction_head = nn.Linear(width * 3, n_directions)
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def _pooled(self, x: torch.Tensor) -> torch.Tensor:
         z = x
         for block in self.blocks:
             z = block(z)
         z = torch.relu(z + self.shortcut(x))
-        pooled = torch.cat([z.mean(dim=2), z.amax(dim=2), z.std(dim=2)], dim=1)
-        return self.head(self.dropout(pooled))
+        return torch.cat([z.mean(dim=2), z.amax(dim=2), z.std(dim=2)], dim=1)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.head(self.dropout(self._pooled(x)))
+
+    def forward_heads(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        """Gesture and direction logits off one trunk pass, for training."""
+        pooled = self.dropout(self._pooled(x))
+        return self.head(pooled), self.direction_head(pooled)
 
 
 # Settled by ablation, not by taste. The first version scaled amplitude +/-30%,
@@ -322,32 +337,44 @@ def augment(batch: torch.Tensor,
     return out
 
 
-def save(model: GestureNet, path, trained_on: list[str], held_out: list[str],
-         channels=DEFAULT_CHANNELS) -> None:
+def save(model, path, trained_on: list[str], held_out: list[str],
+         labels: list[str], channels=DEFAULT_CHANNELS,
+         direction_names=("none", "up", "down", "left", "right")) -> None:
     """
     State dict plus provenance -- never the pickled module.
 
     `trained_on` is not decoration. Recall on a session the model trained on is
     memorisation, and every report that omits which sessions those were has
     quietly inflated its own headline number.
+
+    `labels` makes the checkpoint self-describing: the server, the frontend and
+    the realtime engine all read the class list from here rather than assuming
+    one, so adding a gesture never means editing them.
     """
     torch.save({
         "state_dict": model.state_dict(),
         "architecture": type(model).__name__,
         "n_channels": model.n_channels,
         "channels": list(channels),
+        "labels": [str(l) for l in labels],
+        "direction_names": list(direction_names),
         "trained_on": sorted(trained_on),
         "held_out": sorted(held_out),
         "window_samples": WINDOW_SAMPLES,
     }, path)
 
 
-def load(path) -> tuple[GestureNet, dict]:
+def load(path) -> tuple[nn.Module, dict]:
     obj = torch.load(path, map_location="cpu", weights_only=False)
+    if "labels" not in obj:
+        raise ValueError(
+            f"{path} predates self-describing checkpoints (no labels). "
+            "Retrain: python -m probe.train --held-out <session> ..."
+        )
     # Checkpoints name their architecture. Without this a CompactNet checkpoint
     # silently fails to load into a GestureNet with a shape error nobody can read.
-    cls = {"CompactNet": CompactNet, "GestureNet": GestureNet}[obj.get("architecture", "CompactNet")]
-    model = cls(n_channels=obj.get("n_channels", N_CHANNELS))
+    cls = {"CompactNet": CompactNet, "GestureNet": GestureNet}[obj.get("architecture", "GestureNet")]
+    model = cls(n_channels=obj.get("n_channels", N_CHANNELS), n_classes=len(obj["labels"]))
     model.load_state_dict(obj["state_dict"])
     model.eval()
     return model, obj

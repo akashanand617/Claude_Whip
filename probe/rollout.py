@@ -45,17 +45,48 @@ SESSIONS = Path("data/sessions")
 MIN_AMBIENT_MIN = 190.0
 
 
+from whip.registry import load_registry
+
+_REGISTRY = load_registry()
+
+
 def truth_for(session_id: str) -> list[tuple[float, str]]:
-    """Gesture times from the session's marks, offset to the middle of the gesture."""
+    """Impulsive gesture times from the session's marks, canonically named."""
     path = SESSIONS / f"{session_id}.notes.json"
     if not path.exists():
         return []
     notes = json.loads(path.read_text())
-    return [
-        (m["cue_at"] + 0.6, m["label"])
-        for m in notes.get("marks", [])
-        if m.get("label") in ("flag", "approve")
-    ]
+    out = []
+    for m in notes.get("marks", []):
+        if "until" in m:
+            continue
+        spec = _REGISTRY.resolve(m.get("label", "none"))
+        if spec is not None:
+            out.append((m["cue_at"] + 0.6, spec.name))
+    return out
+
+
+def spans_for(session_id: str) -> list[tuple[float, float, str]]:
+    """
+    Cued gesture spans, canonically named.
+
+    These make a session *positive* content: the adversarial session's waving /
+    snapping / clapping blocks are now classes, and an event fired inside one is
+    a detection, not a false positive. Unrecognised motions stay attribution-only
+    and their stretches still count toward the negative clock.
+    """
+    path = SESSIONS / f"{session_id}.notes.json"
+    if not path.exists():
+        return []
+    notes = json.loads(path.read_text())
+    out = []
+    for m in notes.get("marks", []):
+        if "until" not in m:
+            continue
+        spec = _REGISTRY.resolve(m.get("motion", ""))
+        if spec is not None:
+            out.append((m["cue_at"], m["until"], spec.name))
+    return out
 
 
 def main() -> int:
@@ -81,6 +112,9 @@ def main() -> int:
 
     model, provenance = gesture_model.load(args.checkpoint)
     trained_on = set(args.trained_on) | set(provenance.get("trained_on", []))
+    # The checkpoint says which channel groups it was trained on; deriving with
+    # anything else is a silent shape or, worse, meaning mismatch.
+    model_channels = tuple(provenance.get("channels", gesture_model.DEFAULT_CHANNELS))
 
     d = np.load(args.windows, allow_pickle=True)
     try:
@@ -97,9 +131,7 @@ def main() -> int:
         """Probabilities and start times for one session, in time order."""
         sel = SESS == session_id if mask is None else mask
         order = np.where(sel)[0][np.argsort(START[sel])]
-        batch = X[order]
-        if model.n_channels != batch.shape[1]:
-            batch = gesture_model.to_model_input(batch)
+        batch = gesture_model.to_model_input(X[order], model_channels)
         with torch.no_grad():
             probs = torch.softmax(model(torch.tensor(batch)), dim=1).numpy()
         starts = START[order].tolist()
@@ -108,8 +140,11 @@ def main() -> int:
 
     sessions = sorted(set(SESS.tolist()))
     held_out = [s for s in sessions if s not in trained_on and (SESS == s).sum() >= 60]
-    negatives = [s for s in held_out if not truth_for(s)]
+    # A session is negative only if it carries neither impulsive marks nor
+    # recognised gesture spans. Spans count: a wave block is positive content.
+    negatives = [s for s in held_out if not truth_for(s) and not spans_for(s)]
     with_gestures = [s for s in held_out if truth_for(s)]
+    policies = _REGISTRY.policies(class_names)
 
     # --- pick a calibration session, and split it so it is never reported on ---
     calib_id = args.calibrate_on
@@ -131,11 +166,11 @@ def main() -> int:
     cp, cs, cm = stream(calib_id, first)
     try:
         threshold = evaluate.calibrate(cp, cs, cm, class_names, budget_per_minute,
-                                       min_run=lo, max_run=hi)
+                                       min_run=lo, max_run=hi, policies=policies)
         note = ""
     except evaluate.NotMeasurable as exc:
         threshold = evaluate.calibrate(cp, cs, cm, class_names, budget_per_minute,
-                                       min_run=lo, max_run=hi, strict=False)
+                                       min_run=lo, max_run=hi, strict=False, policies=policies)
         note = f"  WARNING: {exc}"
 
     print(f"debounce {lo}-{hi} windows.  budget {args.budget_per_hour:.2f}/hour "
@@ -157,12 +192,20 @@ def main() -> int:
         mask = second if session_id == calib_id else None
         probs, starts, minutes = stream(session_id, mask)
         labels = evaluate.labels_at(probs, class_names, threshold)
-        found = events.detect(labels, starts, min_run=lo, max_run=hi)
+        found = events.detect(labels, starts, min_run=lo, max_run=hi, policies=policies)
         truth = truth_for(session_id)
+        spans = spans_for(session_id)
 
-        if truth:
-            hits = evaluate.gesture_hits(found, truth)
-            n_found, n_false = sum(hits), len(found) - sum(hits)
+        if truth or spans:
+            in_span = [e for e in found
+                       if any(t_lo <= e.centre_s <= t_hi and e.label == name
+                              for t_lo, t_hi, name in spans)]
+            point_events = [e for e in found if e not in in_span]
+            hits = evaluate.gesture_hits(point_events, truth)
+            shits = events.span_hits(found, spans)
+            n_found = sum(hits) + sum(shits)
+            n_false = len(point_events) - sum(hits)
+            truth = truth + [((t_lo + t_hi) / 2, name) for t_lo, t_hi, name in spans]
             rate = ub = float("nan")
         else:
             n_found, n_false = 0, len(found)
@@ -188,7 +231,7 @@ def main() -> int:
         gp, gs, _ = stream(gid)
         np_, ns_, nm_ = stream(calib_id, second)
         points = evaluate.curve(gp, gs, truth_for(gid), [(np_, ns_)], nm_, class_names,
-                                min_run=lo, max_run=hi)
+                                min_run=lo, max_run=hi, policies=policies)
         best = evaluate.recall_at_budget(points, budget_per_minute)
 
         print(f"\nrecall / false-positive curve on {gid}")
@@ -199,7 +242,7 @@ def main() -> int:
                 continue
             hits = evaluate.gesture_hits(
                 events.detect(evaluate.labels_at(gp, class_names, p.threshold), gs,
-                              min_run=lo, max_run=hi), truth_for(gid))
+                              min_run=lo, max_run=hi, policies=policies), truth_for(gid))
             ci = evaluate.bootstrap_recall_ci(hits)
             mark = "  <- budget" if best and p.threshold == best.threshold else ""
             print(f"  {p.threshold:5.2f} {p.recall * 100:7.1f}% "
@@ -211,7 +254,7 @@ def main() -> int:
         else:
             hits = evaluate.gesture_hits(
                 events.detect(evaluate.labels_at(gp, class_names, best.threshold), gs,
-                              min_run=lo, max_run=hi), truth_for(gid))
+                              min_run=lo, max_run=hi, policies=policies), truth_for(gid))
             lo_ci, hi_ci = evaluate.bootstrap_recall_ci(hits)
             print(f"\n  recall at budget  {best.recall * 100:.1f}%  "
                   f"(95% CI {lo_ci * 100:.1f}-{hi_ci * 100:.1f} over {best.total} gestures)")

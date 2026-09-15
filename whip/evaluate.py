@@ -100,6 +100,7 @@ def calibrate(
     min_run: int = events.MIN_RUN,
     max_run: int = events.MAX_RUN,
     strict: bool = True,
+    policies: dict | None = None,
 ) -> float:
     """
     Lowest threshold whose false-positive rate on *this* session meets the budget.
@@ -122,7 +123,7 @@ def calibrate(
     for threshold in thresholds:
         found = events.detect(
             labels_at(probabilities, class_names, threshold), starts,
-            min_run=min_run, max_run=max_run)
+            min_run=min_run, max_run=max_run, policies=policies)
         if rate_per_minute(len(found), minutes) <= budget_per_minute:
             return float(threshold)
     return float(thresholds[-1])
@@ -218,6 +219,7 @@ def count_false_positives(
     threshold: float,
     min_run: int = events.MIN_RUN,
     max_run: int = events.MAX_RUN,
+    policies: dict | None = None,
 ) -> int:
     """
     False positives across several negative stretches, counted per stretch.
@@ -231,7 +233,7 @@ def count_false_positives(
     """
     return sum(
         len(events.detect(labels_at(probs, class_names, threshold), starts,
-                          min_run=min_run, max_run=max_run))
+                          min_run=min_run, max_run=max_run, policies=policies))
         for probs, starts in segments
     )
 
@@ -247,6 +249,7 @@ def curve(
     min_run: int = events.MIN_RUN,
     max_run: int = events.MAX_RUN,
     require_class: bool = True,
+    policies: dict | None = None,
 ) -> list[CurvePoint]:
     """
     The whole recall-versus-false-positive trade-off, one point per threshold.
@@ -266,10 +269,10 @@ def curve(
     for threshold in thresholds:
         found = events.detect(
             labels_at(gesture_probabilities, class_names, threshold), gesture_starts,
-            min_run=min_run, max_run=max_run)
+            min_run=min_run, max_run=max_run, policies=policies)
         hits = gesture_hits(found, truth, require_class=require_class)
         fp = count_false_positives(negative_segments, class_names, threshold,
-                                   min_run=min_run, max_run=max_run)
+                                   min_run=min_run, max_run=max_run, policies=policies)
         points.append(CurvePoint(
             threshold=float(threshold), hits=sum(hits), total=len(hits),
             false_positives=fp, negative_minutes=negative_minutes))
