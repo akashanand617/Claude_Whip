@@ -47,6 +47,8 @@ from whip.realtime import DEFAULT_CONFIG_PATH, Engine, EventLog, RouterConfig
 
 logger = logging.getLogger(__name__)
 
+MANAGER_KEY = web.AppKey("manager", object)
+
 HOST = "127.0.0.1"
 PORT = 8642
 WEB_DIR = Path(__file__).resolve().parent.parent / "web"
@@ -334,7 +336,7 @@ class RingManager:
 
 def build_app(manager: RingManager) -> web.Application:
     app = web.Application()
-    app["manager"] = manager
+    app[MANAGER_KEY] = manager
 
     async def index(_request: web.Request) -> web.FileResponse:
         return web.FileResponse(WEB_DIR / "index.html")
