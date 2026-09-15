@@ -105,7 +105,7 @@ def main() -> int:
     # has recorded a snap" deserve to look different.
     present = {w.label for w in windows} - {"none"}
     labels = registry.labels_for(present)
-    absent = [g for g in registry.names if g not in present]
+    absent = [g for g in registry.training_names() if g not in present]
     if absent:
         print(f"declared but no data yet (record with probe.collect): {', '.join(absent)}")
 

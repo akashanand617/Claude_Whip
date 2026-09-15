@@ -88,7 +88,12 @@ class Engine:
         self.direction_trained = bool(provenance.get("direction_trained", True))
         self.threshold = threshold
         registry = registry or load_registry()
-        self.tracker = events.RunTracker(policies=registry.policies(self.labels))
+        self.registry = registry
+        # Direction-split sub-classes collapse into their gesture before the
+        # threshold and the tracker see them; the winning sub-class per window
+        # is remembered so a fired event can report its direction.
+        self.collapsed = registry.collapsed_names(self.labels)
+        self.tracker = events.RunTracker(policies=registry.policies(self.collapsed))
         self._despike = despike.StreamingHampel()
         self._samples: list[np.ndarray] = []       # despiked, in counts
         self._times: list[float] = []
@@ -169,15 +174,21 @@ class Engine:
             probs = torch.softmax(gesture_logits, dim=1)[0].numpy()
             dir_idx = int(torch.argmax(direction_logits, dim=1)[0]) \
                 if self.direction_trained else 0
+        raw_k = int(np.argmax(probs))
+        raw_base, raw_dir = self.registry.collapse(self.labels[raw_k])
+        probs = self.registry.collapse_probabilities(probs[None, :], self.labels)[0]
         self._last_probs = probs
 
         k = int(np.argmax(probs))
-        name = self.labels[k]
+        name = self.collapsed[k]
         label = name if name != "none" and probs[k] >= self.threshold else "none"
 
         start_s = self._times[0]
         if label != "none":
-            self._run_meta.append((start_s, float(probs[k]), self.direction_names[dir_idx]))
+            # Direction: the split sub-class if there is one, else the head
+            # (only when it was actually trained), else none.
+            direction = raw_dir if raw_dir != "none" else self.direction_names[dir_idx]
+            self._run_meta.append((start_s, float(probs[k]), direction))
         event = self.tracker.feed(label, start_s)
         out = []
         if event is not None:
@@ -206,7 +217,7 @@ class Engine:
         """Most recent per-class probabilities, for a live display."""
         if self._last_probs is None:
             return {}
-        return {name: float(p) for name, p in zip(self.labels, self._last_probs)}
+        return {name: float(p) for name, p in zip(self.collapsed, self._last_probs)}
 
 
 # ---------------------------------------------------------------- the app layer

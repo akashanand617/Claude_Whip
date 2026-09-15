@@ -19,7 +19,7 @@ from pathlib import Path
 import numpy as np
 
 from whip import accel, capture, despike, protocol, session
-from whip.registry import DIRECTIONS, NONE_LABEL, Registry, load_registry
+from whip.registry import DIRECTIONS, NONE_LABEL, Registry, class_name, load_registry
 
 SAMPLE_RATE_HZ = 25.0
 
@@ -138,7 +138,13 @@ def _marks_from_notes(notes, registry: Registry, duration_override: float | None
             direction = m.get("direction", "none")
             if direction not in DIRECTIONS:
                 direction = "none"
-            points.append((m["cue_at"], m["cue_at"] + duration, spec.name, direction))
+            # A split gesture without a usable direction cannot join any
+            # sub-class; giving it the bare name would create an overlapping
+            # class. It is skipped and counted, not guessed at.
+            if spec.split_by_direction and direction == "none":
+                continue
+            points.append((m["cue_at"], m["cue_at"] + duration,
+                           class_name(spec.name, direction, spec.split_by_direction), direction))
     return points, spans
 
 

@@ -89,7 +89,8 @@ def main() -> int:
     direction = d["direction"] if "direction" in d else np.zeros(len(y), dtype=np.int64)
     from whip.registry import load_registry
     registry = load_registry()
-    policies = registry.policies(all_names)
+    collapsed_names = registry.collapsed_names(all_names)
+    policies = registry.policies(collapsed_names)
     peaks = sampling.window_peaks(raw)
     budget = args.budget_per_hour / 60.0
 
@@ -182,6 +183,7 @@ def main() -> int:
             order = np.where(mask)[0][np.argsort(START[mask])]
             with torch.no_grad():
                 p = torch.softmax(net(torch.tensor(X[order], device=device)), 1).cpu().numpy()
+            p = registry.collapse_probabilities(p, class_names)
             st = START[order].tolist()
             return p, st, (st[-1] - st[0]) / 60 if len(st) > 1 else 0.0
 
@@ -206,7 +208,7 @@ def main() -> int:
             segments.append((p_, st_))
             pooled_minutes += mins_
 
-        points = evaluate.curve(gp, gs, truth, segments, pooled_minutes, class_names,
+        points = evaluate.curve(gp, gs, truth, segments, pooled_minutes, collapsed_names,
                                 min_run=events.MIN_RUN, max_run=events.MAX_RUN,
                                 policies=policies)
         best = evaluate.recall_at_budget(points, budget)
@@ -214,12 +216,12 @@ def main() -> int:
 
         thr = best.threshold if best else 0.999
         hits = evaluate.gesture_hits(
-            events.detect(evaluate.labels_at(gp, class_names, thr), gs,
+            events.detect(evaluate.labels_at(gp, collapsed_names, thr), gs,
                           policies=policies), truth)
         fps = {}
         for name, mask in score_half.items():
             p, st, mins = probs(mask)
-            n = len(events.detect(evaluate.labels_at(p, class_names, thr), st,
+            n = len(events.detect(evaluate.labels_at(p, collapsed_names, thr), st,
                                   policies=policies))
             fps[name] = evaluate.rate_per_minute(n, mins)
         return thr, hits, fps, auc, pooled_minutes

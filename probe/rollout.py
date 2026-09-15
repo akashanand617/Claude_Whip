@@ -124,6 +124,8 @@ def main() -> int:
         return 1
     X, SESS, START = d["X"], d["session"], d["start_s"]
     class_names = [str(s) for s in d["labels"]]
+    # After collapsing, the class axis is the collapsed vocabulary.
+    collapsed_names = _REGISTRY.collapsed_names(class_names)
     lo, hi = args.debounce
     budget_per_minute = args.budget_per_hour / 60.0
 
@@ -136,7 +138,11 @@ def main() -> int:
             probs = torch.softmax(model(torch.tensor(batch)), dim=1).numpy()
         starts = START[order].tolist()
         minutes = (starts[-1] - starts[0]) / 60 if len(starts) > 1 else 0.0
-        return probs, starts, minutes
+        # Direction-split sub-classes (flick_up, flick_down, ...) are a
+        # training-time device. Scoring, debouncing and truth all speak in
+        # collapsed names, so their probability mass is summed per gesture
+        # here -- exactly what the realtime engine does before its tracker.
+        return _REGISTRY.collapse_probabilities(probs, class_names), starts, minutes
 
     sessions = sorted(set(SESS.tolist()))
     held_out = [s for s in sessions if s not in trained_on and (SESS == s).sum() >= 60]
@@ -144,7 +150,7 @@ def main() -> int:
     # recognised gesture spans. Spans count: a wave block is positive content.
     negatives = [s for s in held_out if not truth_for(s) and not spans_for(s)]
     with_gestures = [s for s in held_out if truth_for(s)]
-    policies = _REGISTRY.policies(class_names)
+    policies = _REGISTRY.policies(collapsed_names)
 
     # --- pick a calibration session, and split it so it is never reported on ---
     calib_id = args.calibrate_on
@@ -165,11 +171,11 @@ def main() -> int:
 
     cp, cs, cm = stream(calib_id, first)
     try:
-        threshold = evaluate.calibrate(cp, cs, cm, class_names, budget_per_minute,
+        threshold = evaluate.calibrate(cp, cs, cm, collapsed_names, budget_per_minute,
                                        min_run=lo, max_run=hi, policies=policies)
         note = ""
     except evaluate.NotMeasurable as exc:
-        threshold = evaluate.calibrate(cp, cs, cm, class_names, budget_per_minute,
+        threshold = evaluate.calibrate(cp, cs, cm, collapsed_names, budget_per_minute,
                                        min_run=lo, max_run=hi, strict=False, policies=policies)
         note = f"  WARNING: {exc}"
 
@@ -191,7 +197,7 @@ def main() -> int:
             continue
         mask = second if session_id == calib_id else None
         probs, starts, minutes = stream(session_id, mask)
-        labels = evaluate.labels_at(probs, class_names, threshold)
+        labels = evaluate.labels_at(probs, collapsed_names, threshold)
         found = events.detect(labels, starts, min_run=lo, max_run=hi, policies=policies)
         truth = truth_for(session_id)
         spans = spans_for(session_id)
@@ -230,7 +236,7 @@ def main() -> int:
         gid = with_gestures[0]
         gp, gs, _ = stream(gid)
         np_, ns_, nm_ = stream(calib_id, second)
-        points = evaluate.curve(gp, gs, truth_for(gid), [(np_, ns_)], nm_, class_names,
+        points = evaluate.curve(gp, gs, truth_for(gid), [(np_, ns_)], nm_, collapsed_names,
                                 min_run=lo, max_run=hi, policies=policies)
         best = evaluate.recall_at_budget(points, budget_per_minute)
 
@@ -241,7 +247,7 @@ def main() -> int:
             if p.threshold not in (0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95):
                 continue
             hits = evaluate.gesture_hits(
-                events.detect(evaluate.labels_at(gp, class_names, p.threshold), gs,
+                events.detect(evaluate.labels_at(gp, collapsed_names, p.threshold), gs,
                               min_run=lo, max_run=hi, policies=policies), truth_for(gid))
             ci = evaluate.bootstrap_recall_ci(hits)
             mark = "  <- budget" if best and p.threshold == best.threshold else ""
@@ -253,7 +259,7 @@ def main() -> int:
             print(f"\n  NO threshold meets {args.budget_per_hour}/hour on the reporting negative.")
         else:
             hits = evaluate.gesture_hits(
-                events.detect(evaluate.labels_at(gp, class_names, best.threshold), gs,
+                events.detect(evaluate.labels_at(gp, collapsed_names, best.threshold), gs,
                               min_run=lo, max_run=hi, policies=policies), truth_for(gid))
             lo_ci, hi_ci = evaluate.bootstrap_recall_ci(hits)
             print(f"\n  recall at budget  {best.recall * 100:.1f}%  "

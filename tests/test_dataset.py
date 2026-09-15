@@ -25,10 +25,21 @@ def write_notes(path, session_id, gestures):
     path.write_text(json.dumps({
         "session_id": session_id, "started_wall": 0.0, "kind": "prompted",
         "hand": "left", "ring_position": "middle", "note": "",
-        "marks": [{"label": lab, "direction": "extension", "amplitude": "normal",
+        "marks": [{"label": lab, "direction": "up", "amplitude": "normal",
                    "windup": "none", "posture": "raised", "tempo": "natural",
                    "index": i, "cue_at": t} for i, (t, lab) in enumerate(gestures)],
     }))
+
+
+def split_registry():
+    """The default vocabulary with the flicks direction-split, for split tests."""
+    import dataclasses
+
+    from whip.registry import DEFAULT_GESTURES, Registry
+
+    return Registry(tuple(
+        dataclasses.replace(g, split_by_direction=True) if g.name in ("flick", "double_flick") else g
+        for g in DEFAULT_GESTURES))
 
 
 def test_windowing_geometry():
@@ -94,9 +105,11 @@ def test_ambiguous_windows_are_dropped_not_guessed(tmp_path):
 def test_labels_are_ordered_with_none_first():
     from whip.registry import Registry
 
-    labels = Registry().labels_for({"flick", "wave"})
+    labels = Registry().labels_for({"wave", "flick"})
     assert labels[0] == "none"
     assert labels == ["none", "flick", "wave"], "registry order, not discovery order"
+    split = split_registry().labels_for({"wave", "flick_left"})
+    assert split == ["none", "flick_left", "wave"]
 
 
 def test_split_is_by_session(tmp_path):
@@ -234,6 +247,9 @@ def test_legacy_labels_resolve_to_canonical_names(tmp_path):
     labels = {x.label for x in dataset.windows_from_session(cap, notes)}
     assert "flick" in labels and "double_flick" in labels
     assert "flag" not in labels and "approve" not in labels
+    # with the split enabled the direction rides in the class name instead
+    split = {x.label for x in dataset.windows_from_session(cap, notes, registry=split_registry())}
+    assert "flick_up" in split and "double_flick_up" in split
 
 
 def test_prompted_windows_carry_their_direction(tmp_path):
@@ -251,6 +267,29 @@ def test_prompted_windows_carry_their_direction(tmp_path):
     positives = [x for x in dataset.windows_from_session(cap, notes) if x.label == "flick"]
     assert positives
     assert all(x.direction == "up" for x in positives)
+
+
+def test_a_split_gesture_without_a_direction_is_skipped_not_mislabelled(tmp_path):
+    """
+    A direction-split gesture cued with no usable direction cannot join any
+    sub-class, and giving it the bare name would create a class that overlaps
+    all four. It is dropped -- and a prompted session left with NO usable marks
+    is then refused outright, because it certainly contains gestures that would
+    otherwise be silently labelled `none`.
+    """
+    import json
+
+    cap, notes = tmp_path / "s.jsonl", tmp_path / "s.notes.json"
+    write_capture(cap, seconds=15.0, gestures=[(5.0, "flag")])
+    notes.write_text(json.dumps({
+        "session_id": "s", "started_wall": 0.0, "kind": "prompted",
+        "hand": "left", "ring_position": "middle", "note": "",
+        "marks": [{"label": "flag", "direction": "any", "amplitude": "hard",
+                   "windup": "none", "posture": "raised", "tempo": "natural",
+                   "index": 0, "cue_at": 5.0}],
+    }))
+    with pytest.raises(dataset.UnlabelledCapture):
+        dataset.windows_from_session(cap, notes, registry=split_registry())
 
 
 def test_a_direction_outside_the_canonical_set_becomes_none(tmp_path):

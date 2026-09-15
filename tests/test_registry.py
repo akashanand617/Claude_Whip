@@ -22,12 +22,58 @@ def test_unknown_names_resolve_to_nothing():
     assert r.resolve("so-so wobble") is None
 
 
+import dataclasses
+
+from whip.registry import DEFAULT_GESTURES
+
+
+def split_registry():
+    return Registry(tuple(
+        dataclasses.replace(g, split_by_direction=True) if g.name in ("flick", "double_flick") else g
+        for g in DEFAULT_GESTURES))
+
+
 def test_labels_follow_registry_order_and_data_presence():
     r = Registry()
     assert r.labels_for({"wave", "flick"}) == ["none", "flick", "wave"]
     assert r.labels_for(set()) == ["none"]
     # a name the registry never declared cannot become a class by accident
     assert r.labels_for({"mystery"}) == ["none"]
+    # under a split, the bare name of a split gesture is not a training class
+    r = split_registry()
+    assert r.labels_for({"wave", "flick_left"}) == ["none", "flick_left", "wave"]
+    assert r.labels_for({"flick"}) == ["none"]
+
+
+def test_split_is_off_by_default_measured():
+    """
+    Splitting cost 6-9 recall points on two seeds, and every held-out up/down
+    flick was classified as left/right -- a permutation from the ring sitting
+    rotated between sessions. Direction from one placement does not transfer.
+    """
+    assert not any(g.split_by_direction for g in Registry().gestures)
+    assert Registry().collapse("flick_up") == ("flick_up", "none"), "no split, no sub-class"
+
+
+def test_split_sub_classes_collapse_back_to_the_gesture():
+    r = split_registry()
+    assert r.collapse("flick_up") == ("flick", "up")
+    assert r.collapse("double_flick_left") == ("double_flick", "left")
+    assert r.collapse("wave") == ("wave", "none")
+    assert r.collapse("none") == ("none", "none")
+    assert r.collapsed_names(["none", "flick_up", "flick_down", "wave"]) == ["none", "flick", "wave"]
+
+
+def test_collapsing_probabilities_sums_sub_class_mass():
+    """flick_up at 0.3 plus flick_left at 0.3 is a 0.6 flick to the threshold."""
+    import numpy as np
+
+    r = split_registry()
+    labels = ["none", "flick_up", "flick_left", "wave"]
+    probs = np.array([[0.3, 0.3, 0.3, 0.1]])
+    out = r.collapse_probabilities(probs, labels)
+    assert out.shape == (1, 3)
+    assert np.allclose(out[0], [0.3, 0.6, 0.1])
 
 
 def test_a_sustained_gesture_cannot_have_a_bounded_run():
