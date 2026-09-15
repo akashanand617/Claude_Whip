@@ -45,6 +45,31 @@ source .venv/bin/activate
 
 Needs Python 3.11+. The only runtime dependency is `bleak`.
 
+## The ring console (start here)
+
+```
+pip install -r requirements.txt
+python -m probe.serve          # -> http://127.0.0.1:8642
+```
+
+One local web page for everything a ring owner needs:
+
+- **Live** -- connect and watch gestures being detected in real time
+  (flick, double flick, snap, wave, clap), with per-class probabilities and a
+  waveform. Detection latency is ~1 s by design.
+- **Firmware** -- switch between **stock** (normal ring: health tracking, phone
+  app) and **gesture** (25 Hz motion streaming) firmware. A mandatory
+  validation step checks every byte before the flash button arms, and the
+  transfer refuses to start below 40% battery. There is no recovery path if a
+  transfer breaks, so the page makes you type FLASH and tells you to keep the
+  machine awake.
+- **Settings** -- choose which gestures trigger which app actions
+  (`flick` -> flag, `double_flick` -> approve by default) and the detection
+  threshold.
+
+Headless equivalent: `python -m probe.live`. Events are appended to
+`data/live/events_*.jsonl` for downstream use.
+
 ## Flashing
 
 The stock ring cannot clear the gate. `docs/FLASHING.md` is the runbook, and

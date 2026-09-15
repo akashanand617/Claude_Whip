@@ -15,7 +15,7 @@ preferences written into a context file as context fills.
 | Milestone | State |
 |---|---|
 | M0 hardware gate | **PASSED** on `#4`: 25.00 Hz, 0.24% loss, 10 min worn |
-| M1 gesture classifier | protocol designed (`docs/COLLECTION.md`); harness not built |
+| M1 gesture classifier | **general gesture platform**: registry vocabulary, live engine, web console |
 | M2 calibration corpus | designed (`docs/CALIBRATION.md`); 12-dimension taxonomy + 12 gold / 48 spec items in `corpus/`, planner in `whip/corpus.py` |
 | M3 labeling session | not started, **not blocked on hardware** |
 | M4 reward model | not started |
@@ -311,6 +311,74 @@ the three send sites, the connection-parameter call and the Realtek activation
 sequence in this exact image. One question could replace days of work.
 
 ---
+
+## The gesture platform
+
+The CNN is a **general gesture classifier**; the Whip app consumes only the
+gestures it maps to actions. One vocabulary, declared in `whip/registry.py`:
+flick, double_flick, snap, double_snap (impulsive), wave, clap (sustained).
+Classes materialise from data -- the exporter emits only classes with windows
+and prints the declared-but-absent ones. Legacy names on disk (`flag`,
+`approve`, `waving`, `snapping`, `clapping`) map in via aliases.
+
+**Two labelling modes, decided by the mark's shape.** Point marks (prompted
+gestures) keep the coverage rule. Span marks (20 s "keep waving" blocks) label
+windows fully inside the span, with a 0.5 g hygiene floor so pauses inside a
+span stay `none` -- the label source is the human cue; amplitude only gates
+whether the cued motion was happening at that moment. Unrecognised motions
+('dismissive flick', 'so-so wobble') stay attribution-only **negatives**:
+promoting every cued motion to a class would silently convert hard negatives
+into positives. `snapping` IS promoted, deliberately -- the model learns the
+snap/flick boundary explicitly.
+
+**Event policies are per gesture.** Impulsive keeps the 3-14 run band.
+Sustained fires once at min_run with **no upper bound** -- `max_run` exists to
+reject sustained motion, so a bounded wave is unfirable by construction -- plus
+a refractory measured from run end, so a mid-wave dip cannot split one wave
+into two. Judgement happens exactly once per run. Batch `events.detect` is a
+loop over the incremental `RunTracker`; the realtime engine feeds the same
+tracker, so live and offline are one implementation.
+
+**Direction is a head, not classes** -- splitting flick by direction would
+leave ~200 windows per class. But the head's loss is **off by default,
+measured**: at 264 directed gestures, training it at weight 0.3 cost ~10 points
+of gesture recall. The head stays in the architecture; checkpoints record
+`direction_trained`, and the engine forces direction "none" when false so a
+`flick:up` mapping can never route on an untrained head's deterministic
+garbage. Re-enable and re-measure with more data.
+
+**Training recipe, isolated one factor at a time (2 seeds, held out):**
+3-class old recipe 63.3%; 6-class costs ~5 (58.6%); the saturation channel buys
+it back (65.6%); direction at 0.3 drops it to 55.5%. Default channels are
+therefore `shape,scale,saturation`, direction weight 0.
+
+**Realtime engine** (`whip/realtime.py`): decode -> `StreamingHampel` (fixed
+120 ms lag; same maths as batch, running MAD floor because a stream has no
+future -- and the floor must NOT be a constant, it varies 10x across sessions)
+-> 50-window at stride 6 with dataset-identical centring -> the checkpoint's
+channels -> forward -> threshold -> RunTracker. The parity test demands
+identical events from the engine and the offline chain on the same samples.
+Latency ~1.3 s for impulsive gestures, stated in the UI. Events + resolved
+actions land in `data/live/events_*.jsonl` -- the artifact M2 consumes.
+`data/app_config.json` maps gestures to actions (`flick`->flag,
+`double_flick`->approve by default; `flick:up`-style keys win over bare names).
+
+**Ring console** (`python -m probe.serve` -> http://127.0.0.1:8642): live
+waveform/probabilities/events, settings, and stock <-> gesture flashing with
+every refuse-by-default gate from `whip/flashing.py` (shared with the CLI so no
+frontend can skip one) plus: state machine forbids flashing while streaming, a
+server-enforced dry-run must pass per connection (HTTP 412), and the typed
+FLASH word. After a flash the ring reboots and the manager settles to idle.
+`probe/live.py` is the same engine headless.
+
+**Checkpoints are self-describing**: labels, channels, direction_names,
+direction_trained, trained_on. Consumers read the vocabulary from the file;
+adding a gesture = record (`probe.collect --gestures snap,double_snap` or
+`--cues` for sustained), re-export, retrain. No code edits.
+
+The C++ daemon remains the eventual spec deliverable; the Python engine is the
+reference implementation it must reproduce (numpy-only preprocessing on
+purpose).
 
 ## M1 design decisions
 
