@@ -1,31 +1,31 @@
 """
-One fixed train / validation / test split, by session, with a hold-out that
-is never trained on and never tuned on.
+One fixed train / validation / test split, BY GESTURE, random across every
+session, with a hold-out that is never trained on and never tuned on.
 
-Decided 2026-09-16, replacing leave-one-session-out: the deployed model has
-to train on every day's variety, and the number that matters is one model
-scored once on sessions it never saw. So:
+Decided 2026-09-16 (replacing a by-session split that same day: session
+sizes are lopsided, one session holds a whole class, and the deployed model
+trains on every day's variety anyway). Rules:
 
-- **train**: most sessions; the deployed checkpoint trains on train + val.
-- **val**: a few sessions for choosing the threshold and the seed. Nothing
-  is reported on val.
-- **test**: the hold-out. Scored by `probe.split score --part test`, and
-  the sessions in it are not to be used for anything else.
+- Every valid cued gesture is a unit. Units are dealt to train / val / test
+  at random, STRATIFIED BY CLASS, with a fixed seed, so each part has the
+  same class mix and the same across-session variety.
+- A gesture's windows all go where the gesture goes. Windows overlap 88%, so
+  the leak to guard against is a window that holds part of one gesture and
+  part of another in a different part: a window is assigned only if it lies
+  wholly inside one unit's interval, and consecutive units' intervals meet
+  midway between their cues. Anything straddling a boundary is dropped.
+- Everything that is not a gesture -- ambient wear, typing, the quiet
+  between cues -- is cut into CHUNK_S-second chunks that are dealt to parts
+  at random too, with the same wholly-inside rule, so the false-positive
+  rate is measured on chunks from every negative recording rather than on
+  one session's second half.
+- A cued span (the wave) is cut into chunks the same way; each chunk's
+  windows keep the span label.
 
-Split is BY SESSION for every class recorded on more than one day, because
-windows overlap 88% and any within-session split leaks. A class recorded on
-ONE day (the snap / clap / wave session) cannot be split by session, so
-that session is split BY TIME inside each class block, with a guard: a
-window is assigned to a part only if it lies wholly inside that part's
-interval, and the intervals are cut midway between consecutive cued
-gestures, so no window straddles a cut. Ambient: one hour trains, the
-other is halved by time into a val half (threshold) and a test half
-(false-positive rate) -- the same halving `probe.rollout` already does.
-
-The plan is a JSON file (`data/split.json`); the exporter of parts
-(`probe.split make`) reads it and `data/windows.npz` and writes
-`data/split/{train,val,test}.npz`. Changing the plan is a decision, not a
-side effect: edit the file and re-make.
+`data/split.json` holds the seed, fractions and chunk length; `probe.split
+make` reads it and `data/windows.npz` and writes
+`data/split/{train,val,test,trainval}.npz`. Change the seed only as a
+decision: the test part is the same set of gestures for every model.
 """
 
 from __future__ import annotations
@@ -41,40 +41,12 @@ from whip.registry import load_registry
 
 PARTS = ("train", "val", "test")
 WINDOW_S = 2.0
-# Where a cued gesture's windows start and end, relative to its cue: the
-# label covers cue .. cue+1.2 and a 2 s window that holds 70% of it starts
-# no earlier than cue-0.5 and no later than cue+0.85.
+# A cued gesture's windows start no earlier than cue-0.5 (a window holding
+# 70% of the cue..cue+1.2 label) and end no later than cue+2.0.
 MARK_BEFORE_S = 0.5
 MARK_AFTER_S = 2.0
 
-DEFAULT_PLAN = {
-    "seed": 0,
-    "sessions": {
-        # multi-day flick sessions: by session
-        "prompted_20260909_160303": "train",
-        "prompted_20260912_013715": "train",
-        "prompted_20260916_010218": "train",
-        "prompted_20260916_044026": "train",
-        "prompted_20260915_184744": "val",
-        "prompted_20260916_010415": "val",
-        "prompted_20260916_023243": "val",
-        # test: a different day, a back-to-front wearing (frame-corrected), the
-        # posture matrix, and a fill session with doubles -- never trained on
-        "prompted_20260915_235801": "test",
-        "prompted_20260916_040358": "test",
-        "prompted_20260916_010756": "test",
-        # negatives
-        "negative_20260908_200022": "train",
-        "negative_20260908_201610": "train",
-        "negative_20260908_202143": "train",
-        "negative_20260915_021616": "train",
-        "negative_20260915_224235": "halves",     # first half val, second half test
-    },
-    # single-day classes: by time inside each class block, fractions per part
-    "time_split": {"prompted_20260916_044426": [0.65, 0.15, 0.20]},
-    # anything not named: train
-    "default": "train",
-}
+DEFAULT_PLAN = {"seed": 0, "fractions": [0.65, 0.15, 0.20], "chunk_s": 20.0}
 
 
 @dataclass
@@ -82,108 +54,120 @@ class Interval:
     start: float
     end: float
     part: str
+    unit: str            # "gesture:<class>", "span:<class>" or "chunk"
 
 
 @dataclass
 class Plan:
-    sessions: dict[str, str]
-    time_split: dict[str, list[float]]
-    default: str = "train"
     seed: int = 0
-    intervals: dict[str, list[Interval]] = field(default_factory=dict)   # filled by resolve()
+    fractions: list[float] = field(default_factory=lambda: list(DEFAULT_PLAN["fractions"]))
+    chunk_s: float = 20.0
+    intervals: dict[str, list[Interval]] = field(default_factory=dict)   # per session, filled by resolve()
 
     @classmethod
     def load(cls, path: Path) -> "Plan":
         doc = json.loads(Path(path).read_text())
-        return cls(sessions=doc["sessions"], time_split=doc.get("time_split", {}),
-                   default=doc.get("default", "train"), seed=doc.get("seed", 0))
+        return cls(seed=doc.get("seed", 0), fractions=list(doc.get("fractions", DEFAULT_PLAN["fractions"])),
+                   chunk_s=float(doc.get("chunk_s", DEFAULT_PLAN["chunk_s"])))
 
     def save(self, path: Path) -> None:
-        Path(path).write_text(json.dumps({"seed": self.seed, "sessions": self.sessions,
-                                          "time_split": self.time_split, "default": self.default}, indent=1))
-
-    def part_of_session(self, sid: str) -> str:
-        return self.sessions.get(sid, self.default)
+        Path(path).write_text(json.dumps({"seed": self.seed, "fractions": self.fractions, "chunk_s": self.chunk_s}, indent=1))
 
 
-def _time_split_intervals(sessions_dir: Path, sid: str, fractions: list[float], registry) -> list[Interval]:
-    """
-    Cut a blocked single-day session into parts per class block. Marks of
-    each class (valid ones, in time order) are dealt to parts by the
-    fractions; each part's interval runs from its first mark - MARK_BEFORE_S
-    to its last mark + MARK_AFTER_S, and consecutive parts' intervals are
-    trimmed to meet midway between the last mark of one and the first of the
-    next. Cued spans (the wave) are cut by time at the same fractions.
-    """
-    notes = json.loads((sessions_dir / f"{sid}.notes.json").read_text())
-    excluded = set(audit.excluded_cues(sessions_dir / f"{sid}.jsonl"))
-    out: list[Interval] = []
-    by_class: dict[str, list[float]] = {}
-    for m in notes["marks"]:
-        if "until" in m:
-            a, b = m["cue_at"], m["until"]; t = a
-            for frac, part in zip(fractions, PARTS):
-                seg = (b - a) * frac
-                out.append(Interval(t, t + seg, part)); t += seg
-            continue
-        if m["cue_at"] in excluded:
-            continue
-        spec = registry.resolve(m.get("label", ""))
-        if spec is None:
-            continue
-        by_class.setdefault(spec.name, []).append(float(m["cue_at"]))
-    for name, cues in by_class.items():
-        cues.sort(); n = len(cues)
-        n_train = int(round(fractions[0] * n)); n_val = int(round(fractions[1] * n))
-        groups = [cues[:n_train], cues[n_train:n_train + n_val], cues[n_train + n_val:]]
-        prev_end = None
-        for part, g in zip(PARTS, groups):
-            if not g:
-                continue
-            start, end = g[0] - MARK_BEFORE_S, g[-1] + MARK_AFTER_S
-            if prev_end is not None and start < prev_end:
-                mid = (prev_end + start) / 2
-                out[-1].end = mid; start = mid
-            out.append(Interval(start, end, part)); prev_end = end
+def _deal(n: int, fractions, rng) -> list[str]:
+    """`n` part labels in the given proportions, shuffled: stratification within one class."""
+    counts = [int(round(f * n)) for f in fractions]
+    counts[0] += n - sum(counts)
+    labels = [p for p, c in zip(PARTS, counts) for _ in range(c)]
+    rng.shuffle(labels)
+    return labels
+
+
+def _chunks(t0: float, t1: float, chunk_s: float, rng, unit: str) -> list[Interval]:
+    out = []
+    t = t0
+    while t1 - t > 1e-6:
+        out.append(Interval(t, min(t + chunk_s, t1), "", unit)); t += chunk_s
     return out
 
 
-def resolve(plan: Plan, sessions_dir: Path, all_sessions: list[str], registry=None) -> Plan:
+def resolve(plan: Plan, sessions_dir: Path, session_spans: dict[str, tuple[float, float]], registry=None) -> Plan:
+    """
+    Build every session's intervals. Two passes: gestures are dealt per class
+    across all sessions (stratified), then chunks and span pieces are dealt.
+    """
     registry = registry or load_registry()
-    for sid in all_sessions:
-        if sid in plan.time_split:
-            plan.intervals[sid] = _time_split_intervals(sessions_dir, sid, plan.time_split[sid], registry)
+    rng = np.random.default_rng(plan.seed)
+    gestures: dict[str, list[tuple[str, float]]] = {}      # class -> [(session, cue)]
+    spans: dict[str, list[tuple[float, float, str]]] = {}   # session -> [(start, end, class)]
+    for sid in sorted(session_spans):
+        notes = sessions_dir / f"{sid}.notes.json"
+        if not notes.exists():
+            continue
+        bad = set(audit.excluded_cues(sessions_dir / f"{sid}.jsonl"))
+        for m in json.loads(notes.read_text()).get("marks", []):
+            if "until" in m:
+                spec = registry.resolve(m.get("motion", ""))
+                if spec is not None:
+                    spans.setdefault(sid, []).append((float(m["cue_at"]), float(m["until"]), spec.name))
+                continue
+            if m["cue_at"] in bad:
+                continue
+            spec = registry.resolve(m.get("label", ""))
+            if spec is None:
+                continue
+            d = m.get("direction", "none")
+            name = f"{spec.name}_{d}" if spec.split_by_direction and d in ("up", "down", "left", "right") else spec.name
+            gestures.setdefault(name, []).append((sid, float(m["cue_at"])))
+    assigned: dict[str, list[tuple[float, str, str]]] = {}     # session -> [(cue, part, class)]
+    for name in sorted(gestures):
+        units = gestures[name]
+        for (sid, cue), part in zip(units, _deal(len(units), plan.fractions, rng)):
+            assigned.setdefault(sid, []).append((cue, part, name))
+    for sid, (t0, t1) in session_spans.items():
+        ivs: list[Interval] = []
+        marks = sorted(assigned.get(sid, []))
+        # gesture intervals, meeting midway between consecutive cues
+        for i, (cue, part, name) in enumerate(marks):
+            start = cue - MARK_BEFORE_S; end = cue + MARK_AFTER_S
+            if i > 0:
+                prev_end = marks[i - 1][0] + MARK_AFTER_S
+                if start < prev_end:
+                    mid = (prev_end + start) / 2; ivs[-1].end = mid; start = mid
+            ivs.append(Interval(start, end, part, f"gesture:{name}"))
+        # spans: chunked, keeping the class
+        for a, b, name in spans.get(sid, []):
+            ivs += _chunks(a, b, plan.chunk_s, rng, f"span:{name}")
+        ivs.sort(key=lambda iv: iv.start)
+        # the rest of the timeline: chunks
+        rest: list[Interval] = []; cursor = t0
+        for iv in ivs:
+            if iv.start - cursor > WINDOW_S:
+                rest += _chunks(cursor, iv.start, plan.chunk_s, rng, "chunk")
+            cursor = max(cursor, iv.end)
+        if t1 - cursor > WINDOW_S:
+            rest += _chunks(cursor, t1, plan.chunk_s, rng, "chunk")
+        ivs = sorted(ivs + rest, key=lambda iv: iv.start)
+        # deal the unassigned (chunks and span pieces), stratified by unit kind
+        for kind in sorted({iv.unit for iv in ivs if not iv.part}):
+            todo = [iv for iv in ivs if iv.unit == kind and not iv.part]
+            for iv, part in zip(todo, _deal(len(todo), plan.fractions, rng)):
+                iv.part = part
+        plan.intervals[sid] = ivs
     return plan
 
 
-def part_of_window(plan: Plan, sid: str, start_s: float, session_span: tuple[float, float]) -> str | None:
-    """Which part a window belongs to, or None when it straddles a cut (dropped)."""
-    if sid in plan.intervals:
-        for iv in plan.intervals[sid]:
-            if start_s >= iv.start and start_s + WINDOW_S <= iv.end:
-                return iv.part
-        return None
-    role = plan.part_of_session(sid)
-    if role == "halves":
-        t0, t1 = session_span; mid = (t0 + t1) / 2
-        if start_s + WINDOW_S <= mid - WINDOW_S:
-            return "val"
-        if start_s >= mid + WINDOW_S:
-            return "test"
-        return None
-    return role
+def part_of_window(plan: Plan, sid: str, start_s: float) -> str | None:
+    """Which part a window belongs to, or None when it straddles a boundary (dropped)."""
+    for iv in plan.intervals.get(sid, ()):
+        if start_s >= iv.start and start_s + WINDOW_S <= iv.end:
+            return iv.part
+    return None
 
 
-def part_of_mark(plan: Plan, sid: str, cue_at: float, session_span: tuple[float, float]) -> str | None:
-    """Which part a cued gesture is scored in (its windows must be there too)."""
+def part_of_mark(plan: Plan, sid: str, cue_at: float) -> str | None:
     t = cue_at + 0.6
-    if sid in plan.intervals:
-        for iv in plan.intervals[sid]:
-            if iv.start <= t <= iv.end:
-                return iv.part
-        return None
-    role = plan.part_of_session(sid)
-    if role == "halves":
-        t0, t1 = session_span; mid = (t0 + t1) / 2
-        return "val" if t < mid - WINDOW_S else ("test" if t > mid + WINDOW_S else None)
-    return role
+    for iv in plan.intervals.get(sid, ()):
+        if iv.unit.startswith("gesture:") and iv.start <= t <= iv.end:
+            return iv.part
+    return None

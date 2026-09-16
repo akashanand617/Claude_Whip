@@ -1,7 +1,7 @@
 """
 The fixed train / val / test split.
 
-    python -m probe.split make                 # data/split.json (default plan if absent) -> data/split/{train,val,test}.npz
+    python -m probe.split make                 # data/split.json (seed, fractions, chunk) -> data/split/{train,val,test}.npz
     python -m probe.split report               # per-class gesture counts per part
     python -m probe.split score --part val     # one checkpoint, scored on one part: per class, confusions, ambient FP
     python -m probe.split score --part test --checkpoint data/work/x.pt
@@ -35,11 +35,10 @@ def _load_plan(windows) -> sp.Plan:
     if PLAN.exists():
         plan = sp.Plan.load(PLAN)
     else:
-        plan = sp.Plan(sessions=dict(sp.DEFAULT_PLAN["sessions"]), time_split=dict(sp.DEFAULT_PLAN["time_split"]),
-                       default=sp.DEFAULT_PLAN["default"], seed=sp.DEFAULT_PLAN["seed"])
+        plan = sp.Plan(seed=sp.DEFAULT_PLAN["seed"], fractions=list(sp.DEFAULT_PLAN["fractions"]), chunk_s=sp.DEFAULT_PLAN["chunk_s"])
         plan.save(PLAN)
         print(f"wrote {PLAN} (default plan)")
-    return sp.resolve(plan, SESSIONS, sorted(set(windows["session"].tolist())), R)
+    return sp.resolve(plan, SESSIONS, _spans(windows), R)
 
 
 def _spans(windows) -> dict[str, tuple[float, float]]:
@@ -62,7 +61,7 @@ def marks_in_part(plan: sp.Plan, part: str, spans) -> dict[str, list[tuple[float
             if "until" in m or m["cue_at"] in bad:
                 continue
             spec = R.resolve(m.get("label", ""))
-            if spec is None or sp.part_of_mark(plan, sid, m["cue_at"], spans[sid]) != part:
+            if spec is None or sp.part_of_mark(plan, sid, m["cue_at"]) != part:
                 continue
             d = m.get("direction", "none")
             name = f"{spec.name}_{d}" if spec.split_by_direction and d in ("up", "down", "left", "right") else spec.name
@@ -74,7 +73,7 @@ def make(args) -> int:
     d = np.load(args.windows, allow_pickle=True)
     dataset.check_format_version(d)
     plan = _load_plan(d); spans = _spans(d)
-    parts = np.array([sp.part_of_window(plan, s, float(t), spans[s]) or "" for s, t in zip(d["session"], d["start_s"])])
+    parts = np.array([sp.part_of_window(plan, s, float(t)) or "" for s, t in zip(d["session"], d["start_s"])])
     OUT.mkdir(parents=True, exist_ok=True)
     per_row = [k for k in d.files if d[k].shape[:1] == d["X"].shape[:1]]
     for part in sp.PARTS + ("trainval",):
@@ -97,9 +96,13 @@ def report(args) -> int:
     print(f"  {'class':20s} {'train':>6s} {'val':>6s} {'test':>6s}")
     for name in [l for l in labels if l in table] + sorted(set(table) - set(labels)):
         c = table[name]; print(f"  {name:20s} {c['train']:6d} {c['val']:6d} {c['test']:6d}")
-    parts = np.array([sp.part_of_window(plan, s, float(t), spans[s]) or "" for s, t in zip(d["session"], d["start_s"])])
+    parts = np.array([sp.part_of_window(plan, s, float(t)) or "" for s, t in zip(d["session"], d["start_s"])])
     print("\nwindows per part (all classes incl. none and wave):", dict(Counter(parts.tolist())))
-    print("sessions:", {sid: plan.part_of_session(sid) if sid not in plan.intervals else "time-split" for sid in sorted(spans)})
+    lab = np.array(labels)[d["y"]]
+    for part in sp.PARTS:
+        c = Counter(lab[parts == part].tolist())
+        print(f"  {part:5s} none {c.get('none', 0):6d}  wave {c.get('wave', 0):4d}")
+    print(f"seed {plan.seed}, fractions {plan.fractions}, chunk {plan.chunk_s:.0f} s; sessions {len(spans)}")
     return 0
 
 
@@ -111,7 +114,7 @@ def score(args) -> int:
     labels = [str(s) for s in d["labels"]]; cn = R.collapsed_names(labels)
     model, meta = gm.load(args.checkpoint); model.eval()
     part_marks = marks_in_part(plan, args.part, spans)
-    parts = np.array([sp.part_of_window(plan, s, float(t), spans[s]) or "" for s, t in zip(d["session"], d["start_s"])])
+    parts = np.array([sp.part_of_window(plan, s, float(t)) or "" for s, t in zip(d["session"], d["start_s"])])
     per_class = defaultdict(lambda: [0, 0, 0, 0]); conf = Counter(); fp_minutes = 0.0; fp_events = Counter()
     for sid in sorted(spans):
         sel = (d["session"] == sid) & (parts == args.part)
@@ -123,8 +126,12 @@ def score(args) -> int:
         ev = events.detect(evaluate.labels_at(probs, labels, args.threshold), starts.tolist(), policies=R.policies(labels))
         evc = events.detect(evaluate.labels_at(R.collapse_probabilities(probs, labels), cn, args.threshold), starts.tolist(), policies=R.policies(cn))
         truth = part_marks.get(sid, [])
-        if not truth and sid.startswith("negative_"):
-            minutes = (starts[-1] - starts[0]) / 60; fp_minutes += minutes
+        if not truth and not sid.startswith("prompted_"):
+            # a negative recording: every window of this part is `none`, and the
+            # part's chunks are scattered through the session, so runs are
+            # counted per chunk (RunTracker breaks at every hole) and minutes
+            # are the part's windows x stride
+            fp_minutes += len(starts) * events.STRIDE_S / 60
             for e in evc: fp_events[e.label] += 1
             continue
         hx = evaluate.gesture_hits(ev, truth); ht = evaluate.gesture_hits(evc, [(t, R.collapse(n)[0]) for t, n in truth])
