@@ -176,8 +176,17 @@ async def run(args: argparse.Namespace) -> int:
         finally:
             for t in tasks:
                 t.cancel()
+            # The notes are the labels. Write them the moment the stream ends,
+            # before anything else that can fail: a 60-minute ambient session
+            # once lost its notes file because the ring dropped the link during
+            # the battery read that followed.
+            notes.write(notes_path)
 
-        battery_after = await capture.read_battery(client)
+        try:
+            battery_after = await capture.read_battery(client)
+        except Exception as exc:  # the link often drops right at the end; the data is already on disk
+            print(f"WARNING: could not read battery after the session: {exc}")
+            battery_after = None
         if battery and battery_after:
             print(f"battery     {battery[0]}% -> {battery_after[0]}%")
 
