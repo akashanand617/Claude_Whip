@@ -68,7 +68,7 @@ def main() -> int:
         return 1
     channels = tuple(c.strip() for c in args.channels.split(",") if c.strip())
     raw = d["X"]
-    X = gm.to_model_input(raw, channels)
+    X = gm.to_model_input(raw, channels, gravity=d["gravity"] if "gravity" in d else None)
     y, sessions = d["y"], d["session"]
     labels = [str(l) for l in d["labels"]]
     direction = d["direction"] if "direction" in d else np.zeros(len(y), dtype=np.int64)

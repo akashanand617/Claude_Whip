@@ -339,3 +339,41 @@ def test_an_unknown_channel_group_is_refused():
 
     with pytest.raises(ValueError, match="unknown channel"):
         gm.to_model_input(np.zeros((1, 3, 50), dtype="float32"), ("shpae",))
+
+
+def test_posture_channel_is_the_unit_gravity_vector_held_constant():
+    import numpy as np
+
+    raw = np.random.randn(2, gm.N_AXES, gm.WINDOW_SAMPLES).astype("float32")
+    gravity = np.array([[0.0, 0.0, -1.0], [0.6, 0.0, -0.8]], dtype="float32")
+    out = gm.to_model_input(raw, ("posture",), gravity=gravity)
+    assert out.shape == (2, 3, gm.WINDOW_SAMPLES)
+    assert np.allclose(out[0, :, 0], [0, 0, -1])
+    assert np.allclose(out[1, :, 7], [0.6, 0, -0.8])
+    assert np.allclose(out[:, :, 0], out[:, :, -1]), "constant over the window"
+
+
+def test_posture_requires_gravity():
+    import numpy as np
+
+    with pytest.raises(ValueError, match="gravity"):
+        gm.to_model_input(np.zeros((1, 3, 50), dtype="float32"), ("posture",))
+
+
+def test_invariant_channels_ignore_a_spin_about_the_finger():
+    """
+    The ring turning on the finger rotates axes 1 and 2 into each other. The
+    invariant group must not change at all under that -- no reference needed.
+    """
+    import numpy as np
+
+    raw = np.random.randn(3, gm.N_AXES, gm.WINDOW_SAMPLES).astype("float32")
+    theta = 0.7
+    spun = raw.copy()
+    spun[:, 1] = np.cos(theta) * raw[:, 1] - np.sin(theta) * raw[:, 2]
+    spun[:, 2] = np.sin(theta) * raw[:, 1] + np.cos(theta) * raw[:, 2]
+    a = gm.to_model_input(raw, ("invariant",))
+    b = gm.to_model_input(spun, ("invariant",))
+    assert np.allclose(a, b, atol=1e-5)
+    # while the plain shape channels obviously do change
+    assert not np.allclose(gm.to_model_input(raw, ("shape",)), gm.to_model_input(spun, ("shape",)))

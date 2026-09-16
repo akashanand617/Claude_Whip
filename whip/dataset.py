@@ -28,9 +28,12 @@ SAMPLE_RATE_HZ = 25.0
 # amplitude channel. Version 3 added a `motion` class; version 4 removes it in
 # favour of the registry vocabulary (flick, double_flick, wave, snap, clap, ...)
 # with data-driven labels, span labelling for sustained gestures, and a
-# per-window direction. Label indices move at every one of these steps, so a
-# stale export read by newer code silently means something else.
-FORMAT_VERSION = 4
+# per-window direction. Version 5 keeps each window's mean gravity vector
+# alongside the centred waveform: it was being subtracted and discarded, and it
+# is the one feature that separates a palm-down flick from a hand-vertical one.
+# Label indices and fields move at every one of these steps, so a stale export
+# read by newer code silently means something else.
+FORMAT_VERSION = 5
 
 # 50 samples = 2.0 s. Sized so a 1395 ms worst-case gesture leaves ~600 ms of
 # alignment slack; an earlier 38-sample window left only 125 ms, which meant
@@ -73,6 +76,12 @@ class Window:
     axes: list[list[float]]
     # "none" unless this window is a directed gesture from a prompted session.
     direction: str = "none"
+    # The window's mean acceleration in g -- the gravity vector, i.e. the hand's
+    # posture in the ring's frame. Removed from `axes` so static orientation
+    # cannot shortcut gesture TYPE; kept here because posture is exactly what
+    # tells a palm-down flick from a hand-vertical one, and a direction model
+    # that cannot see it permutes directions between sessions.
+    gravity: tuple[float, float, float] = (0.0, 0.0, 0.0)
 
 
 def _decode_stream(path: Path) -> tuple[list[float], list[accel.AccelSample]]:
@@ -226,7 +235,9 @@ def windows_from_session(
         # vector during the window -- the wrist rotation a flick is made of --
         # survives the mean removal; see `model.to_model_input`.
         chunk = stream[:, start:end]
-        centred = np.stack([(row - row.mean()) / accel.COUNTS_PER_G for row in chunk])
+        means = chunk.mean(axis=1)
+        centred = (chunk - means[:, None]) / accel.COUNTS_PER_G
+        gravity = tuple(float(v) for v in means / accel.COUNTS_PER_G)
 
         label, direction, ambiguous = NONE_LABEL, "none", False
         for ges_start, ges_end, ges_label, ges_dir in points:
@@ -255,7 +266,8 @@ def windows_from_session(
             continue
 
         out.append(Window(session_id=session_id, start_s=t0, label=label,
-                          axes=[row.tolist() for row in centred], direction=direction))
+                          axes=[row.tolist() for row in centred], direction=direction,
+                          gravity=gravity))
 
     return out
 

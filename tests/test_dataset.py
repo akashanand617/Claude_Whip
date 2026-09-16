@@ -316,3 +316,29 @@ def test_format_version_rejects_stale_exports():
     for old in (1, 2, 3):
         with pytest.raises(dataset.StaleDataset):
             dataset.check_format_version({"format_version": np.array(old)})
+
+
+def test_windows_keep_their_gravity_vector(tmp_path):
+    """
+    The mean is removed from the waveform so static orientation cannot shortcut
+    gesture type -- but it is the hand's posture, and it is kept alongside.
+    """
+    import numpy as np
+
+    cap = tmp_path / "s.jsonl"
+    write_capture(cap, seconds=6.0)
+    ws = dataset.windows_from_session(cap, declared_negative=True)
+    g = np.array([w.gravity for w in ws])
+    assert g.shape[1] == 3
+    # a still capture: the same non-zero gravity vector in every window, and
+    # the centred waveform has had exactly that mean removed
+    assert np.linalg.norm(g[0]) > 0.1
+    assert np.allclose(g, g[0], atol=1e-3)
+    assert abs(np.mean(ws[0].axes[1])) < 1e-6
+
+
+def test_format_version_five_is_required():
+    import numpy as np
+
+    with pytest.raises(dataset.StaleDataset):
+        dataset.check_format_version({"format_version": np.array(4)})

@@ -163,10 +163,12 @@ class Engine:
 
     def _classify_window(self) -> list[GestureEvent]:
         window = np.stack(self._samples, axis=1)                     # (3, 50)
-        centred = (window - window.mean(axis=1, keepdims=True)) / accel.COUNTS_PER_G
+        means = window.mean(axis=1, keepdims=True)
+        centred = (window - means) / accel.COUNTS_PER_G
         from whip import model as gm
 
-        x = gm.to_model_input(centred[None, ...], self.channels)
+        x = gm.to_model_input(centred[None, ...], self.channels,
+                              gravity=(means[:, 0] / accel.COUNTS_PER_G)[None, :])
         torch = self._torch
         with torch.no_grad():
             gesture_logits, direction_logits = self.model.forward_heads(

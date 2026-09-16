@@ -83,7 +83,8 @@ FULL_SCALE_G = 32767 / 8005.0
 
 DEFAULT_CHANNELS = ("shape", "scale")
 
-CHANNEL_WIDTHS = {"shape": 3, "gravity": 3, "linear": 3, "scale": 1, "saturation": 1}
+CHANNEL_WIDTHS = {"shape": 3, "gravity": 3, "linear": 3, "scale": 1, "saturation": 1,
+                  "posture": 3, "invariant": 3}
 
 
 def _moving_average(x, width: int):
@@ -100,7 +101,7 @@ def n_channels_for(channels=DEFAULT_CHANNELS) -> int:
     return sum(CHANNEL_WIDTHS[c] for c in channels)
 
 
-def to_model_input(x, channels=DEFAULT_CHANNELS):
+def to_model_input(x, channels=DEFAULT_CHANNELS, gravity=None):
     """
     Derive model channels from a stored window.
 
@@ -121,6 +122,16 @@ def to_model_input(x, channels=DEFAULT_CHANNELS):
     - `saturation` (1): fraction of samples at the +/-4.09 g rail. Hard flicks
       clip, which flat-tops the shape channel exactly where shape matters most,
       and without this the model cannot tell a flat top from a real plateau.
+    - `posture` (3): the window's mean gravity vector as a unit vector, constant
+      over time -- needs `gravity` (N, 3) from the export. This is the hand's
+      orientation in the ring's frame. A palm-down flick and a hand-vertical
+      flick are the same wrist flexion; only gravity tells them apart, and a
+      direction model without it was measured to permute directions between
+      sessions (down->right, up->left: same sense, different posture).
+    - `invariant` (3): |a|, the along-finger component, and the magnitude in
+      the plane perpendicular to the finger. Exactly invariant to the ring
+      spinning on the finger, with no reference needed -- for gesture TYPE,
+      where orientation is a nuisance rather than the signal.
 
     `gravity + linear == shape` exactly, so passing all three is redundant; the
     useful comparison is `("shape", "scale")` against
@@ -155,6 +166,9 @@ def to_model_input(x, channels=DEFAULT_CHANNELS):
 
     x = np.asarray(x, dtype="float32")
     peak = np.maximum(np.sqrt((x ** 2).sum(axis=1)).max(axis=1)[:, None, None], SCALE_FLOOR_G)
+    if "posture" in channels and gravity is None:
+        raise ValueError("the 'posture' channel group needs the per-window gravity vectors "
+                         "(export format v5+)")
 
     parts = []
     for name in channels:
@@ -174,6 +188,14 @@ def to_model_input(x, channels=DEFAULT_CHANNELS):
         elif name == "saturation":
             clipped = (np.abs(x) >= 0.98 * FULL_SCALE_G).any(axis=1, keepdims=True)
             parts.append(np.repeat(clipped.mean(axis=2, keepdims=True), x.shape[2], axis=2))
+        elif name == "posture":
+            g = np.asarray(gravity, dtype="float32")
+            g = g / np.maximum(np.linalg.norm(g, axis=1, keepdims=True), SCALE_FLOOR_G)
+            parts.append(np.repeat(g[:, :, None], x.shape[2], axis=2))
+        elif name == "invariant":
+            mag = np.sqrt((x ** 2).sum(axis=1, keepdims=True))
+            perp = np.sqrt((x[:, 1:3] ** 2).sum(axis=1, keepdims=True))
+            parts.append(np.concatenate([mag, x[:, 0:1], perp], axis=1) / peak)
 
     return np.concatenate(parts, axis=1).astype("float32")
 

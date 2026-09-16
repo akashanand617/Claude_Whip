@@ -138,9 +138,10 @@ def main() -> int:
         # available split leaves the test set with no positives at all.
         start = np.array([w.start_s for w in windows], dtype=np.float32)
         direction = np.array([DIRECTION_INDEX[w.direction] for w in windows], dtype=np.int64)
+        gravity = np.array([w.gravity for w in windows], dtype=np.float32)
         args.out.parent.mkdir(parents=True, exist_ok=True)
         np.savez_compressed(args.out, X=X, y=y, session=sess, start_s=start,
-                            labels=np.array(labels), direction=direction,
+                            labels=np.array(labels), direction=direction, gravity=gravity,
                             direction_names=np.array(DIRECTIONS),
                             format_version=np.array(dataset.FORMAT_VERSION))
         print(f"\nwrote {args.out}  X{X.shape} y{y.shape}  labels {labels}  "

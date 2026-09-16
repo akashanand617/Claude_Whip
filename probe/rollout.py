@@ -123,6 +123,7 @@ def main() -> int:
         print(exc)
         return 1
     X, SESS, START = d["X"], d["session"], d["start_s"]
+    GRAV = d["gravity"] if "gravity" in d else None
     class_names = [str(s) for s in d["labels"]]
     # After collapsing, the class axis is the collapsed vocabulary.
     collapsed_names = _REGISTRY.collapsed_names(class_names)
@@ -133,7 +134,8 @@ def main() -> int:
         """Probabilities and start times for one session, in time order."""
         sel = SESS == session_id if mask is None else mask
         order = np.where(sel)[0][np.argsort(START[sel])]
-        batch = gesture_model.to_model_input(X[order], model_channels)
+        batch = gesture_model.to_model_input(
+            X[order], model_channels, gravity=None if GRAV is None else GRAV[order])
         with torch.no_grad():
             probs = torch.softmax(model(torch.tensor(batch)), dim=1).numpy()
         starts = START[order].tolist()

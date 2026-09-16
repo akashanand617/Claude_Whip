@@ -139,7 +139,8 @@ def main() -> int:
         torch.manual_seed(seed)
         np.random.seed(seed)
         if channels not in channel_cache:
-            channel_cache[channels] = gm.to_model_input(raw, channels)
+            channel_cache[channels] = gm.to_model_input(
+                raw, channels, gravity=d["gravity"] if "gravity" in d else None)
         X = channel_cache[channels]
         y_used, class_names = y, all_names
         Xtr, ytr = X[train_mask], y_used[train_mask]
