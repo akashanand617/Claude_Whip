@@ -84,7 +84,7 @@ FULL_SCALE_G = 32767 / 8005.0
 DEFAULT_CHANNELS = ("shape", "scale")
 
 CHANNEL_WIDTHS = {"shape": 3, "gravity": 3, "linear": 3, "scale": 1, "saturation": 1,
-                  "posture": 3, "invariant": 3}
+                  "posture": 3, "invariant": 3, "gref": 2}
 
 
 def _moving_average(x, width: int):
@@ -132,6 +132,11 @@ def to_model_input(x, channels=DEFAULT_CHANNELS, gravity=None):
       the plane perpendicular to the finger. Exactly invariant to the ring
       spinning on the finger, with no reference needed -- for gesture TYPE,
       where orientation is a nuisance rather than the signal.
+    - `gref` (2): the impulsive part of the motion along gravity and
+      perpendicular to it -- needs `gravity`. Invariant to any rotation of the
+      ring frame, because a and g rotate together. This is the physically
+      right way to tell a vertical flick from a horizontal one: `posture`
+      encodes the same fact as an absolute vector that drifts between days.
 
     `gravity + linear == shape` exactly, so passing all three is redundant; the
     useful comparison is `("shape", "scale")` against
@@ -196,6 +201,26 @@ def to_model_input(x, channels=DEFAULT_CHANNELS, gravity=None):
             mag = np.sqrt((x ** 2).sum(axis=1, keepdims=True))
             perp = np.sqrt((x[:, 1:3] ** 2).sum(axis=1, keepdims=True))
             parts.append(np.concatenate([mag, x[:, 0:1], perp], axis=1) / peak)
+        elif name == "gref":
+            # Gravity-referenced: the impulsive (linear) part of the motion
+            # resolved along the window's gravity vector and perpendicular to
+            # it. "Vertical motion or horizontal motion" is a relation between
+            # a and g measured in one frame, so it does not care how the ring
+            # sits on the finger or which way its axes point -- unlike
+            # `posture`, which hands the model an absolute vector that moves
+            # 23-55 degrees between days. Measured without any training: the
+            # fraction of impulsive energy along g is 0.49-0.69 for up/down and
+            # 0.10-0.16 for left/right in every session, and one fixed cut
+            # separates the pairs at 95% over three sessions.
+            if gravity is None:
+                raise ValueError("the 'gref' channel group needs the per-window gravity "
+                                 "vectors (export format v5+)")
+            g = np.asarray(gravity, dtype="float32")
+            g = g / np.maximum(np.linalg.norm(g, axis=1, keepdims=True), SCALE_FLOOR_G)
+            lin = x - _moving_average(x, GRAVITY_WINDOW)
+            along = np.einsum("ntw,nt->nw", lin, g)[:, None, :]
+            perp = np.sqrt(np.maximum((lin ** 2).sum(axis=1, keepdims=True) - along ** 2, 0.0))
+            parts.append(np.concatenate([along, perp], axis=1) / peak)
 
     return np.concatenate(parts, axis=1).astype("float32")
 

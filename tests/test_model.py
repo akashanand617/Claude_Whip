@@ -360,6 +360,33 @@ def test_posture_requires_gravity():
         gm.to_model_input(np.zeros((1, 3, 50), dtype="float32"), ("posture",))
 
 
+def test_gref_channels_ignore_any_rotation_of_the_ring_frame():
+    """
+    The gravity-referenced group resolves motion along and across gravity.
+    Rotating the whole frame -- window and gravity vector together, about any
+    axis -- must leave it unchanged, and it must refuse to run without gravity.
+    """
+    import numpy as np
+
+    rng = np.random.default_rng(0)
+    raw = rng.standard_normal((4, gm.N_AXES, gm.WINDOW_SAMPLES)).astype("float32")
+    grav = rng.standard_normal((4, 3)).astype("float32")
+    # a rotation about an arbitrary axis (Rodrigues)
+    k = np.array([0.3, -0.5, 0.8]); k /= np.linalg.norm(k); th = 1.1
+    K = np.array([[0, -k[2], k[1]], [k[2], 0, -k[0]], [-k[1], k[0], 0]])
+    Rm = (np.eye(3) + np.sin(th) * K + (1 - np.cos(th)) * K @ K).astype("float32")
+    rot = np.einsum("ij,njw->niw", Rm, raw)
+    grot = grav @ Rm.T
+    a = gm.to_model_input(raw, ("gref",), gravity=grav)
+    b = gm.to_model_input(rot, ("gref",), gravity=grot)
+    assert a.shape[1] == gm.CHANNEL_WIDTHS["gref"] == 2
+    assert np.allclose(a, b, atol=1e-4)
+    # the perpendicular channel is a magnitude, never negative
+    assert (a[:, 1] >= 0).all()
+    with pytest.raises(ValueError):
+        gm.to_model_input(raw, ("gref",))
+
+
 def test_invariant_channels_ignore_a_spin_about_the_finger():
     """
     The ring turning on the finger rotates axes 1 and 2 into each other. The
