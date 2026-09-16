@@ -78,3 +78,10 @@ venv/
 
 # Whip data: captures, labels, datasets
 data/
+
+# Xcode (ios/): personal IDE state; contents.xcworkspacedata stays tracked
+xcuserdata/
+*.xcuserstate
+**/xcshareddata/xcschemes/*.xcscheme.orig
+DerivedData/
+*.xcworkspace/xcuserdata/
