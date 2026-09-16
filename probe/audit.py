@@ -81,6 +81,9 @@ def main() -> int:
     parser.add_argument("--all", action="store_true", help="every prompted session in data/sessions")
     parser.add_argument("-v", "--verbose", action="store_true", help="print every gesture, not just flagged ones")
     parser.add_argument("--write", action="store_true", help="write <session>.audit.json with the verdicts")
+    parser.add_argument("--ignore-amplitude", action="store_true",
+                        help="record on the session's notes that the soft/hard word was not followed on purpose; "
+                             "the prompt-adherence flags are then not applied (with one session id)")
     parser.add_argument("--auto-frame", action="store_true",
                         help="if the hand rule says a session was worn the other way round, write its frame file "
                              "(a half-turn about the palm normal) so the exporter corrects it")
@@ -101,6 +104,11 @@ def main() -> int:
             parser.error("--exclude takes exactly one session id")
         done = audit.exclude_marks(SESSIONS / f"{ids[0]}.notes.json", args.exclude, args.reason)
         print(f"excluded marks {done} in {ids[0]} ({args.reason})")
+    if args.ignore_amplitude:
+        if len(ids) != 1:
+            parser.error("--ignore-amplitude takes exactly one session id")
+        audit.set_notes_flag(SESSIONS / f"{ids[0]}.notes.json", "ignore_amplitude", True)
+        print(f"{ids[0]}: amplitude word ignored from now on")
     if args.auto_frame:
         for sid in ids:
             cap, notes = SESSIONS / f"{sid}.jsonl", SESSIONS / f"{sid}.notes.json"

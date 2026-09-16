@@ -60,7 +60,10 @@ def test_streaming_hampel_matches_batch_on_the_interior():
 
 def test_streaming_hampel_removes_the_spike_and_keeps_the_peak():
     t, x = synthetic_counts()
-    x[0, 200] = 30000.0                      # artifact
+    # A glitch is a lone sample with quiet neighbours; one landing ON a burst
+    # is indistinguishable from the burst and is kept by design (a snap at
+    # the ring is a 1-2 sample shock, and the filter must not eat it).
+    x[0, 100] = 30000.0                      # artifact, in the quiet before the first burst
     stream = despike.StreamingHampel()
     filtered = []
     for i in range(x.shape[1]):

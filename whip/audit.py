@@ -276,8 +276,23 @@ def audit_session(capture_path: Path, notes_path: Path, registry: Registry | Non
             # and redid it late", "phone rang"). The audit cannot know that.
             g.flags.append("MANUAL_EXCLUDE")
         out.append(g)
-    _flag_prompt_adherence(out)
+    # A session recorded without attending to the soft/hard word (the wearer
+    # says so: `"ignore_amplitude": true` in the notes) is not judged on it.
+    if not getattr(notes, "raw", {}).get("ignore_amplitude") and not _notes_flag(notes_path, "ignore_amplitude"):
+        _flag_prompt_adherence(out)
     return out
+
+
+def _notes_flag(notes_path: Path, key: str) -> bool:
+    try:
+        return bool(json.loads(Path(notes_path).read_text()).get(key))
+    except (OSError, ValueError):
+        return False
+
+
+def set_notes_flag(notes_path: Path, key: str, value=True) -> None:
+    doc = json.loads(Path(notes_path).read_text()); doc[key] = value
+    Path(notes_path).write_text(json.dumps(doc, indent=2))
 
 
 def reanchorable(g: GestureAudit) -> bool:

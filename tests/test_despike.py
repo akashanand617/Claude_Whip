@@ -124,3 +124,27 @@ def test_defaults_are_the_conservative_end_of_the_passing_range():
     assert despike.N_SIGMAS == 8.0
     # the neighbourhood must stay narrower than the gesture peak it protects
     assert 2 * despike.HALF_WINDOW + 1 < 9 + 2
+
+
+def test_a_two_sample_shock_survives_and_a_one_sample_glitch_does_not():
+    """
+    A snap at the ring is a 1-2 sample shock at 5-7 g, the width of a BLE
+    glitch; the filter must keep a shock whose neighbour is also elevated and
+    still remove a lone sample. Same rule in the streaming filter.
+    """
+    import numpy as np
+    from whip import despike
+
+    quiet = np.zeros((3, 60)) + 0.02 * np.random.default_rng(0).standard_normal((3, 60))
+    glitch = quiet.copy(); glitch[1, 30] = 4.0
+    shock = quiet.copy(); shock[1, 30] = 5.0; shock[1, 31] = -3.0
+    assert abs(despike.hampel(glitch)[1, 30]) < 0.5
+    out = despike.hampel(shock)
+    assert out[1, 30] == 5.0 and out[1, 31] == -3.0
+    for trace, keep in ((glitch, False), (shock, True)):
+        f = despike.StreamingHampel(); got = []
+        for k in range(trace.shape[1]):
+            got.extend(f.push(trace[:, k]))
+        got.extend(f.drain())
+        got = np.stack(got, axis=1)
+        assert (abs(got[1, 30]) > 4.0) == keep

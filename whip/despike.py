@@ -102,7 +102,17 @@ def hampel(x, half_window: int = HALF_WINDOW, n_sigmas: float = N_SIGMAS):
     threshold = n_sigmas * MAD_TO_SIGMA * np.maximum(mad, floor)
 
     outlier = np.abs(x - local_median) > threshold
-    return np.where(outlier, local_median, x)
+    # Only an ISOLATED outlier is a glitch. A snap at the ring is a 1-2 sample
+    # shock at 5-7 g -- physically the same width as a BLE glitch -- and the
+    # first version of this filter removed it (median snap peak 5.8 g -> 1.1 g,
+    # 2026-09-16). Now a sample is replaced only when both its neighbours sit
+    # within the centre's own threshold of the centre's baseline: a glitch has
+    # quiet neighbours, a shock does not. Cost: ambient loud windows rise by
+    # ~40% (68 -> 94 per hour above 3 g), and the model learns those as `none`.
+    neighbour_quiet = np.ones_like(outlier)
+    neighbour_quiet[..., 1:] &= np.abs(x[..., :-1] - local_median[..., 1:]) <= threshold[..., 1:]
+    neighbour_quiet[..., :-1] &= np.abs(x[..., 1:] - local_median[..., :-1]) <= threshold[..., :-1]
+    return np.where(outlier & neighbour_quiet, local_median, x)
 
 
 class StreamingHampel:
@@ -148,7 +158,12 @@ class StreamingHampel:
         self._mads.append(float(np.median(mad)))
         floor = np.median(self._mads)
         threshold = self.n_sigmas * MAD_TO_SIGMA * np.maximum(mad, floor)
-        return np.where(np.abs(centre - med) > threshold, med, centre)
+        # Isolated-outlier rule, identical to the batch filter: replace only
+        # when both adjacent samples sit within the centre's threshold of the
+        # centre's baseline. The buffer holds both neighbours already.
+        outlier = np.abs(centre - med) > threshold
+        quiet = (np.abs(window[:, hw - 1] - med) <= threshold) & (np.abs(window[:, hw + 1] - med) <= threshold)
+        return np.where(outlier & quiet, med, centre)
 
     def push(self, sample) -> list[np.ndarray]:
         self._buf.append(np.asarray(sample, dtype="float64"))
