@@ -148,4 +148,18 @@ def test_audit_file_round_trips_and_lists_invalid_cues(tmp_path):
     doc = json.loads(path.read_text())
     assert doc["summary"]["by_verdict"]["invalid"] == 1 and doc["gestures"][1]["verdict"] == "invalid"
     assert audit.invalid_cues(cap) == [6.0]
-    assert audit.invalid_cues(tmp_path / "nothing.jsonl") == []
+    assert audit.excluded_cues(cap) == [6.0]
+    assert audit.excluded_cues(tmp_path / "nothing.jsonl") == []
+
+
+def test_suspect_gestures_are_excluded_too_and_counted_as_shortfall(tmp_path):
+    """Uncertain data is dropped and made up next session, not trained on."""
+    cap = tmp_path / "prompted_y.jsonl"; cap.write_text("")
+    ok = audit.GestureAudit(0, 2.0, "flick", "up", "hard", "", 4.0, 0.1, [(0.1, 4.0)])
+    sus = audit.GestureAudit(1, 6.0, "flick", "left", "soft", "", 4.0, 0.1, [(0.1, 4.0)]); sus.flags = ["CUED_SOFT_DID_HARD"]
+    bad = audit.GestureAudit(2, 9.0, "double_flick", "left", "hard", "", 0.5, None, []); bad.flags = ["NO_MOTION"]
+    assert (ok.verdict, sus.verdict, bad.verdict) == ("valid", "suspect", "invalid")
+    audit.write_audit(cap, [ok, sus, bad])
+    assert audit.excluded_cues(cap) == [6.0, 9.0]
+    assert audit.invalid_cues(cap) == [9.0]
+    assert audit.shortfall([ok, sus, bad]) == {"flick_left": 1, "double_flick_left": 1}

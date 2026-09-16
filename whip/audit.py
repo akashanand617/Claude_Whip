@@ -18,16 +18,19 @@ of that is visible from the notes file; all of it is visible from the stream.
 The audit's output is a verdict per cued gesture:
 
 - ``valid``   -- keep, train on it, score it.
-- ``suspect`` -- keep, but listed: something is unusual (prompt not followed,
-  a single whose recoil looks like a second tap, direction feature on the
-  wrong side of the cut). These are the boundary cases the model must learn;
-  removing them would make the corpus cleaner than the world.
-- ``invalid`` -- drop. The record does not show the gesture that was cued:
-  no motion, too late for the label, a double with one stroke or with a
-  stroke spacing outside the defined range, samples missing inside the
-  gesture. ``dataset`` treats every window touching an invalid gesture as
-  ambiguous (dropped, never relabelled `none`), and ``probe.rollout`` does not
-  score it.
+- ``suspect`` -- something is unusual: prompt not followed, a single whose
+  recoil looks like a second tap, direction feature on the wrong side of the
+  cut. Listed so the session can be judged.
+- ``invalid`` -- the record does not show the gesture that was cued: no
+  motion, too late for the label, a double with one stroke or with a stroke
+  spacing outside the defined range, samples missing inside the gesture.
+
+**Both suspect and invalid are excluded** from training and scoring
+(`EXCLUDED_VERDICTS`, decided 2026-09-15: uncertain data is dropped and made
+up in the next session rather than trained on). ``dataset`` treats every
+window touching an excluded gesture as ambiguous (dropped, never relabelled
+`none`), ``probe.rollout`` does not score it, and ``shortfall()`` says how
+many of each class the next session has to replace.
 
 A double flick is DEFINED as two comparable taps at the natural quick
 spacing: stroke peaks 0.20-0.50 s apart, second peak between half and twice
@@ -90,6 +93,8 @@ SUSPECT_FLAGS = ("CUED_SOFT_DID_HARD", "CUED_HARD_DID_SOFT", "SINGLE_SECOND_TAP"
                  "DIRECTION_PAIR_MISMATCH", "CUE_COLLISION")
 
 AUDIT_SUFFIX = ".audit.json"
+# Verdicts the exporter and the rollout leave out. Only `valid` trains.
+EXCLUDED_VERDICTS = ("invalid", "suspect")
 
 
 @dataclass
@@ -321,13 +326,34 @@ def write_audit(capture_path: Path, audits: list[GestureAudit]) -> Path:
     return path
 
 
-def invalid_cues(capture_path: Path) -> list[float]:
+def excluded_cues(capture_path: Path, verdicts: tuple[str, ...] = EXCLUDED_VERDICTS) -> list[float]:
     """
-    Cue times of gestures the audit marked invalid, or [] when no audit file
-    exists. The exporter and the rollout use this to leave those gestures out.
+    Cue times of gestures the audit gave one of `verdicts`, or [] when no
+    audit file exists. The exporter and the rollout use this to leave those
+    gestures out.
     """
     path = audit_path(capture_path)
     if not path.exists():
         return []
     doc = json.loads(path.read_text())
-    return [float(g["cue_at"]) for g in doc.get("gestures", []) if g.get("verdict") == "invalid"]
+    return [float(g["cue_at"]) for g in doc.get("gestures", []) if g.get("verdict") in verdicts]
+
+
+def invalid_cues(capture_path: Path) -> list[float]:
+    """Only the invalid ones (kept for reporting; exclusion uses `excluded_cues`)."""
+    return excluded_cues(capture_path, ("invalid",))
+
+
+def shortfall(audits: list[GestureAudit]) -> dict[str, int]:
+    """
+    How many gestures of each class the next session has to make up: every
+    cued gesture that is not `valid`, keyed by `label_direction` (or `label`
+    when undirected), in registry-ish order of first appearance.
+    """
+    out: dict[str, int] = {}
+    for a in audits:
+        if a.verdict == "valid":
+            continue
+        key = f"{a.label}_{a.direction}" if a.direction not in ("", "none") else a.label
+        out[key] = out.get(key, 0) + 1
+    return out

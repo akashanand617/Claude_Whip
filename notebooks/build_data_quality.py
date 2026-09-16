@@ -29,7 +29,11 @@ The double flick is defined as a *range* -- two strokes 0.20-0.50 s apart, secon
 peak 0.5-2.0x the first -- so a "late" double is an anomaly by definition, not a
 tempo.
 
-Then: what changes when the invalid gestures are removed, a learning curve over the
+**Policy (decided 2026-09-15): only `valid` gestures train and score.** Suspect and
+invalid are both excluded and made up in the next session; the per-class tally is
+in section 4.
+
+Then: what changes when the excluded gestures are removed, a learning curve over the
 valid gestures, and the sample sizes the claims need.
 
 Re-run: `python -m probe.audit --all --write`, then
@@ -136,11 +140,12 @@ table(["flag", "count", "verdict"], [(f, c, "invalid" if f in audit.INVALID_FLAG
 
 md("""
 **Reading this honestly.** "Usable" means the record shows the gesture that was cued
-(valid + suspect). "Clean" means nothing at all was unusual. The suspect set is *not*
-mislabelled data: it is the boundary the model must learn (a single whose recoil
-looks like a second tap, a soft cue executed hard, motion whose gravity signature
-sits just across the pair cut). Removing it would make the corpus cleaner than the
-world the model runs in.
+(valid + suspect). "Clean" means nothing at all was unusual, and **clean is what
+trains**. The suspect set is uncertain rather than wrong: a single whose recoil looks
+like a second tap, a soft cue executed hard, motion whose gravity signature sits just
+across the pair cut. It is dropped on the principle that uncertain data is replaced,
+not trained on; the cost is the boundary cases it would have taught, which the next
+sessions will supply as clean examples or not at all.
 
 The invalid set *is* mislabelled data: the label says "double flick" and the stream
 shows one stroke, or two strokes with a pause, or nothing.
@@ -156,8 +161,15 @@ display(Markdown(f"### Invalid ({len(rows)}): excluded from training and scoring
 table(["sess", "#", "label", "dir", "amp", "peak g", "onset s", "strokes", "gap s", "2nd/1st", "why"], rows, {"peak g": "{:.1f}", "onset s": "{:+.2f}"})
 rows = [(tag, a.index, a.label, a.direction, a.amplitude, a.peak_g, a.vertical_frac,
          ", ".join(f"{t:+.2f}s {g:.1f}g" for t, g in a.strokes) or "-", " ".join(a.flags)) for tag, a in G if a.verdict == "suspect"]
-display(Markdown(f"### Suspect ({len(rows)}): kept, listed"))
+display(Markdown(f"### Suspect ({len(rows)}): excluded too, listed"))
 table(["sess", "#", "label", "dir", "amp", "peak g", "vert", "strokes", "flags"], rows, {"peak g": "{:.1f}"})
+short = Counter()
+for tag, a in G:
+    if a.verdict != "valid": short[f"{a.label}_{a.direction}"] += 1
+have = Counter(f"{a.label}_{a.direction}" for _, a in G if a.verdict == "valid")
+display(Markdown(f"### To re-record: {sum(short.values())} gestures the next session has to make up"))
+order = [f"{l}_{d}" for l in ("flick", "double_flick") for d in ("up", "down", "left", "right")]
+table(["class", "valid now", "excluded (re-record)", "valid after make-up"], [(k, have[k], short[k], have[k] + short[k]) for k in order] + [("total", sum(have.values()), sum(short.values()), sum(have.values()) + sum(short.values()))])
 """)
 
 md("""
@@ -239,13 +251,13 @@ clean = json.loads((RES / "clean_results.json").read_text()) if (RES / "clean_re
 if clean:
     rows = []
     for key, name in (("uncleaned_seed0", "trained on everything, seed 0"), ("uncleaned_seed1", "trained on everything, seed 1"),
-                      ("seed0", "trained on valid+suspect only, seed 0"), ("seed1", "trained on valid+suspect only, seed 1")):
+                      ("seed0", "trained on valid only, seed 0"), ("seed1", "trained on valid only, seed 1")):
         r = clean[key]
         amb = r.get("ambient", {})
         rows.append((name, f"{r['0.4']['exact']}/{r['0.4']['n']}", f"{r['0.4']['type']}/{r['0.4']['n']}", f"{r['0.9']['exact']}/{r['0.9']['n']}",
                      amb.get("0.40", {}).get("fp_per_min"), amb.get("0.90", {}).get("fp_per_min")))
     table(["model (gref channels, reference session held out)", "exact class @0.4", "type @0.4", "exact @0.9", "ambient FP/min @0.4", "@0.9"], rows)
-    display(Markdown("Scored on the reference session's **valid + suspect gestures only** (the 4 invalid ones are excluded from truth for every row, so rows are comparable)."))
+    display(Markdown("Scored on the reference session's **valid gestures only** (the 9 excluded ones are out of the truth for every row, so rows are comparable)."))
 else:
     print("clean_results.json not present -- run the scratch clean_run.py")
 """)
@@ -264,7 +276,8 @@ if curve:
         ax.plot([int(np.mean([c_["train_gestures"] for c_ in curve if c_["frac"] == f])) for f in fr], means, color=c, alpha=0.5)
     ys = [100 * c_["0.4"]["type"] / c_["0.4"]["n"] for c_ in curve]; ax.scatter([c_["train_gestures"] for c_ in curve], ys, color="tab:green", marker="x", label="gesture type, thr 0.4")
     ax.set_xlabel("valid training gestures (sessions 1+2, subsampled per class)"); ax.set_ylabel("recall on reference session (%)"); ax.set_ylim(50, 101); ax.grid(alpha=0.3); ax.legend()
-    ax.set_title("Two seeds per point; 28 held-out gestures, so ±1 gesture = 3.6 points"); plt.show()
+    n_ref = curve[0]["0.4"]["n"]
+    ax.set_title(f"Two seeds per point; {n_ref} held-out gestures, so ±1 gesture = {100/n_ref:.1f} points"); plt.show()
     rows = [(c_["frac"], c_["seed"], c_["train_gestures"], c_["train_windows"], f"{c_['0.4']['exact']}/{c_['0.4']['n']}", f"{c_['0.4']['type']}/{c_['0.4']['n']}", f"{c_['0.9']['exact']}/{c_['0.9']['n']}") for c_ in curve]
     table(["fraction", "seed", "train gestures", "train windows", "exact @0.4", "type @0.4", "exact @0.9"], rows)
 else:
@@ -278,7 +291,7 @@ from math import sqrt
 def wilson(k, n, z=1.96):
     p = k / n; d = 1 + z * z / n; c = p + z * z / (2 * n); h = z * sqrt(p * (1 - p) / n + z * z / (4 * n * n)); return ((c - h) / d, (c + h) / d)
 rows = []
-for n in (28, 64, 100, 150, 200, 300):
+for n in (23, 64, 100, 150, 200, 300):
     rows.append((n, 100 * wilson(round(0.95 * n), n)[0], 100 * wilson(round(0.97 * n), n)[0], 100 * wilson(n, n)[0]))
 display(Markdown("### To *demonstrate* recall: 95% CI lower bound (Wilson) for an observed recall, by held-out gesture count"))
 table(["held-out gestures", "observed 95% -> lower bound", "observed 97% -> lower", "observed 100% -> lower"], rows, {"observed 95% -> lower bound": "{:.1f}", "observed 97% -> lower": "{:.1f}", "observed 100% -> lower": "{:.1f}"})
@@ -289,25 +302,24 @@ table(["claim", "clean ambient minutes needed", "have"], [("< 6 / hour", 30, 30)
 md(r"""
 ### The estimate
 
-**What exists, per class, after the audit** (valid + suspect): about 36 gestures per
-direction-class of flick and double_flick across two training days, 28 usable
-held-out gestures on a third day, and one 20 s span each of wave, snap and clap
-(63-75 windows each, one day, one person). Ambient: 30 held-out minutes.
+**What exists, per class, after the audit** (valid only): 232 training gestures on
+two days, 26-33 per direction-class of flick and double_flick, 23 valid held-out
+gestures on a third day, and one 20 s span each of wave, snap and clap (63-75
+windows each, one day, one person). Ambient: 30 held-out minutes. The 41 excluded
+gestures are the first item on the next session's list (section 4).
 
-**What cleaning did.** Trained on valid + suspect only, both seeds reach 27/28
-exact-class and 28/28 gesture-type on the held-out session at every threshold from
-0.4 to 0.9, with ambient false positives at 0.07/min (thr 0.4) and 0.00-0.03/min
-(thr 0.9). Trained on everything, the same seeds score 26-27/28. One gesture of
-difference is inside the noise of a 28-gesture test; what cleaning changed for
-certain is the *definition*, which is what the next sessions will be recorded
-against. The one remaining miss is a soft (1.9 g) double_flick_right read as
-double_flick_left: correct type, wrong sense.
+**What cleaning did.** Section 7 has the like-for-like table: the same two seeds
+trained on everything versus on valid gestures only, scored on the same valid-only
+truth. Read the numbers there rather than a summary here; with 23 held-out gestures
+one gesture is 4.3 points, so anything inside two gestures is a tie. What cleaning
+changed for certain is the *definition*, which is what the next sessions will be
+recorded against.
 
-**To reach 95%.** The learning curve says two different things. Gesture *type*
-saturates early: 28/28 from 128 training gestures on. Exact class at threshold 0.9
--- direction plus confidence -- climbs from 22/28 at 64 gestures to 27/28 at 256
-and has not flattened, so direction and confidence are still data-limited at the
-current size. What the curve cannot say is the effect of a *third* training day,
+**To reach 95%.** The learning curve (section 8) separates two things: gesture
+*type*, which saturates early, and exact class at threshold 0.9 -- direction plus
+confidence -- which keeps climbing with training gestures. Read whether the
+right-hand end has flattened; if it has not, direction and confidence are still
+data-limited at the current size. What the curve cannot say is the effect of a *third* training day,
 and the evidence so far is that days matter more than gestures: the posture and the
 up-flick waveform both moved more between days than within one. The recommendation
 is therefore in sessions, not gestures:
@@ -315,7 +327,7 @@ is therefore in sessions, not gestures:
 | what | now | needed | why |
 |---|---|---|---|
 | prompted flick/double sessions (training) | 2 days | 4-5 days, 8 per direction-class each (64 gestures, ~5 min) | day-to-day variation is the dominant unexplained factor; each day adds ~64 audited gestures |
-| held-out demonstration set | 28 usable on 1 day | >= 100 on >= 2 further days, never trained on | observed 97% on 100 bounds recall above 91%; on 28 it bounds nothing above 84% |
+| held-out demonstration set | 23 valid on 1 day | >= 100 on >= 2 further days, never trained on | observed 97% on 100 bounds recall above 91%; on 23 it bounds nothing above 82% |
 | wave / snap / clap / double_snap | 1 span each, 1 day; double_snap none | 3 days x 3 spans of 20 s each per sustained class; 3 days x 16 snaps and double_snaps | one span cannot train or validate a class; snap and double_snap are the flick's hardest negatives |
 | ambient wear | 30 held-out min | 180+ min across >= 2 days, no cued gestures | rule of three; anything less cannot bound < 1/hour |
 | each session | | `python -m probe.audit <session> --write` before export | invalid gestures re-recorded the same day |

@@ -354,8 +354,9 @@ def test_format_version_five_is_required():
 
 def test_invalid_gestures_from_the_audit_are_excluded_not_relabelled(tmp_path, monkeypatch):
     """
-    A gesture the audit marked invalid must produce no positive window AND no
-    `none` window: every window touching it is ambiguous and dropped.
+    A gesture the audit did not pass as valid must produce no positive window
+    AND no `none` window: every window touching it is ambiguous and dropped.
+    (Suspect is excluded the same way; `excluded_cues` covers both.)
     """
     import json
     from whip import audit as audit_mod

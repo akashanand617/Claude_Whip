@@ -12,8 +12,10 @@ when any gesture is invalid, so a session is looked at before it is exported
 rather than discovered as a held-out miss weeks later.
 
 With --write the verdicts land in `<session>.audit.json`; `whip.dataset` then
-drops every window touching an invalid gesture and `probe.rollout` does not
-score it. Without --write nothing changes on disk.
+drops every window touching a gesture that is not valid (suspect AND invalid:
+uncertain data is made up next session, not trained on) and `probe.rollout`
+does not score it. The "to re-record" line is that make-up list, per class.
+Without --write nothing changes on disk.
 """
 
 from __future__ import annotations
@@ -59,6 +61,9 @@ def report(session_id: str, verbose: bool, write: bool) -> bool:
         if max(med.values()) - min(med.values()) < 0.08:
             line += "   (NO EFFECT: the tempo words did not change execution)"
         print(line)
+    short = audit.shortfall(audits)
+    if short:
+        print(f"  to re-record ({sum(short.values())} not valid): " + "  ".join(f"{k}:{n}" for k, n in short.items()))
     if write:
         print(f"  wrote {audit.write_audit(cap, audits)}")
     return v["invalid"] == 0
