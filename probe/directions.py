@@ -48,8 +48,15 @@ def _angle(a, b) -> float:
 
 
 def _lowpass(x, width=GRAVITY_WINDOW):
+    """
+    Moving average with reflected edges. Zero-padded edges ("same" mode) pull
+    the first and last samples of a gesture's gravity track toward the origin,
+    which is an out-of-plane excursion the rotation-axis estimate then has to
+    absorb -- it tilted recovered axes by ~30 degrees on a synthetic fixture.
+    """
+    pad = width // 2
     k = np.ones(width) / width
-    return np.stack([np.convolve(row, k, mode="same") for row in x])
+    return np.stack([np.convolve(np.pad(row, pad, mode="reflect"), k, mode="valid") for row in x])
 
 
 def gesture_geometry(x, t, cue_at: float, duration_s: float = 1.2):
