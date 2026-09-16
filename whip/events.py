@@ -28,6 +28,9 @@ from dataclasses import dataclass, field
 
 STRIDE_S = 0.24   # 6 samples at 25 Hz
 WINDOW_S = 2.0    # 50 samples at 25 Hz
+# Consecutive windows arrive one stride apart. A step longer than this is a
+# hole in the stream, and a run does not continue across a hole.
+MAX_RUN_STEP_S = 2 * STRIDE_S
 
 # The impulsive default band: a 1.2 s gesture inside a 2.0 s window at 0.24 s
 # stride produces ~6 positive windows; sustained motion produces far more.
@@ -115,8 +118,21 @@ class RunTracker:
         return self.policies.get(label, self.default)
 
     def feed(self, label: str, start_s: float) -> Event | None:
+        # A run is a sequence of CONSECUTIVE windows. A hole in the stream --
+        # a BLE dropout live, or offline the windows of an excluded gesture --
+        # ends the run just as a different label would. Without this, two
+        # same-class gestures on either side of an excluded one fused into a
+        # single 12-window run centred on the hole, and both read as misses.
+        gap_closed = None
+        if self._starts and start_s - self._starts[-1] > MAX_RUN_STEP_S:
+            gap_closed = self._close_run(end_at=self._starts[-1] + STRIDE_S)
+            # _close_run leaves no open run, so the branch below starts a
+            # fresh one for this window. At most one event per feed still
+            # holds: the fresh run has length 1 and cannot fire (sustained
+            # policies need min_run >= 2), and the label-change close below
+            # finds nothing open.
         if label != self._label:
-            closed = self._close_run(end_at=start_s)
+            closed = self._close_run(end_at=start_s) or gap_closed
             self._label = label
             self._starts = [start_s]
             self._judged_this_run = False

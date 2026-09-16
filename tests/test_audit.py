@@ -86,13 +86,16 @@ def test_a_single_with_a_full_second_tap_is_suspect_not_invalid():
     assert _ga("flick", "none", audit.audit_gesture(x, t, 2.0)).verdict == "valid"
 
 
-def test_no_motion_late_onset_and_sample_loss_are_invalid():
+def test_no_motion_weak_late_onset_and_sample_loss_are_invalid():
     x, t = _stream([])
     g = _ga("flick", "none", audit.audit_gesture(x, t, 2.0))
     assert g.flags == ["NO_MOTION"] and g.verdict == "invalid"
-    x, t = _stream([(3.3, 4.0)])
+    x, t = _stream([(2.8, 4.0)])                        # 0.8 s after the cue
     g = _ga("flick", "none", audit.audit_gesture(x, t, 2.0))
     assert "LATE_ONSET" in g.flags and g.verdict == "invalid"
+    x, t = _stream([(2.1, 1.3)])                        # a 1.3 g wobble
+    g = _ga("flick", "none", audit.audit_gesture(x, t, 2.0))
+    assert "WEAK" in g.flags and g.verdict == "invalid"
     x, t = _stream([(2.1, 4.0)])
     keep = ~((t > 2.4) & (t < 3.0))                     # a 0.6 s hole after the stroke
     g = _ga("flick", "none", audit.audit_gesture(x[:, keep], t[keep], 2.0))

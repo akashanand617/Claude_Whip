@@ -146,3 +146,20 @@ def test_impulsive_and_sustained_policies_coexist():
     preds = run_of("flag", 5) + ["none"] * 2 + run_of("wave", 8)
     ev = events.detect(preds, starts_for(len(preds)), policies=wave_policy())
     assert [e.label for e in ev] == ["flag", "wave"]
+
+
+def test_a_hole_in_the_stream_breaks_a_run():
+    """
+    Two same-class gestures on either side of a hole (an excluded gesture's
+    windows offline, a dropout live) must be two events, not one long run
+    centred on the hole -- that fusion read both gestures as misses.
+    """
+    stride = events.STRIDE_S
+    a = [(i * stride, "flick") for i in range(6)]                 # run of 6 at 0..1.2 s
+    b = [(20.0 + i * stride, "flick") for i in range(6)]          # run of 6 at 20..21.2 s
+    preds = [l for _, l in a + b]; starts = [t for t, _ in a + b]
+    got = events.detect(preds, starts)
+    assert [(e.run_length, round(e.start_s, 2)) for e in got] == [(6, 0.0), (6, 20.0)]
+    # and a normal one-stride step does not break anything
+    c = [(i * stride, "flick") for i in range(12)]
+    assert [e.run_length for e in events.detect([l for _, l in c], [t for t, _ in c])] == [12]

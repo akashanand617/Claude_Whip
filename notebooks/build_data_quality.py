@@ -36,9 +36,8 @@ in section 4.
 Then: what changes when the excluded gestures are removed, a learning curve over the
 valid gestures, and the sample sizes the claims need.
 
-Re-run: `python -m probe.audit --all --write`, then
-`python notebooks/build_data_quality.py`. Experiment results are read from
-`notebooks/results/*.json` (produced by the scratch scripts described at the end).
+Re-run: `scripts/rerun.sh --notebook`. Experiment results are read from
+`notebooks/results/*.json` (see the last section).
 """)
 
 code(r"""
@@ -356,7 +355,7 @@ md("""
 
 - Audit verdicts: `python -m probe.audit --all --write` (writes `data/sessions/<session>.audit.json`).
 - Clean export: `python -m probe.dataset --out data/windows.npz` (the exporter drops every window touching an invalid gesture).
-- Clean retrain and like-for-like comparison: `scratch/clean_run.py`; learning curve: `scratch/curve.py` (both in the session scratchpad; their outputs are `notebooks/results/*.json`).
+- Everything at once, after a new session: `scripts/rerun.sh --notebook` (audit, valid-only export, deployed retrain, rollout, learning curve `notebooks/experiments/curve.py`, comparison `notebooks/experiments/clean_run.py`, this notebook). Without `--notebook` it stops after the rollout.
 """)
 
 nb = nbf.v4.new_notebook(); nb["cells"] = cells

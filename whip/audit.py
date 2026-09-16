@@ -22,8 +22,9 @@ The audit's output is a verdict per cued gesture:
   recoil looks like a second tap, direction feature on the wrong side of the
   cut. Listed so the session can be judged.
 - ``invalid`` -- the record does not show the gesture that was cued: no
-  motion, too late for the label, a double with one stroke or with a stroke
-  spacing outside the defined range, samples missing inside the gesture.
+  motion, a peak under 1.5 g, a start later than 0.6 s after the cue, a
+  double with one stroke or with a stroke spacing outside the defined range,
+  samples missing inside the gesture.
 
 **Both suspect and invalid are excluded** from training and scoring
 (`EXCLUDED_VERDICTS`, decided 2026-09-15: uncertain data is dropped and made
@@ -62,9 +63,15 @@ STROKE_FLOOR_G = 1.0
 MIN_STROKE_SPACING_S = 0.20
 # A further stroke counts only if it reaches this fraction of the largest one.
 STROKE_RATIO_FLOOR = 0.35
-# Onset later than this after the cue is outside what the coverage rule was
-# designed for; the label (cue .. cue + 1.2 s) would cover half the gesture.
-LATE_ONSET_S = 1.0
+# Onset later than this after the cue is not a response to the cue: the
+# corpus p95 is 0.47 s, and the label (cue .. cue + 1.2 s) would cover only
+# half of a gesture that starts later. (Was 1.0 s; tightened 2026-09-15
+# after a shape review of every flagged gesture.)
+LATE_ONSET_S = 0.6
+# A gesture whose peak never reaches this is a wobble, not a flick: the
+# softest deliberate flicks in the corpus are 1.5-2.5 g, and every gesture
+# under 1.5 g in the shape review was a multi-bump smear.
+MIN_PEAK_G = 1.5
 # The audit's look-ahead after the cue. Longer would run into the next prompt.
 SPAN_S = 1.8
 # The double flick, as a range: peak-to-peak spacing and second/first peak.
@@ -87,7 +94,7 @@ MAX_LOSS = 0.10
 MIN_CUE_SPACING_S = 2.0
 FULL_SCALE_G = 32767 / accel.COUNTS_PER_G
 
-INVALID_FLAGS = ("NO_MOTION", "LATE_ONSET", "DOUBLE_WITH_ONE_STROKE",
+INVALID_FLAGS = ("NO_MOTION", "WEAK", "LATE_ONSET", "DOUBLE_WITH_ONE_STROKE",
                  "DOUBLE_GAP_OUT_OF_RANGE", "DOUBLE_RATIO_OUT_OF_RANGE", "SAMPLE_LOSS")
 SUSPECT_FLAGS = ("CUED_SOFT_DID_HARD", "CUED_HARD_DID_SOFT", "SINGLE_SECOND_TAP",
                  "DIRECTION_PAIR_MISMATCH", "CUE_COLLISION")
@@ -203,6 +210,8 @@ def _flags_for(g: GestureAudit) -> list[str]:
     if g.peak_g < STROKE_FLOOR_G:
         flags.append("NO_MOTION")
         return flags
+    if g.peak_g < MIN_PEAK_G:
+        flags.append("WEAK")
     if g.onset_s is not None and g.onset_s > LATE_ONSET_S:
         flags.append("LATE_ONSET")
     is_double = g.label.startswith("double_")
