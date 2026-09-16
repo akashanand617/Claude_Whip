@@ -404,3 +404,31 @@ def test_invariant_channels_ignore_a_spin_about_the_finger():
     assert np.allclose(a, b, atol=1e-5)
     # while the plain shape channels obviously do change
     assert not np.allclose(gm.to_model_input(raw, ("shape",)), gm.to_model_input(spun, ("shape",)))
+
+
+def test_frame_flips_are_proper_rotations_and_gref_ignores_them():
+    """
+    Every training frame is right-handed (det +1): a mirror would swap the
+    rotation sense that tells left from right. And the gravity-referenced
+    channels do not change under any of them, which is the point of them.
+    """
+    import numpy as np
+
+    rng = np.random.default_rng(1)
+    frames = gm.random_frames(64, rng, flips=True)
+    assert frames.shape == (64, 3, 3)
+    assert np.allclose(np.linalg.det(frames), 1.0, atol=1e-5)
+    assert np.allclose(np.einsum("nij,nkj->nik", frames, frames), np.eye(3)[None], atol=1e-5)
+    # all four flips get used
+    flips_seen = {tuple(np.sign(np.round(np.diag(f))).astype(int)) for f in gm.random_frames(200, rng, flips=True, spin_deg=0.0)}
+    assert flips_seen == {(1, 1, 1), (1, -1, -1), (-1, 1, -1), (-1, -1, 1)}
+    raw = rng.standard_normal((64, gm.N_AXES, gm.WINDOW_SAMPLES)).astype("float32")
+    grav = rng.standard_normal((64, 3)).astype("float32")
+    xr, gr = gm.rotate_frame(raw, grav, frames)
+    assert np.allclose(gm.to_model_input(raw, ("gref", "scale", "saturation"), gravity=grav),
+                       gm.to_model_input(xr, ("gref", "scale", "saturation"), gravity=gr), atol=1e-4)
+    # while the shape channels do change (that is what the model must learn to ignore)
+    assert not np.allclose(gm.to_model_input(raw, ("shape",)), gm.to_model_input(xr, ("shape",)))
+    # flips=False is the old behaviour: a small spin about the finger axis only
+    spin = gm.random_frames(8, rng, flips=False)
+    assert np.allclose(spin[:, 0, 0], 1.0) and np.allclose(spin[:, 0, 1:], 0.0)

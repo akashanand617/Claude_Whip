@@ -41,6 +41,11 @@ def main() -> int:
     # architecture; enable with more data and re-measure.
     parser.add_argument("--direction-weight", type=float, default=0.0,
                         help="auxiliary direction-head loss weight; 0 disables (measured default)")
+    parser.add_argument("--frame-aug", default="flips", choices=("none", "flips"),
+                        help="'flips': each batch is rotated by a random half-turn of the ring frame "
+                             "(plus the small finger-axis spin), windows and gravity together, so the "
+                             "model does not depend on which way the ring was put on (default); "
+                             "'none': the small spin only, on the shape channels")
     parser.add_argument("--channels", default="shape,scale,saturation",
                         help="comma-separated channel groups; see model.to_model_input")
     parser.add_argument("--loud-factor", type=float, default=1.0,
@@ -121,6 +126,11 @@ def main() -> int:
               f"weighted x{args.loud_factor:g}")
 
     xt = torch.tensor(Xtr, device=device)
+    # Frame augmentation works on the RAW window and its gravity vector, before
+    # the channels are derived, so every channel group sees a consistent frame.
+    raw_tr = raw[train_mask]
+    grav_tr = d["gravity"][train_mask] if "gravity" in d else None
+    frame_rng = np.random.default_rng(args.seed)
     yt = torch.tensor(ytr, device=device)
     wt = torch.tensor(sample_w, dtype=torch.float32, device=device)
     dt = torch.tensor(dtr, device=device)
@@ -136,7 +146,15 @@ def main() -> int:
         for i in range(0, len(perm), args.batch):
             idx = perm[i:i + args.batch]
             opt.zero_grad()
-            gesture_logits, direction_logits = net.forward_heads(gm.augment(xt[idx]))
+            if args.frame_aug == "flips":
+                ii = idx.cpu().numpy()
+                frames = gm.random_frames(len(ii), frame_rng, flips=True)
+                xr, gr = gm.rotate_frame(raw_tr[ii], grav_tr if grav_tr is None else grav_tr[ii], frames)
+                xb = torch.tensor(gm.to_model_input(xr, channels, gravity=gr), device=device)
+                xb = gm.augment(xb, rotation_deg=0.0)   # spin already applied to the frame
+            else:
+                xb = gm.augment(xt[idx])
+            gesture_logits, direction_logits = net.forward_heads(xb)
             per_sample = loss_fn(gesture_logits, yt[idx])
             loss = (per_sample * wt[idx]).sum() / wt[idx].sum()
             mask = directed[idx]

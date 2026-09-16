@@ -351,6 +351,48 @@ ROTATION_DEGREES = 10.0
 NOISE_G = 0.02
 
 
+# The four ways a ring can sit on a finger that keep the frame right-handed:
+# as-is, or turned half a turn about any one of its axes. Worn the other way
+# round (2026-09-15 evening: the along-finger gravity sign flipped for 93-97%
+# of two sessions) the deployed model scored 0/44 exact on a session that
+# scored 37/44 once the frame was turned back. Training sees every flip so
+# the model stops depending on which way the ring went on.
+FRAME_FLIPS = (
+    ((1, 0, 0), (0, 1, 0), (0, 0, 1)),
+    ((1, 0, 0), (0, -1, 0), (0, 0, -1)),
+    ((-1, 0, 0), (0, 1, 0), (0, 0, -1)),
+    ((-1, 0, 0), (0, -1, 0), (0, 0, 1)),
+)
+
+
+def random_frames(n: int, rng, flips: bool = True, spin_deg: float = ROTATION_DEGREES):
+    """
+    (n, 3, 3) proper rotations of the ring frame: a random half-turn flip
+    (when `flips`) composed with a small random spin about the finger axis.
+    Every matrix has determinant +1, so rotation SENSE -- what tells left
+    from right -- is preserved; a mirror would silently relabel directions.
+    """
+    import numpy as np
+
+    theta = (rng.random(n) * 2 - 1) * np.radians(spin_deg) if spin_deg else np.zeros(n)
+    c, s = np.cos(theta), np.sin(theta)
+    spin = np.zeros((n, 3, 3), dtype="float32")
+    spin[:, 0, 0] = 1; spin[:, 1, 1] = c; spin[:, 1, 2] = -s; spin[:, 2, 1] = s; spin[:, 2, 2] = c
+    if not flips:
+        return spin
+    flip = np.asarray(FRAME_FLIPS, dtype="float32")[rng.integers(0, len(FRAME_FLIPS), n)]
+    return np.einsum("nij,njk->nik", flip, spin)
+
+
+def rotate_frame(x, gravity, frames):
+    """Apply per-window frame rotations to (n, 3, W) windows and (n, 3) gravity vectors together."""
+    import numpy as np
+
+    xr = np.einsum("nij,njw->niw", frames, np.asarray(x, dtype="float32"))
+    gr = None if gravity is None else np.einsum("nij,nj->ni", frames, np.asarray(gravity, dtype="float32"))
+    return xr, gr
+
+
 def augment(batch: torch.Tensor,
             amplitude: float = AMPLITUDE_RANGE,
             rotation_deg: float = ROTATION_DEGREES,
