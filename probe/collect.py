@@ -74,6 +74,46 @@ def schedule_for(args) -> list[session.Prompt]:
 
 
 POSTURE_PAUSE_S = 5.0
+# The stream must be delivering accelerometer packets before the first cue.
+# Without this, a session against a ring that never streamed cued 48 gestures
+# into an empty capture.
+DATA_WAIT_S = 8.0
+DATA_MIN_PACKETS = 20
+
+
+class WrongRing(SystemExit):
+    pass
+
+
+def check_ring(info, expected_name: str | None, allow_stock: bool) -> None:
+    """
+    Refuse to record from a unit that is not ours, or from stock firmware
+    (which streams motion at 1 Hz and answers A1 04 with an error). Pure, so
+    it is testable without a ring.
+    """
+    from whip import flashing
+
+    if expected_name and not protocol.is_expected_ring(info.name, expected_name):
+        raise WrongRing(f"connected to {info.name!r} at {info.address}, not {expected_name!r}. "
+                        "Another ring is advertising and ours is not (asleep, bonded, or in the "
+                        "charger). Wake ours, or pass --any-ring to record from this one anyway.")
+    mode = flashing.detect_mode(info.firmware)
+    if mode != "gesture" and not allow_stock:
+        raise WrongRing(f"{info.name} runs firmware {info.firmware!r} ({mode}); it will not stream motion at "
+                        "25 Hz. Flash the gesture firmware (python -m probe.serve), or pass --allow-stock.")
+
+
+async def wait_for_data(rec, seconds: float = DATA_WAIT_S, min_packets: int = DATA_MIN_PACKETS) -> None:
+    """Block until the capture has accelerometer packets, or abort the session."""
+    deadline = time.perf_counter() + seconds
+    while time.perf_counter() < deadline:
+        n = sum(1 for _, p in rec.records
+                if len(p) >= 2 and p[0] == protocol.CMD_RAW_SENSOR and p[1] == protocol.SUBTYPE_ACCEL)
+        if n >= min_packets:
+            return
+        await asyncio.sleep(0.25)
+    raise SystemExit(f"no accelerometer data after {seconds:.0f}s ({len(rec.records)} packets, none motion). "
+                     "The ring is not streaming: charger-tap it and retry. Nothing was cued.")
 
 
 async def run_prompts(rec: capture.Capture, notes: session.SessionNotes,
@@ -88,6 +128,7 @@ async def run_prompts(rec: capture.Capture, notes: session.SessionNotes,
     rhythm: "quiet then motion" becomes correlated with the label, which is the
     windup leak in another form. In use, gestures emerge from ongoing activity.
     """
+    await wait_for_data(rec)
     await asyncio.sleep(1.5)
     print()
     for i, prompt in enumerate(schedule):
@@ -141,6 +182,7 @@ async def run(args: argparse.Namespace) -> int:
 
     async with capture.connected(device) as client:
         info = await capture.read_device_info(client, device)
+        check_ring(info, None if args.any_ring else args.ring, args.allow_stock)
         battery = await capture.read_battery(client)
 
         notes = session.SessionNotes(
@@ -184,9 +226,9 @@ async def run(args: argparse.Namespace) -> int:
                 run_prompts(rec, notes, schedule, args.gap_min, args.gap_max, rng)))
         elif args.cues:
             motions = [m.strip() for m in args.cues.split(",") if m.strip()]
-            tasks.append(asyncio.create_task(run_cues(notes, motions, args.cue_seconds)))
+            tasks.append(asyncio.create_task(run_cues(notes, motions, args.cue_seconds, rec)))
         else:
-            tasks.append(asyncio.create_task(_tick(duration)))
+            tasks.append(asyncio.create_task(_tick(duration, rec)))
 
         try:
             await capture.stream(client, duration, sink=sink, capture=rec)
@@ -214,7 +256,9 @@ async def run(args: argparse.Namespace) -> int:
     return 0
 
 
-async def _tick(duration: float) -> None:
+async def _tick(duration: float, rec=None) -> None:
+    if rec is not None:
+        await wait_for_data(rec)
     start = time.perf_counter()
     while True:
         await asyncio.sleep(30.0)
@@ -222,8 +266,10 @@ async def _tick(duration: float) -> None:
         print(f"  {left / 60:.1f} min left", flush=True)
 
 
-async def run_cues(notes: session.SessionNotes, motions: list[str], seconds: float) -> None:
+async def run_cues(notes: session.SessionNotes, motions: list[str], seconds: float, rec=None) -> None:
     """Cycle through named motions on a timer, recording when each began."""
+    if rec is not None:
+        await wait_for_data(rec)
     await asyncio.sleep(2.0)
     print()
     start = time.perf_counter()
@@ -274,6 +320,11 @@ def main() -> int:
     parser.add_argument("--preview", action="store_true",
                         help="print the schedule and exit, without touching the ring")
     parser.add_argument("--address")
+    parser.add_argument("--ring", default=protocol.EXPECTED_RING,
+                        help="the unit to record from (advertised name suffix); any other ring is refused")
+    parser.add_argument("--any-ring", action="store_true", help="record from whatever ring connects")
+    parser.add_argument("--allow-stock", action="store_true",
+                        help="record even on stock firmware (1 Hz motion; useless for gestures)")
     parser.add_argument("--timeout", type=float, default=25.0)
     args = parser.parse_args()
 

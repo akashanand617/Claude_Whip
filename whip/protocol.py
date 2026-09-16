@@ -50,6 +50,17 @@ SUBTYPE_NAMES = {
 # Ring advertising names seen in the wild.
 KNOWN_RING_NAMES = ("R01", "R02", "R03", "R04", "R05", "R06", "R07", "R08", "R09", "R10")
 
+# The unit this project's data comes from. A 48-gesture session was recorded
+# against a different ring (COLMI R02_D507, stock firmware) that happened to
+# be advertising while ours was not: the stream carried nothing and every
+# mark was empty. Tools that record refuse any other unit unless told.
+EXPECTED_RING = "R02_CC07"
+
+
+def is_expected_ring(name: str | None, expected: str = EXPECTED_RING) -> bool:
+    """Whether an advertised or GATT name is the project's unit, vendor prefix or not."""
+    return bool(name) and name.strip().upper().endswith(expected.upper())
+
 
 def looks_like_ring(name: str | None) -> bool:
     """
