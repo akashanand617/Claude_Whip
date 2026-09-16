@@ -32,6 +32,11 @@ is dropped. `whip.split` does that bookkeeping; you choose the assignment.
 
 Sections: 1 load · 2 gesture table · 3 split (sklearn) · 4 channels · 5 train ·
 6 score · 7 threshold sweep · 8 sklearn baseline · 9 save checkpoint.
+
+*Environment note:* in the conda base env, importing scikit-learn pulls in
+pandas, whose compiled helpers (`numexpr`, `bottleneck`) were built against
+NumPy 1.x and print a long notice. It is harmless and everything runs;
+`pip install -U numexpr bottleneck` in that env makes it go away.
 """)
 
 code(r"""
@@ -84,7 +89,9 @@ to a part or drops it at a boundary. Change `SEED` or the fractions and re-run;
 """)
 
 code(r"""
-from sklearn.model_selection import train_test_split
+import contextlib, io
+with contextlib.redirect_stderr(io.StringIO()):      # a compiled optional dependency in this env prints a NumPy-2 notice on import; harmless
+    from sklearn.model_selection import train_test_split
 SEED = 0
 TEST, VAL = 0.20, 0.15                     # of all gestures
 idx = np.arange(len(table)); strat = [r["cls"] for r in table]
@@ -227,8 +234,9 @@ information is in the frame, not in the network.
 """)
 
 code(r"""
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import classification_report
+with contextlib.redirect_stderr(io.StringIO()):
+    from sklearn.ensemble import RandomForestClassifier
+    from sklearn.metrics import classification_report
 from whip.model import _moving_average, GRAVITY_WINDOW, FINGER_AXIS
 def hand_features(sel):
     out = []
