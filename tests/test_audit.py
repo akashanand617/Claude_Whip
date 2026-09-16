@@ -166,3 +166,13 @@ def test_suspect_gestures_are_excluded_too_and_counted_as_shortfall(tmp_path):
     assert audit.excluded_cues(cap) == [6.0, 9.0]
     assert audit.invalid_cues(cap) == [9.0]
     assert audit.shortfall([ok, sus, bad]) == {"flick_left": 1, "double_flick_left": 1}
+
+
+def test_corpus_shortfall_sums_every_audit_file(tmp_path):
+    a = audit.GestureAudit(0, 2.0, "flick", "left", "soft", "", 4.0, 0.1, [(0.1, 4.0)]); a.flags = ["CUED_SOFT_DID_HARD"]
+    b = audit.GestureAudit(1, 5.0, "double_flick", "down", "hard", "", 0.5, None, []); b.flags = ["NO_MOTION"]
+    c = audit.GestureAudit(2, 8.0, "snap", "any", "hard", "", 3.0, 0.1, [(0.1, 3.0)]); c.flags = ["LATE_ONSET"]
+    ok = audit.GestureAudit(3, 11.0, "flick", "left", "hard", "", 4.0, 0.1, [(0.1, 4.0)])
+    (tmp_path / "s1.jsonl").write_text(""); (tmp_path / "s2.jsonl").write_text("")
+    audit.write_audit(tmp_path / "s1.jsonl", [a, b, ok]); audit.write_audit(tmp_path / "s2.jsonl", [a, c])
+    assert audit.corpus_shortfall(tmp_path) == {"flick_left": 2, "double_flick_down": 1, "snap": 1}

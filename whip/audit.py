@@ -366,3 +366,21 @@ def shortfall(audits: list[GestureAudit]) -> dict[str, int]:
         key = f"{a.label}_{a.direction}" if a.direction not in ("", "none") else a.label
         out[key] = out.get(key, 0) + 1
     return out
+
+
+def corpus_shortfall(sessions_dir: Path) -> dict[str, int]:
+    """
+    Sum of `shortfall` over every audit file in a directory: what the next
+    session has to make up for the corpus as a whole. Reads the files, so
+    `probe.audit --all --write` must have run.
+    """
+    total: dict[str, int] = {}
+    for path in sorted(Path(sessions_dir).glob("*" + AUDIT_SUFFIX)):
+        doc = json.loads(path.read_text())
+        for g in doc.get("gestures", []):
+            if g.get("verdict") == "valid":
+                continue
+            d = g.get("direction", "none")
+            key = f"{g['label']}_{d}" if d not in ("", "none", "any") else g["label"]
+            total[key] = total.get(key, 0) + 1
+    return total

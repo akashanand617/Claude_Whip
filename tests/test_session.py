@@ -272,3 +272,25 @@ def test_collect_builds_its_schedule_in_exactly_one_place():
     assert "build_structured_schedule" in inside, "schedule_for should build the schedule"
     assert "build_structured_schedule" not in rest, "another call site bypasses schedule_for"
     assert "build_schedule(" not in rest, "another call site bypasses schedule_for"
+
+
+def test_fill_schedule_cues_exactly_the_shortfall_interleaved():
+    from whip import session
+
+    short = {"flick_left": 10, "flick_down": 2, "double_flick_right": 5, "snap": 3}
+    sched = session.build_fill_schedule(short, seed=3)
+    assert len(sched) == 20
+    from collections import Counter
+    got = Counter((p.label, p.direction) for p in sched)
+    assert got == {("flick", "left"): 10, ("flick", "down"): 2, ("double_flick", "right"): 5, ("snap", "any"): 3}
+    # no class is cued twice in a row while another is still owed (flick_left is
+    # half the schedule, so it can only repeat once the others are exhausted)
+    streaks = sum(1 for a, b in zip(sched, sched[1:]) if (a.label, a.direction) == (b.label, b.direction))
+    assert streaks <= 1
+    # half soft, half hard within each class (odd counts split by one)
+    for key, n in got.items():
+        amps = Counter(p.amplitude for p in sched if (p.label, p.direction) == key)
+        assert abs(amps["soft"] - amps["hard"]) <= 1
+    # the tempo word is gone from the protocol: fixed, never varied
+    assert {p.tempo for p in sched} == {"natural"}
+    assert sched[0].spoken().startswith(("FLICK", "DOUBLE FLICK", "SNAP"))

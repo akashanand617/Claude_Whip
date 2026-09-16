@@ -9,17 +9,24 @@
 #
 # The audit's exit code is reported, not obeyed: an invalid gesture is excluded
 # by the exporter, so the pipeline still runs; re-record what the "to re-record"
-# lines list. Env: WHIP_CHANNELS, WHIP_AMBIENT, WHIP_REF, WHIP_WORK.
+# lines list. Env: WHIP_CHANNELS, WHIP_AMBIENT ("id1 id2": ambient sessions held
+# out of the deployed checkpoint), WHIP_REF (held-out reference for the
+# experiments), WHIP_WORK.
 set -u
 cd "$(dirname "$0")/.."
 export PYTHONPATH="$PWD${PYTHONPATH:+:$PYTHONPATH}"
 WORK=${WHIP_WORK:-data/work}; mkdir -p "$WORK"
 CH=${WHIP_CHANNELS:-shape,scale,saturation,gref}
+# Ambient sessions to HOLD OUT of the deployed checkpoint, space-separated.
+# With two ambient hours, hold out the newest and train on the older one:
+# the rollout then measures false positives on 60 held-out minutes (30
+# calibrate + 30 report) plus the whole of any other held-out negative.
 AMBIENT=${WHIP_AMBIENT:-negative_20260915_021616}
+HELD=(); for s in $AMBIENT; do HELD+=(--held-out "$s"); done
 
 echo "### 1. audit"; python -m probe.audit --all --write; echo "audit exit $? (2 = something invalid; it is excluded, re-record it)"
 echo "### 2. export (valid only)"; python -m probe.dataset --out data/windows.npz || exit 1
-echo "### 3. train deployed checkpoint ($CH, ambient held out)"; python -m probe.train --quiet --channels "$CH" --held-out "$AMBIENT" || exit 1
+echo "### 3. train deployed checkpoint ($CH, ambient held out)"; python -m probe.train --quiet --channels "$CH" "${HELD[@]}" || exit 1
 echo "### 4. rollout"; python -m probe.rollout
 
 if [[ "${1:-}" == "--notebook" ]]; then

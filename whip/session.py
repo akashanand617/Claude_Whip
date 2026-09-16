@@ -253,3 +253,44 @@ def load_notes(path: Path) -> SessionNotes:
     notes = SessionNotes(**{k: v for k, v in data.items() if k in known})
     notes.marks = marks
     return notes
+
+
+def build_fill_schedule(shortfall: dict[str, int], seed: int | None = None) -> list[Prompt]:
+    """
+    Exactly the gestures a corpus is short of, from `audit.shortfall` --
+    `{"flick_left": 10, "double_flick_down": 6, ...}` -- interleaved so the
+    label never runs in a streak, half soft and half hard within each class.
+
+    Keys are `<gesture>_<direction>` for directed classes and bare gesture
+    names otherwise. Tempo is fixed at "natural": the audit measured the tempo
+    words changing nothing, and a double is two quick taps by definition.
+    """
+    rng = random.Random(seed)
+    items: list[tuple[str, str, str]] = []
+    for key, n in shortfall.items():
+        label, direction = key, "any"
+        for d in DIRECTIONS:
+            if key.endswith("_" + d):
+                label, direction = key[: -len(d) - 1], d
+                break
+        amps = ["soft", "hard"] * (n // 2) + (["soft"] if n % 2 else [])
+        rng.shuffle(amps)
+        items += [(label, direction, amp) for amp in amps]
+    # Interleave: repeatedly draw from the class with the most remaining, ties
+    # broken at random, so no class is ever cued twice in a row while another
+    # is still owed.
+    remaining: dict[tuple[str, str], list[str]] = {}
+    for label, direction, amp in items:
+        remaining.setdefault((label, direction), []).append(amp)
+    order: list[tuple[str, str, str]] = []
+    last = None
+    while remaining:
+        keys = sorted(remaining, key=lambda k: (-len(remaining[k]), rng.random()))
+        pick = next((k for k in keys if k != last), keys[0])
+        amp = remaining[pick].pop()
+        if not remaining[pick]:
+            del remaining[pick]
+        order.append((pick[0], pick[1], amp))
+        last = pick
+    return [Prompt(index=i, label=label, direction=direction, amplitude=amp, windup="natural",
+                   posture="as you are", tempo="natural") for i, (label, direction, amp) in enumerate(order)]

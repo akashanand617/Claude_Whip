@@ -44,6 +44,14 @@ def schedule_for(args) -> list[session.Prompt]:
     prompts and the session ran 200. A preview that disagrees with the run is
     worse than either number being wrong.
     """
+    if getattr(args, "fill", False):
+        from whip import audit
+
+        short = audit.corpus_shortfall(DATA_DIR)
+        if not short:
+            raise SystemExit("nothing to fill: no audit files with excluded gestures under "
+                             f"{DATA_DIR} (run `python -m probe.audit --all --write` first)")
+        return session.build_fill_schedule(short, seed=args.seed)
     if args.gestures:
         names = [g.strip() for g in args.gestures.split(",") if g.strip()]
         from whip.registry import load_registry
@@ -214,6 +222,9 @@ def main() -> int:
     parser.add_argument("--gestures",
                         help="prompted mode over arbitrary registry gestures, "
                              "e.g. 'snap,double_snap' -- how a new class gets data")
+    parser.add_argument("--fill", action="store_true",
+                        help="cue exactly the gestures the audit excluded across all sessions "
+                             "(the 'to re-record' list), interleaved; needs probe.audit --all --write")
     parser.add_argument("--cues", help="comma-separated motions to cycle through, e.g. 'wave,snap,wobble'")
     parser.add_argument("--cue-seconds", type=float, default=20.0, help="seconds per cued motion")
     parser.add_argument("--hand", default="left", help="which hand wears the ring")
