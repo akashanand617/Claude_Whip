@@ -2,9 +2,10 @@
 Per-gesture data-quality audit of a prompted session.
 
 Run this right after recording, before the session goes into an export. It
-answers the questions that a label file cannot: did anything happen at the
-cue, did it happen when the label says it did, does the stroke count match the
-cued class, and did the wearer follow the amplitude and tempo prompts at all.
+answers the questions a label file cannot: did anything happen at the cue,
+did it happen when the label says it did, does the stroke structure match the
+cued class, does the motion agree with the cued direction, was the stream
+intact, and did the wearer follow the amplitude prompt.
 
 Why it exists (2026-09-15): the two doubles a held-out model missed were not
 corrupt records. They were legitimate gestures whose stroke spacing (0.51 and
@@ -14,13 +15,36 @@ the session. Separately, the "brisk"/"deliberate" tempo prompt produced NO
 measurable difference in any session -- the doubles corpus has one tempo. None
 of that is visible from the notes file; all of it is visible from the stream.
 
+The audit's output is a verdict per cued gesture:
+
+- ``valid``   -- keep, train on it, score it.
+- ``suspect`` -- keep, but listed: something is unusual (prompt not followed,
+  a single whose recoil looks like a second tap, direction feature on the
+  wrong side of the cut). These are the boundary cases the model must learn;
+  removing them would make the corpus cleaner than the world.
+- ``invalid`` -- drop. The record does not show the gesture that was cued:
+  no motion, too late for the label, a double with one stroke or with a
+  stroke spacing outside the defined range, samples missing inside the
+  gesture. ``dataset`` treats every window touching an invalid gesture as
+  ambiguous (dropped, never relabelled `none`), and ``probe.rollout`` does not
+  score it.
+
+A double flick is DEFINED as two comparable taps at the natural quick
+spacing: stroke peaks 0.20-0.50 s apart, second peak between half and twice
+the first. That range is the measured corpus (p5-p95 of 132 training doubles:
+0.22-0.46 s, 0.70-1.66) with a margin, not a preference. A "double" with a
+0.7 s pause is a different gesture, and the prompt words that were supposed
+to vary tempo ("brisk", "deliberate") did not move it in any session.
+
 Everything here is numpy on the despiked stream, so it needs no model and no
 hardware, and its findings do not depend on any checkpoint.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+import json
+from dataclasses import dataclass, field, asdict
+from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
@@ -33,18 +57,45 @@ from whip.registry import Registry, load_registry
 STROKE_FLOOR_G = 1.0
 # Two maxima closer than this are one stroke with a noisy crest, not two.
 MIN_STROKE_SPACING_S = 0.20
-# A second stroke counts only if it reaches this fraction of the larger one.
+# A further stroke counts only if it reaches this fraction of the largest one.
 STROKE_RATIO_FLOOR = 0.35
 # Onset later than this after the cue is outside what the coverage rule was
-# designed for; the label still lands on the gesture, but only just.
+# designed for; the label (cue .. cue + 1.2 s) would cover half the gesture.
 LATE_ONSET_S = 1.0
 # The audit's look-ahead after the cue. Longer would run into the next prompt.
 SPAN_S = 1.8
+# The double flick, as a range: peak-to-peak spacing and second/first peak.
+DOUBLE_GAP_RANGE_S = (0.20, 0.50)
+DOUBLE_RATIO_RANGE = (0.50, 2.00)
+# A single whose second bump is this much of its stroke, this late, is at
+# the double boundary. Kept and listed.
+SINGLE_SECOND_TAP_RATIO = 0.70
+SINGLE_SECOND_TAP_GAP_S = 0.30
+# Fraction of impulsive energy along gravity: above the cut is vertical motion
+# (up/down), below is horizontal (left/right). One fixed cut separates the
+# pairs for 95% of 296 gestures across three days (see `model.to_model_input`,
+# group `gref`).
+VERTICAL_CUT = 0.35
+# Sample loss inside the gesture above this leaves a hole the model has never
+# seen and the label cannot vouch for.
+MAX_LOSS = 0.10
+# The next cue closer than this puts the next gesture inside this label's
+# 2.0 s windows.
+MIN_CUE_SPACING_S = 2.0
+FULL_SCALE_G = 32767 / accel.COUNTS_PER_G
+
+INVALID_FLAGS = ("NO_MOTION", "LATE_ONSET", "DOUBLE_WITH_ONE_STROKE",
+                 "DOUBLE_GAP_OUT_OF_RANGE", "DOUBLE_RATIO_OUT_OF_RANGE", "SAMPLE_LOSS")
+SUSPECT_FLAGS = ("CUED_SOFT_DID_HARD", "CUED_HARD_DID_SOFT", "SINGLE_SECOND_TAP",
+                 "DIRECTION_PAIR_MISMATCH", "CUE_COLLISION")
+
+AUDIT_SUFFIX = ".audit.json"
 
 
 @dataclass
 class GestureAudit:
     index: int
+    cue_at: float
     label: str          # canonical gesture name
     direction: str
     amplitude: str      # the prompt's amplitude word, or ""
@@ -52,6 +103,10 @@ class GestureAudit:
     peak_g: float
     onset_s: float | None      # first sample above the floor, relative to the cue
     strokes: list[tuple[float, float]]   # (time after cue, peak g) per stroke, in time order
+    vertical_frac: float | None = None   # impulsive energy along gravity / total
+    clip_frac: float = 0.0               # samples at the +/-4.09 g rail, of the gesture span
+    loss: float = 0.0                    # missing samples in the gesture span, as a fraction
+    next_cue_s: float | None = None      # seconds to the next mark
     flags: list[str] = field(default_factory=list)
 
     @property
@@ -63,9 +118,25 @@ class GestureAudit:
         """Second stroke peak over first, for doubles: 1.0 is two equal taps."""
         return self.strokes[1][1] / self.strokes[0][1] if len(self.strokes) >= 2 else None
 
+    @property
+    def verdict(self) -> str:
+        if any(f in INVALID_FLAGS for f in self.flags):
+            return "invalid"
+        if self.flags:
+            return "suspect"
+        return "valid"
+
+    def to_json(self) -> dict:
+        d = asdict(self)
+        d["strokes"] = [[round(t, 3), round(g, 3)] for t, g in self.strokes]
+        d["stroke_gap_s"] = self.stroke_gap_s
+        d["stroke_ratio"] = self.stroke_ratio
+        d["verdict"] = self.verdict
+        return d
+
 
 def strokes_in(mag: np.ndarray, t_rel: np.ndarray) -> list[tuple[float, float]]:
-    """Local maxima of |a| above the floor, at least MIN_STROKE_SPACING_S apart, strongest first."""
+    """Local maxima of |a| above the floor, at least MIN_STROKE_SPACING_S apart, in time order."""
     cand = [i for i in range(1, len(mag) - 1)
             if mag[i] >= mag[i - 1] and mag[i] > mag[i + 1] and mag[i] > STROKE_FLOOR_G]
     cand.sort(key=lambda i: -mag[i])
@@ -80,23 +151,83 @@ def strokes_in(mag: np.ndarray, t_rel: np.ndarray) -> list[tuple[float, float]]:
     return sorted((float(t_rel[i]), float(mag[i])) for i in kept)
 
 
-def audit_gesture(x_g: np.ndarray, times: np.ndarray, cue_at: float, label: str,
-                  registry: Registry) -> tuple[float, float | None, list[tuple[float, float]]]:
+def vertical_fraction(x_g: np.ndarray, rest: np.ndarray) -> float | None:
     """
-    (peak g, onset s after cue, strokes) for one cued gesture. `x_g` is (3, N)
-    in g, despiked; rest is the mean over the second before the cue.
+    Fraction of the impulsive (high-pass) energy that lies along gravity, for a
+    (3, N) gesture segment in g. Same construction as the `gref` channel group:
+    a relation between a and g in one frame, so it does not depend on how the
+    ring sits on the finger.
+    """
+    if x_g.shape[1] < 12:
+        return None
+    from whip.model import _moving_average, GRAVITY_WINDOW
+    g = rest / max(np.linalg.norm(rest), 1e-6)
+    lin = x_g - _moving_average(x_g, GRAVITY_WINDOW)
+    along = g @ lin
+    tot = float((lin ** 2).sum())
+    return float((along ** 2).sum() / tot) if tot > 0 else None
+
+
+def audit_gesture(x_g: np.ndarray, times: np.ndarray, cue_at: float) -> dict:
+    """
+    Measurements for one cued gesture. `x_g` is (3, N) in g, despiked; rest is
+    the mean over the second before the cue.
     """
     pre = (times >= cue_at - 1.0) & (times < cue_at - 0.2)
     win = (times >= cue_at - 0.3) & (times <= cue_at + SPAN_S)
     if pre.sum() < 5 or win.sum() < 10:
-        return 0.0, None, []
+        return dict(peak_g=0.0, onset_s=None, strokes=[], vertical_frac=None, clip_frac=0.0, loss=1.0)
     rest = x_g[:, pre].mean(axis=1)
-    mag = np.linalg.norm(x_g[:, win] - rest[:, None], axis=0)
+    seg = x_g[:, win]
+    mag = np.linalg.norm(seg - rest[:, None], axis=0)
     t_rel = times[win] - cue_at
     peak = float(mag.max())
     above = np.where(mag > STROKE_FLOOR_G)[0]
     onset = float(t_rel[above[0]]) if len(above) else None
-    return peak, onset, strokes_in(mag, t_rel)
+    expected = (SPAN_S + 0.3) * dataset.SAMPLE_RATE_HZ
+    loss = max(0.0, 1.0 - win.sum() / expected)
+    clip = float((np.abs(seg) >= 0.98 * FULL_SCALE_G).any(axis=0).mean())
+    return dict(peak_g=peak, onset_s=onset, strokes=strokes_in(mag, t_rel),
+                vertical_frac=vertical_fraction(seg, rest), clip_frac=clip, loss=loss)
+
+
+def _flags_for(g: GestureAudit) -> list[str]:
+    flags: list[str] = []
+    if g.loss > MAX_LOSS:
+        flags.append("SAMPLE_LOSS")
+    if g.peak_g < STROKE_FLOOR_G:
+        flags.append("NO_MOTION")
+        return flags
+    if g.onset_s is not None and g.onset_s > LATE_ONSET_S:
+        flags.append("LATE_ONSET")
+    is_double = g.label.startswith("double_")
+    if is_double:
+        if len(g.strokes) == 1:
+            flags.append("DOUBLE_WITH_ONE_STROKE")
+        elif len(g.strokes) >= 2:
+            lo, hi = DOUBLE_GAP_RANGE_S
+            if not (lo <= g.stroke_gap_s <= hi):
+                flags.append("DOUBLE_GAP_OUT_OF_RANGE")
+            lo, hi = DOUBLE_RATIO_RANGE
+            if not (lo <= g.stroke_ratio <= hi):
+                flags.append("DOUBLE_RATIO_OUT_OF_RANGE")
+    else:
+        # Stroke COUNT is not a hard check for singles: a recoil is often
+        # 40-60% of the stroke and 0.25-0.35 s later, the same size as a weak
+        # second tap at 25 Hz. That boundary is the model's job. Only a second
+        # bump that is nearly a full tap, at double spacing, is listed.
+        if len(g.strokes) >= 2 and g.stroke_ratio >= SINGLE_SECOND_TAP_RATIO \
+                and g.stroke_gap_s >= SINGLE_SECOND_TAP_GAP_S:
+            flags.append("SINGLE_SECOND_TAP")
+    if g.vertical_frac is not None and g.direction in ("up", "down", "left", "right"):
+        vertical = g.direction in ("up", "down")
+        if (g.vertical_frac >= VERTICAL_CUT) != vertical:
+            flags.append("DIRECTION_PAIR_MISMATCH")
+    if g.next_cue_s is not None and g.next_cue_s < MIN_CUE_SPACING_S:
+        flags.append("CUE_COLLISION")
+    # Clipping is measured (`clip_frac`) but never flagged: every hard flick
+    # clips at the +/-4.09 g rail, and the model has a saturation channel for it.
+    return flags
 
 
 def audit_session(capture_path: Path, notes_path: Path, registry: Registry | None = None) -> list[GestureAudit]:
@@ -107,28 +238,18 @@ def audit_session(capture_path: Path, notes_path: Path, registry: Registry | Non
         [[s.x for s in samples], [s.y for s in samples], [s.z for s in samples]], dtype=float))
     x_g = stream / accel.COUNTS_PER_G
     notes = session.load_notes(notes_path)
+    point_marks = [(i, m) for i, m in enumerate(notes.marks) if "until" not in m]
     out: list[GestureAudit] = []
-    for i, m in enumerate(notes.marks):
-        if "until" in m:
-            continue
+    for n, (i, m) in enumerate(point_marks):
         spec = registry.resolve(m.get("label", ""))
         if spec is None or spec.kind != "impulsive":
             continue
-        peak, onset, strokes = audit_gesture(x_g, times, m["cue_at"], spec.name, registry)
-        g = GestureAudit(index=m.get("index", i), label=spec.name, direction=m.get("direction", "none"),
-                         amplitude=m.get("amplitude", ""), tempo=m.get("tempo", ""),
-                         peak_g=peak, onset_s=onset, strokes=strokes)
-        if peak < STROKE_FLOOR_G:
-            g.flags.append("NO_MOTION")
-        elif onset is not None and onset > LATE_ONSET_S:
-            g.flags.append("LATE_ONSET")
-        # Stroke COUNT is not a hard check: a single flick's recoil is often
-        # 40-60% of its stroke and 0.25-0.35 s later, indistinguishable by
-        # amplitude from a weak second tap -- which is exactly the boundary
-        # the model has to learn. The list is reported; only the one
-        # unambiguous case is flagged.
-        if spec.name.startswith("double_") and peak >= STROKE_FLOOR_G and len(strokes) == 1:
-            g.flags.append("DOUBLE_WITH_ONE_STROKE")
+        meas = audit_gesture(x_g, times, m["cue_at"])
+        nxt = point_marks[n + 1][1]["cue_at"] - m["cue_at"] if n + 1 < len(point_marks) else None
+        g = GestureAudit(index=m.get("index", i), cue_at=float(m["cue_at"]), label=spec.name,
+                         direction=m.get("direction", "none"), amplitude=m.get("amplitude", ""),
+                         tempo=m.get("tempo", ""), next_cue_s=nxt, **meas)
+        g.flags = _flags_for(g)
         out.append(g)
     _flag_prompt_adherence(out)
     return out
@@ -153,16 +274,17 @@ def _flag_prompt_adherence(audits: list[GestureAudit]) -> None:
 
 def summary(audits: list[GestureAudit]) -> dict:
     """Session-level numbers the collection protocol should be judged on."""
-    out: dict = {"n": len(audits), "flagged": sum(1 for a in audits if a.flags), "by_flag": {}}
+    out: dict = {"n": len(audits), "by_flag": {}, "by_verdict": {"valid": 0, "suspect": 0, "invalid": 0}}
     for a in audits:
+        out["by_verdict"][a.verdict] += 1
         for f in a.flags:
             out["by_flag"][f] = out["by_flag"].get(f, 0) + 1
+    out["flagged"] = sum(1 for a in audits if a.flags)
     doubles = [a for a in audits if a.label.startswith("double_") and a.stroke_gap_s is not None]
     if doubles:
         gaps = np.array([a.stroke_gap_s for a in doubles]); ratios = np.array([a.stroke_ratio for a in doubles])
         out["double_gap_s"] = {"p5": float(np.percentile(gaps, 5)), "p50": float(np.median(gaps)), "p95": float(np.percentile(gaps, 95))}
         out["double_ratio"] = {"p5": float(np.percentile(ratios, 5)), "p50": float(np.median(ratios)), "p95": float(np.percentile(ratios, 95))}
-    # Did the tempo prompt do anything? Compare stroke gap (doubles) / onset-to-peak (singles) by tempo word.
     tempo: dict[str, list[float]] = {}
     for a in doubles:
         if a.tempo:
@@ -176,3 +298,36 @@ def summary(audits: list[GestureAudit]) -> dict:
     if len(amp) >= 2:
         out["peak_by_amplitude"] = {k: float(np.median(v)) for k, v in amp.items() if v}
     return out
+
+
+# ---------------------------------------------------------------------------
+# The audit file: written next to the session, read by the exporter.
+
+def audit_path(capture_path: Path) -> Path:
+    return capture_path.with_name(capture_path.stem + AUDIT_SUFFIX)
+
+
+def write_audit(capture_path: Path, audits: list[GestureAudit]) -> Path:
+    path = audit_path(capture_path)
+    doc = {
+        "session_id": capture_path.stem,
+        "generated": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "ranges": {"double_gap_s": DOUBLE_GAP_RANGE_S, "double_ratio": DOUBLE_RATIO_RANGE,
+                   "late_onset_s": LATE_ONSET_S, "stroke_floor_g": STROKE_FLOOR_G},
+        "summary": summary(audits),
+        "gestures": [a.to_json() for a in audits],
+    }
+    path.write_text(json.dumps(doc, indent=1))
+    return path
+
+
+def invalid_cues(capture_path: Path) -> list[float]:
+    """
+    Cue times of gestures the audit marked invalid, or [] when no audit file
+    exists. The exporter and the rollout use this to leave those gestures out.
+    """
+    path = audit_path(capture_path)
+    if not path.exists():
+        return []
+    doc = json.loads(path.read_text())
+    return [float(g["cue_at"]) for g in doc.get("gestures", []) if g.get("verdict") == "invalid"]

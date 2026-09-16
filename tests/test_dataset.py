@@ -350,3 +350,30 @@ def test_format_version_five_is_required():
 
     with pytest.raises(dataset.StaleDataset):
         dataset.check_format_version({"format_version": np.array(4)})
+
+
+def test_invalid_gestures_from_the_audit_are_excluded_not_relabelled(tmp_path, monkeypatch):
+    """
+    A gesture the audit marked invalid must produce no positive window AND no
+    `none` window: every window touching it is ambiguous and dropped.
+    """
+    import json
+    from whip import audit as audit_mod
+
+    cap, notes = tmp_path / "s.jsonl", tmp_path / "s.notes.json"
+    gestures = [(5.0, "flag"), (10.0, "flag")]                      # two cued flicks
+    write_capture(cap, seconds=20.0, gestures=gestures)
+    write_notes(notes, "s", gestures)
+    before = dataset.windows_from_session(cap, notes, registry=unsplit_registry())
+    assert sum(1 for w in before if w.label != "none") > 0
+    bad = audit_mod.GestureAudit(1, 10.0, "flick", "up", "hard", "", 4.0, 0.1, [(0.1, 4.0)])
+    bad.flags = ["NO_MOTION"]
+    audit_mod.write_audit(cap, [bad])
+    after = dataset.windows_from_session(cap, notes, registry=unsplit_registry())
+    # nothing at all in the exclusion zone of the invalid cue
+    lo, hi = 10.0 - dataset.EXCLUSION_BEFORE_S, 10.0 + dataset.EXCLUSION_AFTER_S
+    assert not any(min(w.start_s + 2.0, hi) > max(w.start_s, lo) for w in after)
+    # the valid gesture at 5.0 s is still labelled
+    assert any(w.label != "none" and abs(w.start_s - 4.4) < 1.0 for w in after)
+    # and the audit file names the cue that was excluded
+    assert audit_mod.invalid_cues(cap) == [10.0]

@@ -113,6 +113,17 @@ def _sample_rate(times: list[float]) -> float:
     return (len(times) - 1) / span if span > 0 else 0.0
 
 
+# An invalid gesture's exclusion zone: half a second before the cue (an early
+# start) to two seconds after (the longest window that can hold its tail).
+EXCLUSION_BEFORE_S = 0.5
+EXCLUSION_AFTER_S = 2.0
+
+
+def _invalid_cues(capture_path: Path) -> list[float]:
+    from whip import audit  # local: audit imports dataset for the stream decoder
+    return audit.invalid_cues(capture_path)
+
+
 def _marks_from_notes(notes, registry: Registry, duration_override: float | None):
     """
     Split a session's marks into point marks and span marks, canonically named.
@@ -207,9 +218,17 @@ def windows_from_session(
     session_id = capture_path.stem
     points: list[tuple[float, float, str, str]] = []
     spans: list[tuple[float, float, str]] = []
+    # Gestures the audit marked invalid (no motion, too late, not the cued
+    # stroke structure, samples missing). They are neither positives nor
+    # negatives: every window touching them is ambiguous and dropped, exactly
+    # like a window straddling a span edge. `probe.audit --write` produces the
+    # file; without one nothing is excluded.
+    excluded: list[tuple[float, float]] = [
+        (cue - EXCLUSION_BEFORE_S, cue + EXCLUSION_AFTER_S) for cue in _invalid_cues(capture_path)]
     if notes_path and notes_path.exists():
         notes = session.load_notes(notes_path)
         points, spans = _marks_from_notes(notes, registry, gesture_duration_s)
+        points = [p for p in points if not any(lo < p[0] < hi for lo, hi in excluded)]
         if not points and not spans and notes.kind not in ("negative",) and not declared_negative:
             raise UnlabelledCapture(
                 f"{capture_path.name} has notes but no usable marks and is not declared "
@@ -228,6 +247,8 @@ def windows_from_session(
     for start in range(0, len(samples) - WINDOW_SAMPLES + 1, STRIDE_SAMPLES):
         end = start + WINDOW_SAMPLES
         t0, t1 = times[start], times[end - 1]
+        if any(min(t1, hi) > max(t0, lo) for lo, hi in excluded):
+            continue
 
         # Remove the DC term so *static* orientation cannot be a shortcut, but do
         # not divide by the standard deviation: amplitude genuinely separates a

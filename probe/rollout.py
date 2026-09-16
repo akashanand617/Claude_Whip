@@ -32,7 +32,7 @@ from pathlib import Path
 
 import numpy as np
 
-from whip import dataset, evaluate, events
+from whip import audit, dataset, evaluate, events
 
 WINDOWS = Path("data/windows.npz")
 SESSIONS = Path("data/sessions")
@@ -56,9 +56,12 @@ def truth_for(session_id: str) -> list[tuple[float, str]]:
     if not path.exists():
         return []
     notes = json.loads(path.read_text())
+    # Gestures the audit marked invalid are not scored: the record does not
+    # show the gesture that was cued, so neither a hit nor a miss means anything.
+    invalid = set(audit.invalid_cues(SESSIONS / f"{session_id}.jsonl"))
     out = []
     for m in notes.get("marks", []):
-        if "until" in m:
+        if "until" in m or m["cue_at"] in invalid:
             continue
         spec = _REGISTRY.resolve(m.get("label", "none"))
         if spec is not None:

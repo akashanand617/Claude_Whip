@@ -1,0 +1,170 @@
+[
+ {
+  "frac": 0.25,
+  "seed": 0,
+  "train_gestures": 64,
+  "train_windows": 402,
+  "0.4": {
+   "exact": 26,
+   "type": 28,
+   "n": 28
+  },
+  "0.6": {
+   "exact": 24,
+   "type": 27,
+   "n": 28
+  },
+  "0.9": {
+   "exact": 22,
+   "type": 24,
+   "n": 28
+  }
+ },
+ {
+  "frac": 0.25,
+  "seed": 1,
+  "train_gestures": 64,
+  "train_windows": 396,
+  "0.4": {
+   "exact": 24,
+   "type": 26,
+   "n": 28
+  },
+  "0.6": {
+   "exact": 24,
+   "type": 26,
+   "n": 28
+  },
+  "0.9": {
+   "exact": 22,
+   "type": 26,
+   "n": 28
+  }
+ },
+ {
+  "frac": 0.5,
+  "seed": 0,
+  "train_gestures": 128,
+  "train_windows": 776,
+  "0.4": {
+   "exact": 25,
+   "type": 27,
+   "n": 28
+  },
+  "0.6": {
+   "exact": 25,
+   "type": 27,
+   "n": 28
+  },
+  "0.9": {
+   "exact": 25,
+   "type": 27,
+   "n": 28
+  }
+ },
+ {
+  "frac": 0.5,
+  "seed": 1,
+  "train_gestures": 128,
+  "train_windows": 781,
+  "0.4": {
+   "exact": 27,
+   "type": 28,
+   "n": 28
+  },
+  "0.6": {
+   "exact": 26,
+   "type": 28,
+   "n": 28
+  },
+  "0.9": {
+   "exact": 25,
+   "type": 27,
+   "n": 28
+  }
+ },
+ {
+  "frac": 0.75,
+  "seed": 0,
+  "train_gestures": 192,
+  "train_windows": 1191,
+  "0.4": {
+   "exact": 26,
+   "type": 28,
+   "n": 28
+  },
+  "0.6": {
+   "exact": 26,
+   "type": 27,
+   "n": 28
+  },
+  "0.9": {
+   "exact": 24,
+   "type": 26,
+   "n": 28
+  }
+ },
+ {
+  "frac": 0.75,
+  "seed": 1,
+  "train_gestures": 192,
+  "train_windows": 1190,
+  "0.4": {
+   "exact": 26,
+   "type": 28,
+   "n": 28
+  },
+  "0.6": {
+   "exact": 26,
+   "type": 28,
+   "n": 28
+  },
+  "0.9": {
+   "exact": 25,
+   "type": 27,
+   "n": 28
+  }
+ },
+ {
+  "frac": 1.0,
+  "seed": 0,
+  "train_gestures": 256,
+  "train_windows": 1585,
+  "0.4": {
+   "exact": 27,
+   "type": 28,
+   "n": 28
+  },
+  "0.6": {
+   "exact": 27,
+   "type": 28,
+   "n": 28
+  },
+  "0.9": {
+   "exact": 27,
+   "type": 28,
+   "n": 28
+  }
+ },
+ {
+  "frac": 1.0,
+  "seed": 1,
+  "train_gestures": 256,
+  "train_windows": 1585,
+  "0.4": {
+   "exact": 27,
+   "type": 28,
+   "n": 28
+  },
+  "0.6": {
+   "exact": 27,
+   "type": 28,
+   "n": 28
+  },
+  "0.9": {
+   "exact": 27,
+   "type": 28,
+   "n": 28
+  }
+ }
+]
