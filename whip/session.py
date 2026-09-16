@@ -80,7 +80,8 @@ class Prompt:
         """
         legacy = {"flag": "SINGLE", "approve": "DOUBLE"}
         kind = legacy.get(self.label, self.label.upper().replace("_", " "))
-        where = f"   [{self.posture.upper()}]" if self.posture not in ("", "as you are") else ""
+        where = ("" if self.posture in ("", "as you are") or self.posture.startswith("block:")
+                 else f"   [{self.posture.upper()}]")
         if self.direction == "any":
             return f"{kind}  |  {self.amplitude}{where}"
         return f"{kind}  |  {self.amplitude}, {self.direction}{where}"
@@ -142,6 +143,27 @@ def build_structured_schedule(
             index += 1
 
     return prompts
+
+
+def build_blocked_schedule(gestures: list[str], per_gesture: int, seed: int | None = None) -> list[Prompt]:
+    """
+    Every gesture in its own block -- all the snaps, then all the double
+    snaps, ... -- so the wearer settles into one motion and does it `per_gesture`
+    times. The opposite of `build_gesture_schedule`'s interleaving, chosen
+    when speed of recording matters more than decorrelating drift from the
+    label (2026-09-16). Amplitude alternates soft/hard within a block, tempo
+    fixed. The block name goes on the prompt's `posture` field so the
+    collector announces it and pauses, exactly as it does for a hand posture.
+    """
+    rng = random.Random(seed)
+    out: list[Prompt] = []
+    for g in gestures:
+        amps = ["soft", "hard"] * (per_gesture // 2) + (["hard"] if per_gesture % 2 else [])
+        rng.shuffle(amps)
+        for amp in amps:
+            out.append(Prompt(index=len(out), label=g, direction="any", amplitude=amp, windup="natural",
+                              posture=f"block: {g}", tempo="natural"))
+    return out
 
 
 def build_gesture_schedule(

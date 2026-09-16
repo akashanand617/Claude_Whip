@@ -107,13 +107,16 @@ DEFAULT_GESTURES: tuple[GestureSpec, ...] = (
     # simply does not map `snap` to any action unless asked to.
     GestureSpec("snap", "impulsive", aliases=("snapping",)),
     GestureSpec("double_snap", "impulsive"),
-    # Two claps as one impulsive gesture (point-cued, like double_snap), as
-    # distinct from `clap` the sustained "keep clapping" span. Declared
-    # 2026-09-16, no data yet: the exporter lists it as declared-but-absent
-    # until `probe.collect --gestures double_clap` records some.
+    # A single clap is as impulsive as a snap and is point-cued like one
+    # (2026-09-16; it was a sustained span because the only clap data was a
+    # 20 s "keep clapping" block -- that block still exports under the
+    # `clapping` alias, as repeated single claps). double_clap: two claps as
+    # one gesture, the same two-quick-strokes range as double_flick.
+    GestureSpec("clap", "impulsive", aliases=("clapping",)),
     GestureSpec("double_clap", "impulsive"),
+    # Wave is the one sustained gesture: it has no fixed length, so it is
+    # cued as a span ("keep waving") and fires once per run with a refractory.
     GestureSpec("wave", "sustained", aliases=("waving",), min_run=3, max_run=None, refractory_s=2.0),
-    GestureSpec("clap", "sustained", aliases=("clapping",), min_run=2, max_run=None, refractory_s=1.5),
 )
 
 DIRECTIONS = ("none", "up", "down", "left", "right")

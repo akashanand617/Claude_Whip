@@ -311,3 +311,18 @@ def test_matrix_schedule_covers_every_posture_by_direction_cell_in_posture_block
     # ordinary schedules never speak a posture
     assert "[" not in session.build_gesture_schedule(["flick"], 2, seed=1)[0].spoken()
     assert len(session.build_matrix_schedule(("flick", "double_flick"), reps=2, seed=1)) == 64
+
+
+def test_blocked_schedule_runs_each_gesture_in_one_block_with_balanced_amplitude():
+    from whip import session
+    from collections import Counter
+
+    sched = session.build_blocked_schedule(["snap", "double_snap", "clap", "double_clap"], 37, seed=1)
+    assert len(sched) == 148
+    labels = [p.label for p in sched]
+    assert labels == ["snap"] * 37 + ["double_snap"] * 37 + ["clap"] * 37 + ["double_clap"] * 37
+    for g in ("snap", "clap"):
+        amps = Counter(p.amplitude for p in sched if p.label == g)
+        assert abs(amps["soft"] - amps["hard"]) <= 1
+    assert sched[0].posture == "block: snap" and "[" not in sched[0].spoken()
+    # the exporter treats a block name like "as you are": no posture is being claimed

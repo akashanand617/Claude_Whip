@@ -65,6 +65,8 @@ def schedule_for(args) -> list[session.Prompt]:
             raise SystemExit(f"unknown gesture(s): {', '.join(unknown)} -- "
                              f"declared vocabulary: {', '.join(registry.names)}")
         canonical = [registry.canonical(n) for n in names]
+        if getattr(args, "blocked", False):
+            return session.build_blocked_schedule(canonical, args.prompts // len(canonical), seed=args.seed)
         return session.build_gesture_schedule(canonical, args.prompts, seed=args.seed)
     if args.structured:
         return session.build_structured_schedule(
@@ -136,7 +138,9 @@ async def run_prompts(rec: capture.Capture, notes: session.SessionNotes,
         # pause: reorienting the hand is not a 3-second job, and a gesture
         # done while still turning the wrist would be labelled as if still.
         if prompt.posture not in ("", "as you are") and (i == 0 or schedule[i - 1].posture != prompt.posture):
-            print(f"\n  ---- hand: {prompt.posture.upper()} -- get set ({POSTURE_PAUSE_S:.0f} s) ----", flush=True)
+            what = prompt.posture.upper().replace("BLOCK: ", "next block: ").replace("_", " ")
+            label = what if prompt.posture.startswith("block:") else f"hand: {what}"
+            print(f"\n  ---- {label} -- get set ({POSTURE_PAUSE_S:.0f} s) ----", flush=True)
             await asyncio.sleep(POSTURE_PAUSE_S)
         # Show it, give a short countdown, cue, then settle -- and during the
         # settle, show the next one so it is already read by the time its
@@ -317,6 +321,9 @@ def main() -> int:
     parser.add_argument("--gestures",
                         help="prompted mode over arbitrary registry gestures, "
                              "e.g. 'snap,double_snap' -- how a new class gets data")
+    parser.add_argument("--blocked", action="store_true",
+                        help="with --gestures: one block per gesture (all snaps, then all double snaps, ...), "
+                             "--prompts split evenly, instead of interleaving")
     parser.add_argument("--matrix", action="store_true",
                         help="posture x direction matrix: every hand orientation (palm down/up/left/right) "
                              "x every flick direction, --reps each, for --gestures (default flick); the "

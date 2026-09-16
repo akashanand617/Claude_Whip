@@ -118,9 +118,10 @@ def test_duplicate_aliases_fail_loudly():
                   GestureSpec("b", "impulsive", aliases=("x",))))
 
 
-def test_double_clap_is_declared_impulsive_and_distinct_from_the_clap_span():
+def test_double_clap_and_clap_are_impulsive_and_wave_is_the_only_span():
     r = load_registry()
     spec = r.resolve("double_clap")
     assert spec is not None and spec.kind == "impulsive" and spec.max_run is not None
-    assert r.resolve("clap").kind == "sustained"
+    assert r.resolve("clap").kind == "impulsive" and r.resolve("clap").max_run is not None
+    assert r.resolve("wave").kind == "sustained"
     assert "double_clap" in r.training_names()
