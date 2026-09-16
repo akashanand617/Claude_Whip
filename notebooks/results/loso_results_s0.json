@@ -1,0 +1,142 @@
+{
+ "seed": 0,
+ "channels": "shape,scale,saturation,gref",
+ "sessions": {
+  "prompted_20260909_160303": {
+   "n": 170,
+   "exact": 141,
+   "type": 162,
+   "any": 169,
+   "spurious_events": 0,
+   "minutes": 10.963382720947266
+  },
+  "prompted_20260912_013715": {
+   "n": 61,
+   "exact": 53,
+   "type": 58,
+   "any": 58,
+   "spurious_events": 0,
+   "minutes": 3.5997729301452637
+  },
+  "prompted_20260915_184744": {
+   "n": 21,
+   "exact": 19,
+   "type": 20,
+   "any": 20,
+   "spurious_events": 0,
+   "minutes": 1.8637741804122925
+  },
+  "prompted_20260915_235801": {
+   "n": 22,
+   "exact": 21,
+   "type": 21,
+   "any": 22,
+   "spurious_events": 0,
+   "minutes": 2.515554189682007
+  },
+  "prompted_20260916_010218": {
+   "n": 1,
+   "exact": 1,
+   "type": 1,
+   "any": 1,
+   "spurious_events": 0,
+   "minutes": 0.05950184911489487
+  },
+  "prompted_20260916_010415": {
+   "n": 13,
+   "exact": 8,
+   "type": 12,
+   "any": 12,
+   "spurious_events": 0,
+   "minutes": 0.9197556972503662
+  },
+  "prompted_20260916_010756": {
+   "n": 13,
+   "exact": 9,
+   "type": 13,
+   "any": 13,
+   "spurious_events": 0,
+   "minutes": 1.3237885236740112
+  }
+ },
+ "per_class": {
+  "double_flick_up": {
+   "n": 37,
+   "exact": 27,
+   "type": 34,
+   "any": 36
+  },
+  "flick_up": {
+   "n": 38,
+   "exact": 36,
+   "type": 36,
+   "any": 37
+  },
+  "flick_down": {
+   "n": 36,
+   "exact": 32,
+   "type": 32,
+   "any": 33
+  },
+  "double_flick_down": {
+   "n": 37,
+   "exact": 30,
+   "type": 37,
+   "any": 37
+  },
+  "double_flick_left": {
+   "n": 38,
+   "exact": 34,
+   "type": 38,
+   "any": 38
+  },
+  "flick_left": {
+   "n": 41,
+   "exact": 33,
+   "type": 37,
+   "any": 41
+  },
+  "flick_right": {
+   "n": 37,
+   "exact": 28,
+   "type": 37,
+   "any": 37
+  },
+  "double_flick_right": {
+   "n": 37,
+   "exact": 32,
+   "type": 36,
+   "any": 36
+  }
+ },
+ "confusions": {
+  "double_flick_down -> double_flick_right": 7,
+  "flick_right -> flick_left": 7,
+  "double_flick_left -> double_flick_right": 4,
+  "flick_left -> flick_right": 4,
+  "double_flick_up -> double_flick_left": 3,
+  "flick_down -> -": 3,
+  "flick_left -> double_flick_right": 3,
+  "double_flick_right -> double_flick_left": 3,
+  "double_flick_up -> flick_up": 2,
+  "double_flick_up -> -": 2,
+  "double_flick_up -> double_flick_down": 2,
+  "flick_right -> flick_down": 2,
+  "double_flick_right -> -": 2,
+  "double_flick_up -> double_flick_right": 1,
+  "flick_up -> double_flick_down": 1,
+  "flick_down -> double_flick_down": 1,
+  "flick_left -> double_flick_left": 1,
+  "flick_up -> -": 1
+ },
+ "by_amplitude": {
+  "hard": {
+   "n": 181,
+   "exact": 156
+  },
+  "soft": {
+   "n": 120,
+   "exact": 96
+  }
+ }
+}

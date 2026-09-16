@@ -116,3 +116,11 @@ def test_duplicate_aliases_fail_loudly():
     with pytest.raises(ValueError, match="duplicate"):
         Registry((GestureSpec("a", "impulsive", aliases=("x",)),
                   GestureSpec("b", "impulsive", aliases=("x",))))
+
+
+def test_double_clap_is_declared_impulsive_and_distinct_from_the_clap_span():
+    r = load_registry()
+    spec = r.resolve("double_clap")
+    assert spec is not None and spec.kind == "impulsive" and spec.max_run is not None
+    assert r.resolve("clap").kind == "sustained"
+    assert "double_clap" in r.training_names()

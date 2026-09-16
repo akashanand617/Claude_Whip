@@ -107,6 +107,11 @@ DEFAULT_GESTURES: tuple[GestureSpec, ...] = (
     # simply does not map `snap` to any action unless asked to.
     GestureSpec("snap", "impulsive", aliases=("snapping",)),
     GestureSpec("double_snap", "impulsive"),
+    # Two claps as one impulsive gesture (point-cued, like double_snap), as
+    # distinct from `clap` the sustained "keep clapping" span. Declared
+    # 2026-09-16, no data yet: the exporter lists it as declared-but-absent
+    # until `probe.collect --gestures double_clap` records some.
+    GestureSpec("double_clap", "impulsive"),
     GestureSpec("wave", "sustained", aliases=("waving",), min_run=3, max_run=None, refractory_s=2.0),
     GestureSpec("clap", "sustained", aliases=("clapping",), min_run=2, max_run=None, refractory_s=1.5),
 )
