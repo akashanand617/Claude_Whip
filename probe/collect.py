@@ -158,8 +158,10 @@ async def run(args: argparse.Namespace) -> int:
     device = await capture.find_ring(address=args.address, timeout=args.timeout)
 
     schedule: list[session.Prompt] = []
-    if args.gestures:
+    motions = cue_motions(args)
+    if args.gestures or getattr(args, "matrix", False) or getattr(args, "fill", False):
         args.kind = "prompted"
+    duration = 2.0
     if args.kind == "prompted":
         schedule = schedule_for(args)
         mean_gap = (args.gap_min + args.gap_max) / 2
@@ -168,11 +170,12 @@ async def run(args: argparse.Namespace) -> int:
         # count them, and the last four gestures were never cued.
         posture_changes = sum(1 for i, p in enumerate(schedule)
                               if p.posture not in ("", "as you are") and (i == 0 or schedule[i - 1].posture != p.posture))
-        duration = 2.0 + len(schedule) * (COUNTDOWN_S + mean_gap) + posture_changes * POSTURE_PAUSE_S + 8.0
-    elif args.cues:
-        motions = [m.strip() for m in args.cues.split(",") if m.strip()]
-        duration = 2.0 + len(motions) * args.cue_seconds + 5.0
-    else:
+        duration += len(schedule) * (COUNTDOWN_S + mean_gap) + posture_changes * POSTURE_PAUSE_S + 8.0
+    if motions:
+        # Point gestures and sustained spans in ONE session: the prompts run
+        # first, then the spans, each on the stream clock.
+        duration += 2.0 + len(motions) * (args.cue_seconds + CUE_SETTLE_S) + 5.0
+    if not schedule and not motions:
         duration = args.minutes * 60.0
 
     stamp = time.strftime("%Y%m%d_%H%M%S")
@@ -214,19 +217,19 @@ async def run(args: argparse.Namespace) -> int:
             counts = " / ".join(f"{n} {lab}" for lab, n in sorted(mix.items()))
             print(f"schedule    {len(schedule)} prompts ({counts}), interleaved")
             print(f"pacing      {args.gap_min:.1f}-{args.gap_max:.1f}s randomised gaps")
-        elif args.cues:
-            print(f"motions     {len([m for m in args.cues.split(',') if m.strip()])} x {args.cue_seconds:.0f}s, all labelled `none`")
-        else:
+        if motions:
+            print(f"spans       {len(motions)} x {args.cue_seconds:.0f}s after the prompts: {', '.join(motions)}")
+        if not schedule and not motions:
             print(f"mode        {args.kind}: no prompts, everything unmarked is `none`")
 
         tasks = []
-        if schedule:
-            rng = random.Random(args.seed)
-            tasks.append(asyncio.create_task(
-                run_prompts(rec, notes, schedule, args.gap_min, args.gap_max, rng)))
-        elif args.cues:
-            motions = [m.strip() for m in args.cues.split(",") if m.strip()]
-            tasks.append(asyncio.create_task(run_cues(notes, motions, args.cue_seconds, rec)))
+        if schedule or motions:
+            async def cue_everything():
+                if schedule:
+                    await run_prompts(rec, notes, schedule, args.gap_min, args.gap_max, random.Random(args.seed))
+                if motions:
+                    await run_cues(notes, motions, args.cue_seconds, rec)
+            tasks.append(asyncio.create_task(cue_everything()))
         else:
             tasks.append(asyncio.create_task(_tick(duration, rec)))
 
@@ -266,18 +269,38 @@ async def _tick(duration: float, rec=None) -> None:
         print(f"  {left / 60:.1f} min left", flush=True)
 
 
+CUE_SETTLE_S = 3.0
+
+
+def cue_motions(args) -> list[str]:
+    """The span list: --cues, repeated --cue-reps times, motions interleaved (wave, clap, wave, clap, ...)."""
+    if not getattr(args, "cues", None):
+        return []
+    base = [m.strip() for m in args.cues.split(",") if m.strip()]
+    return base * max(1, getattr(args, "cue_reps", 1))
+
+
 async def run_cues(notes: session.SessionNotes, motions: list[str], seconds: float, rec=None) -> None:
-    """Cycle through named motions on a timer, recording when each began."""
+    """
+    Cycle through named motions on a timer, recording when each began and
+    ended ON THE STREAM CLOCK -- the same origin the prompt cues use. (The
+    first version stamped spans from its own start, ~2 s after the stream's;
+    harmless alone, wrong the moment spans follow prompts in one session.)
+    A settle gap between spans keeps one motion's tail out of the next span.
+    """
     if rec is not None:
         await wait_for_data(rec)
     await asyncio.sleep(2.0)
     print()
-    start = time.perf_counter()
+    clock = lambda: time.perf_counter() - (rec.notes["stream_t0"] if rec is not None else 0.0)
     for i, motion in enumerate(motions):
-        at = time.perf_counter() - start
-        print(f"  [{i + 1}/{len(motions)}]  >>> {motion.upper()}  ({seconds:.0f}s)", flush=True)
+        print(f"  [{i + 1}/{len(motions)}]  get ready: {motion.upper()} in {CUE_SETTLE_S:.0f}s", flush=True)
+        await asyncio.sleep(CUE_SETTLE_S)
+        at = clock()
+        print(f"           >>> {motion.upper()}  keep going for {seconds:.0f}s", flush=True)
         await asyncio.sleep(seconds)
-        notes.add_cue(motion, at, time.perf_counter() - start)
+        notes.add_cue(motion, at, clock())
+        print("           stop", flush=True)
     print("\n  motions complete\n", flush=True)
 
 
@@ -306,6 +329,7 @@ def main() -> int:
                         help="with --fill: valid gestures per class to aim for (default: the largest class)")
     parser.add_argument("--cues", help="comma-separated motions to cycle through, e.g. 'wave,snap,wobble'")
     parser.add_argument("--cue-seconds", type=float, default=20.0, help="seconds per cued motion")
+    parser.add_argument("--cue-reps", type=int, default=1, help="how many times to cycle through --cues")
     parser.add_argument("--hand", default="left", help="which hand wears the ring")
     parser.add_argument("--ring-position", default="index",
                         help="finger and rough rotation, e.g. 'index, logo up'")
@@ -338,6 +362,10 @@ def main() -> int:
         counts = " / ".join(f"{n} {lab}" for lab, n in sorted(mix.items()))
         print(f"\n  {len(schedule)} prompts ({counts})")
         print(f"  ~{pace:.1f}s each -> ~{len(schedule) * pace / 60:.0f} min")
+        motions = cue_motions(args)
+        if motions:
+            span_min = len(motions) * (args.cue_seconds + CUE_SETTLE_S) / 60
+            print(f"  then {len(motions)} spans of {args.cue_seconds:.0f}s ({', '.join(motions)}) -> ~{span_min:.0f} min more")
         print("  (no ring needed; re-run without --preview to record)")
         return 0
 

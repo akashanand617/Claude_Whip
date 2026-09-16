@@ -41,3 +41,11 @@ def test_no_motion_packets_aborts_before_any_cue():
     for i in range(3):
         rec.records.append((0.2 + i * 0.04, bytes([0xA1, 0x03]) + bytes(14)))
     asyncio.run(collect.wait_for_data(rec, seconds=0.3, min_packets=3))
+
+
+def test_cue_motions_interleave_and_repeat():
+    import argparse
+
+    assert collect.cue_motions(argparse.Namespace(cues="wave,clap", cue_reps=3)) == ["wave", "clap"] * 3
+    assert collect.cue_motions(argparse.Namespace(cues=None, cue_reps=3)) == []
+    assert collect.cue_motions(argparse.Namespace(cues=" wave ", cue_reps=1)) == ["wave"]
