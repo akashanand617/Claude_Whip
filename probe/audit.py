@@ -76,21 +76,42 @@ def main() -> int:
     parser.add_argument("--all", action="store_true", help="every prompted session in data/sessions")
     parser.add_argument("-v", "--verbose", action="store_true", help="print every gesture, not just flagged ones")
     parser.add_argument("--write", action="store_true", help="write <session>.audit.json with the verdicts")
+    parser.add_argument("--reanchor", action="store_true",
+                        help="move the cue of each late-but-clean gesture to its measured onset (keeps "
+                             "cue_at_original on the mark), then re-audit")
+    parser.add_argument("--exclude", type=int, nargs="+", metavar="INDEX",
+                        help="mark these gesture indices excluded (wearer's call, e.g. a redo); with one session id")
+    parser.add_argument("--reason", default="excluded by the wearer", help="recorded with --exclude")
     args = parser.parse_args()
     ids = list(args.session)
     if args.all:
         ids += sorted(p.stem for p in SESSIONS.glob("prompted_*.jsonl"))
     if not ids:
         parser.error("give a session id or --all")
+    if args.exclude:
+        if len(ids) != 1:
+            parser.error("--exclude takes exactly one session id")
+        done = audit.exclude_marks(SESSIONS / f"{ids[0]}.notes.json", args.exclude, args.reason)
+        print(f"excluded marks {done} in {ids[0]} ({args.reason})")
+    if args.reanchor:
+        for sid in ids:
+            cap, notes = SESSIONS / f"{sid}.jsonl", SESSIONS / f"{sid}.notes.json"
+            if notes.exists():
+                moved = audit.reanchor(notes, audit.audit_session(cap, notes))
+                if moved:
+                    print(f"re-anchored marks {moved} in {sid} to their measured onset")
     ok = True
     for sid in ids:
         ok = report(sid, args.verbose, args.write) and ok
+    counts = audit.valid_counts(SESSIONS)
+    if counts:
+        print("\nvalid per class: " + "  ".join(f"{k}:{n}" for k, n in sorted(counts.items())))
     corpus = audit.corpus_shortfall(SESSIONS)
     if corpus:
-        print(f"\nto re-record, corpus-wide (bring every class to the largest, {sum(corpus.values())} gestures): "
-              + "  ".join(f"{k}:{n}" for k, n in corpus.items()) + "\n  -> python -m probe.collect --fill")
-    else:
-        print("\nevery class has as many valid gestures as the largest; nothing to fill")
+        print(f"to re-record, corpus-wide (bring every class up to the median, {sum(corpus.values())} gestures): "
+              + "  ".join(f"{k}:{n}" for k, n in corpus.items()) + "\n  -> python -m probe.collect --fill   (or --target N to grow every class to N)")
+    elif counts:
+        print("no class is below the median; use `probe.collect --fill --target N` to grow every class to N")
     return 0 if ok else 2
 
 

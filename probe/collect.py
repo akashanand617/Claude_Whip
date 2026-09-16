@@ -49,9 +49,8 @@ def schedule_for(args) -> list[session.Prompt]:
 
         short = audit.corpus_shortfall(DATA_DIR, target=args.target)
         if not short:
-            raise SystemExit("nothing to fill: every class already has as many valid gestures as the "
-                             f"largest (or as --target); audit files are read from {DATA_DIR} "
-                             "(run `python -m probe.audit --all --write` first)")
+            raise SystemExit("nothing to fill: no class is below the median (or below --target); "
+                             f"audit files are read from {DATA_DIR} (run `python -m probe.audit --all --write` first)")
         return session.build_fill_schedule(short, seed=args.seed)
     if args.gestures:
         names = [g.strip() for g in args.gestures.split(",") if g.strip()]
@@ -233,7 +232,7 @@ def main() -> int:
                         help="prompted mode over arbitrary registry gestures, "
                              "e.g. 'snap,double_snap' -- how a new class gets data")
     parser.add_argument("--fill", action="store_true",
-                        help="cue exactly what brings every class up to the largest class's valid count "
+                        help="cue exactly what brings every class up to the median class's valid count "
                              "(or to --target), interleaved; needs probe.audit --all --write")
     parser.add_argument("--target", type=int, default=None,
                         help="with --fill: valid gestures per class to aim for (default: the largest class)")

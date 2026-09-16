@@ -95,7 +95,14 @@ MIN_CUE_SPACING_S = 2.0
 FULL_SCALE_G = 32767 / accel.COUNTS_PER_G
 
 INVALID_FLAGS = ("NO_MOTION", "WEAK", "LATE_ONSET", "DOUBLE_WITH_ONE_STROKE",
-                 "DOUBLE_GAP_OUT_OF_RANGE", "DOUBLE_RATIO_OUT_OF_RANGE", "SAMPLE_LOSS")
+                 "DOUBLE_GAP_OUT_OF_RANGE", "DOUBLE_RATIO_OUT_OF_RANGE", "SAMPLE_LOSS",
+                 "MANUAL_EXCLUDE")
+# A late but otherwise clean gesture can be re-anchored: its mark's cue_at is
+# moved so the onset sits here, where the corpus median onset is. The original
+# cue time is kept on the mark as `cue_at_original`. Only LATE_ONSET gestures
+# with no other invalid flag qualify -- a late double with a pause stays out.
+REANCHOR_ONSET_S = 0.2
+REANCHOR_MAX_ONSET_S = 1.5
 SUSPECT_FLAGS = ("CUED_SOFT_DID_HARD", "CUED_HARD_DID_SOFT", "SINGLE_SECOND_TAP",
                  "DIRECTION_PAIR_MISMATCH", "CUE_COLLISION")
 
@@ -264,9 +271,54 @@ def audit_session(capture_path: Path, notes_path: Path, registry: Registry | Non
                          direction=m.get("direction", "none"), amplitude=m.get("amplitude", ""),
                          tempo=m.get("tempo", ""), next_cue_s=nxt, **meas)
         g.flags = _flags_for(g)
+        if m.get("exclude"):
+            # The wearer's own call, recorded on the mark ("did it too early
+            # and redid it late", "phone rang"). The audit cannot know that.
+            g.flags.append("MANUAL_EXCLUDE")
         out.append(g)
     _flag_prompt_adherence(out)
     return out
+
+
+def reanchorable(g: GestureAudit) -> bool:
+    """A late gesture whose only fault is lateness, and not absurdly late."""
+    return ("LATE_ONSET" in g.flags and g.onset_s is not None and g.onset_s <= REANCHOR_MAX_ONSET_S
+            and not any(f in INVALID_FLAGS and f != "LATE_ONSET" for f in g.flags))
+
+
+def reanchor(notes_path: Path, audits: list[GestureAudit]) -> list[int]:
+    """
+    Move the cue_at of every re-anchorable mark so its onset lands at
+    REANCHOR_ONSET_S after the (new) cue, keeping the original as
+    `cue_at_original`. Returns the mark indices changed. Re-run the audit
+    afterwards; the moved marks then measure as on-time.
+    """
+    doc = json.loads(notes_path.read_text())
+    by_index = {g.index: g for g in audits if reanchorable(g)}
+    changed = []
+    for m in doc.get("marks", []):
+        g = by_index.get(m.get("index"))
+        if g is None or "until" in m or abs(m["cue_at"] - g.cue_at) > 1e-6:
+            continue
+        m["cue_at_original"] = m["cue_at"]
+        m["cue_at"] = round(g.cue_at + g.onset_s - REANCHOR_ONSET_S, 3)
+        changed.append(m["index"])
+    if changed:
+        notes_path.write_text(json.dumps(doc, indent=2))
+    return changed
+
+
+def exclude_marks(notes_path: Path, indices: list[int], reason: str) -> list[int]:
+    """Record the wearer's exclusion on the given marks; the audit then flags them MANUAL_EXCLUDE."""
+    doc = json.loads(notes_path.read_text())
+    done = []
+    for m in doc.get("marks", []):
+        if m.get("index") in indices and "until" not in m:
+            m["exclude"] = reason
+            done.append(m["index"])
+    if done:
+        notes_path.write_text(json.dumps(doc, indent=2))
+    return done
 
 
 def _flag_prompt_adherence(audits: list[GestureAudit]) -> None:
@@ -373,11 +425,13 @@ def corpus_shortfall(sessions_dir: Path, target: int | None = None) -> dict[str,
     What the next session has to record to make every class the same size:
     `target - valid` per class, over every audit file in the directory.
 
-    `target` defaults to the largest valid count any class has, so the answer
-    is "bring the others up to the best one" -- a symmetric corpus. Passing a
-    target grows every class to it. Counting excluded gestures instead (the
-    first version) kept re-asking for gestures that a later session had
-    already replaced, because each fill session adds its own exclusions.
+    `target` defaults to the MEDIAN valid count over the classes (rounded
+    up): the classes below the middle are brought up to it. The largest class
+    was the first default, and one class that happened to collect extra
+    valid gestures from partial sessions then made every other class "short"
+    -- a target that ran away from the corpus. Passing a target grows every
+    class to it. Counting excluded gestures instead (the very first version)
+    kept re-asking for gestures that a later session had already replaced.
     Reads the files, so `probe.audit --all --write` must have run.
     """
     valid: dict[str, int] = {}
@@ -391,5 +445,17 @@ def corpus_shortfall(sessions_dir: Path, target: int | None = None) -> dict[str,
                 valid[key] += 1
     if not valid:
         return {}
-    goal = target if target is not None else max(valid.values())
+    import math
+    goal = target if target is not None else int(math.ceil(float(np.median(list(valid.values())))))
     return {k: goal - v for k, v in valid.items() if goal - v > 0}
+
+
+def valid_counts(sessions_dir: Path) -> dict[str, int]:
+    """Valid gestures per class over every audit file in the directory."""
+    valid: dict[str, int] = {}
+    for path in sorted(Path(sessions_dir).glob("*" + AUDIT_SUFFIX)):
+        for g in json.loads(path.read_text()).get("gestures", []):
+            d = g.get("direction", "none")
+            key = f"{g['label']}_{d}" if d not in ("", "none", "any") else g["label"]
+            valid[key] = valid.get(key, 0) + (1 if g.get("verdict") == "valid" else 0)
+    return valid

@@ -175,11 +175,44 @@ def test_corpus_shortfall_sums_every_audit_file(tmp_path):
     ok = audit.GestureAudit(3, 11.0, "flick", "left", "hard", "", 4.0, 0.1, [(0.1, 4.0)])
     (tmp_path / "s1.jsonl").write_text(""); (tmp_path / "s2.jsonl").write_text("")
     audit.write_audit(tmp_path / "s1.jsonl", [a, b, ok]); audit.write_audit(tmp_path / "s2.jsonl", [a, c])
-    # valid counts: flick_left 1, double_flick_down 0, snap 0 -> bring the others up to 1
-    assert audit.corpus_shortfall(tmp_path) == {"double_flick_down": 1, "snap": 1}
+    # valid counts: flick_left 1, double_flick_down 0, snap 0 -> median 0 -> nothing below it
+    assert audit.valid_counts(tmp_path) == {"flick_left": 1, "double_flick_down": 0, "snap": 0}
+    assert audit.corpus_shortfall(tmp_path) == {}
     assert audit.corpus_shortfall(tmp_path, target=3) == {"flick_left": 2, "double_flick_down": 3, "snap": 3}
     assert audit.corpus_shortfall(tmp_path, target=1) == {"double_flick_down": 1, "snap": 1}
     # a class that reached the target is not asked for again, however many exclusions it collected
     more = [audit.GestureAudit(i, 20.0 + i, "flick", "left", "hard", "", 4.0, 0.1, [(0.1, 4.0)]) for i in range(4)]
     (tmp_path / "s3.jsonl").write_text(""); audit.write_audit(tmp_path / "s3.jsonl", more)
     assert "flick_left" not in audit.corpus_shortfall(tmp_path, target=5)
+
+
+
+def test_manual_exclude_and_reanchor_round_trip(tmp_path):
+    """
+    The wearer can exclude a mark ("did it early, redid it late"); a gesture
+    whose only fault is a late start can be re-anchored to its onset and
+    then audits as on-time, with the original cue kept on the mark.
+    """
+    import json
+    from tests.test_dataset import write_capture, write_notes
+
+    cap, notes = tmp_path / "s.jsonl", tmp_path / "s.notes.json"
+    # two cued flicks: one on time at 5.0, one that actually happens 0.8 s late at 10.0
+    write_capture(cap, seconds=16.0, gestures=[(5.0, "flag"), (10.8, "flag")])
+    write_notes(notes, "s", [(5.0, "flag"), (10.0, "flag")])
+    A = audit.audit_session(cap, notes)
+    # (the fixture's stroke is across gravity while the mark says "up", so the
+    # on-time one is suspect on the pair check; what matters here is lateness)
+    assert "LATE_ONSET" not in A[0].flags and A[0].verdict != "invalid"
+    assert "LATE_ONSET" in A[1].flags and A[1].verdict == "invalid"
+    assert audit.reanchorable(A[1]) and not audit.reanchorable(A[0])
+    moved = audit.reanchor(notes, A)
+    assert moved == [1]
+    doc = json.loads(notes.read_text())
+    assert doc["marks"][1]["cue_at_original"] == 10.0 and 10.4 < doc["marks"][1]["cue_at"] < 10.8
+    A2 = audit.audit_session(cap, notes)
+    assert "LATE_ONSET" not in A2[1].flags and A2[1].verdict != "invalid" and 0.0 <= A2[1].onset_s <= 0.4
+    # and the wearer's exclusion is final, whatever the stream says
+    assert audit.exclude_marks(notes, [0], "redid it") == [0]
+    A3 = audit.audit_session(cap, notes)
+    assert "MANUAL_EXCLUDE" in A3[0].flags and A3[0].verdict == "invalid"
