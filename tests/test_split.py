@@ -32,8 +32,12 @@ def test_gestures_are_dealt_per_class_across_sessions_and_windows_follow_their_g
     # a window inside a gesture's interval goes with the gesture; one across the midpoint boundary is dropped
     cue = marks_a[3]["cue_at"]; part = sp.part_of_mark(plan, "a", cue)
     assert sp.part_of_window(plan, "a", cue - 0.4) == part
-    boundary = cue + sp.MARK_AFTER_S + 0.25   # midway to the next cue at +3.0 (next start = cue+2.5)
+    nxt = marks_a[4]["cue_at"]
+    boundary = ((cue + sp.MARK_AFTER_S) + (nxt - sp.MARK_BEFORE_S)) / 2   # intervals meet midway
     assert sp.part_of_window(plan, "a", boundary - 1.0) is None
+    # with cues 3 s apart the intervals meet at cue-0.78 and cue+2.23, so the
+    # windows starting from cue-0.7 to cue+0.2 (5 of them, a run above min_run) are inside
+    assert all(sp.part_of_window(plan, "a", cue + off) == part for off in (-0.7, -0.5, 0.0, 0.2))
 
 
 def test_stratification_is_per_class_and_the_seed_fixes_it(tmp_path):

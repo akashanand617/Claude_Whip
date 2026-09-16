@@ -41,10 +41,13 @@ from whip.registry import load_registry
 
 PARTS = ("train", "val", "test")
 WINDOW_S = 2.0
-# A cued gesture's windows start no earlier than cue-0.5 (a window holding
-# 70% of the cue..cue+1.2 label) and end no later than cue+2.0.
-MARK_BEFORE_S = 0.5
-MARK_AFTER_S = 2.0
+# A cued gesture's labelled windows START anywhere from cue-1.4 (a 2 s
+# window holding 70% of the cue..cue+1.2 label) to cue+0.85, so they END up
+# to cue+2.85. The unit's interval must hold all of them, or a run is cut
+# short and never fires -- the first bounds (cue-0.5 .. cue+2.0) kept ~3 of
+# ~10 windows per gesture and scored 4/69 on val.
+MARK_BEFORE_S = 1.4
+MARK_AFTER_S = 2.85
 
 DEFAULT_PLAN = {"seed": 0, "fractions": [0.65, 0.15, 0.20], "chunk_s": 20.0}
 
