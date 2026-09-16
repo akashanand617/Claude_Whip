@@ -44,6 +44,9 @@ def schedule_for(args) -> list[session.Prompt]:
     prompts and the session ran 200. A preview that disagrees with the run is
     worse than either number being wrong.
     """
+    if getattr(args, "matrix", False):
+        names = [g.strip() for g in (args.gestures or "flick").split(",") if g.strip()]
+        return session.build_matrix_schedule(tuple(names), reps=args.reps, seed=args.seed)
     if getattr(args, "fill", False):
         from whip import audit
 
@@ -85,6 +88,12 @@ async def run_prompts(rec: capture.Capture, notes: session.SessionNotes,
     await asyncio.sleep(1.5)
     print()
     for i, prompt in enumerate(schedule):
+        # A posture change (matrix schedules) gets an announcement and a
+        # pause: reorienting the hand is not a 3-second job, and a gesture
+        # done while still turning the wrist would be labelled as if still.
+        if prompt.posture not in ("", "as you are") and (i == 0 or schedule[i - 1].posture != prompt.posture):
+            print(f"\n  ---- hand: {prompt.posture.upper()} -- get set (5 s) ----", flush=True)
+            await asyncio.sleep(5.0)
         # Show it, give a short countdown, cue, then settle -- and during the
         # settle, show the next one so it is already read by the time its
         # countdown starts.
@@ -231,6 +240,11 @@ def main() -> int:
     parser.add_argument("--gestures",
                         help="prompted mode over arbitrary registry gestures, "
                              "e.g. 'snap,double_snap' -- how a new class gets data")
+    parser.add_argument("--matrix", action="store_true",
+                        help="posture x direction matrix: every hand orientation (palm down/up/left/right) "
+                             "x every flick direction, --reps each, for --gestures (default flick); the "
+                             "posture is spoken and the schedule pauses when it changes")
+    parser.add_argument("--reps", type=int, default=1, help="with --matrix: repetitions per cell")
     parser.add_argument("--fill", action="store_true",
                         help="cue exactly what brings every class up to the median class's valid count "
                              "(or to --target), interleaved; needs probe.audit --all --write")

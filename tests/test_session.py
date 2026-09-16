@@ -294,3 +294,20 @@ def test_fill_schedule_cues_exactly_the_shortfall_interleaved():
     # the tempo word is gone from the protocol: fixed, never varied
     assert {p.tempo for p in sched} == {"natural"}
     assert sched[0].spoken().startswith(("FLICK", "DOUBLE FLICK", "SNAP"))
+
+
+def test_matrix_schedule_covers_every_posture_by_direction_cell_in_posture_blocks():
+    from whip import session
+    from collections import Counter
+
+    sched = session.build_matrix_schedule(("flick",), reps=1, seed=4)
+    assert len(sched) == 16
+    cells = Counter((p.posture, p.direction) for p in sched)
+    assert set(cells) == {(po, d) for po in session.MATRIX_POSTURES for d in session.DIRECTIONS}
+    assert set(cells.values()) == {1}
+    # posture blocks: the posture changes exactly 3 times over 16 prompts
+    assert sum(1 for a, b in zip(sched, sched[1:]) if a.posture != b.posture) == 3
+    assert "[PALM" in sched[0].spoken()
+    # ordinary schedules never speak a posture
+    assert "[" not in session.build_gesture_schedule(["flick"], 2, seed=1)[0].spoken()
+    assert len(session.build_matrix_schedule(("flick", "double_flick"), reps=2, seed=1)) == 64

@@ -80,9 +80,10 @@ class Prompt:
         """
         legacy = {"flag": "SINGLE", "approve": "DOUBLE"}
         kind = legacy.get(self.label, self.label.upper().replace("_", " "))
+        where = f"   [{self.posture.upper()}]" if self.posture not in ("", "as you are") else ""
         if self.direction == "any":
-            return f"{kind}  |  {self.amplitude}"
-        return f"{kind}  |  {self.amplitude}, {self.direction}"
+            return f"{kind}  |  {self.amplitude}{where}"
+        return f"{kind}  |  {self.amplitude}, {self.direction}{where}"
 
 
 def build_structured_schedule(
@@ -294,3 +295,36 @@ def build_fill_schedule(shortfall: dict[str, int], seed: int | None = None) -> l
         last = pick
     return [Prompt(index=i, label=label, direction=direction, amplitude=amp, windup="natural",
                    posture="as you are", tempo="natural") for i, (label, direction, amp) in enumerate(order)]
+
+
+# Hand orientations for the posture x direction matrix. "as you are" is the
+# ordinary schedules' value and is never spoken.
+MATRIX_POSTURES = ("palm down", "palm up", "palm left", "palm right")
+
+
+def build_matrix_schedule(
+    gestures: tuple[str, ...] = ("flick",),
+    postures: tuple[str, ...] = MATRIX_POSTURES,
+    directions: tuple[str, ...] = DIRECTIONS,
+    reps: int = 1,
+    amplitude: str = "hard",
+    seed: int | None = None,
+) -> list[Prompt]:
+    """
+    Every posture x direction cell, `reps` times each, per gesture -- the
+    factorial that separates which way the hand FACES from which way it
+    FLICKED (2026-09-16). Grouped by posture so the wearer reorients the hand
+    once per block, with directions shuffled inside each block; block order
+    is shuffled too.
+    """
+    rng = random.Random(seed)
+    blocks = list(postures)
+    rng.shuffle(blocks)
+    out: list[Prompt] = []
+    for posture in blocks:
+        cells = [(g, d) for g in gestures for d in directions for _ in range(reps)]
+        rng.shuffle(cells)
+        for g, d in cells:
+            out.append(Prompt(index=len(out), label=g, direction=d, amplitude=amplitude,
+                              windup="natural", posture=posture, tempo="natural"))
+    return out
