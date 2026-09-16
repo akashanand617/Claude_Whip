@@ -459,3 +459,41 @@ def valid_counts(sessions_dir: Path) -> dict[str, int]:
             key = f"{g['label']}_{d}" if d not in ("", "none", "any") else g["label"]
             valid[key] = valid.get(key, 0) + (1 if g.get("verdict") == "valid" else 0)
     return valid
+
+
+# ---------------------------------------------------------------------------
+# Ring frame: which way round the ring was worn in a session.
+#
+# Room-frame left/right needs the finger axis to point the known way. A session
+# recorded with the ring back to front is not bad data -- its frame is rotated
+# by a half-turn -- so it is corrected at export rather than thrown away. The
+# correction is a named proper rotation stored next to the session; the
+# exporter applies it to the whole stream before anything else.
+
+FRAME_ROTATIONS = {
+    "identity":   ((1, 0, 0), (0, 1, 0), (0, 0, 1)),
+    "flip_axis0": ((1, 0, 0), (0, -1, 0), (0, 0, -1)),   # half-turn about the finger: same way round
+    "flip_axis1": ((-1, 0, 0), (0, 1, 0), (0, 0, -1)),   # back to front
+    "flip_axis2": ((-1, 0, 0), (0, -1, 0), (0, 0, 1)),   # back to front
+}
+FRAME_SUFFIX = ".frame.json"
+
+
+def frame_path(capture_path: Path) -> Path:
+    return capture_path.with_name(capture_path.stem + FRAME_SUFFIX)
+
+
+def set_frame(capture_path: Path, name: str, evidence: str = "") -> Path:
+    if name not in FRAME_ROTATIONS:
+        raise ValueError(f"unknown frame rotation {name!r}; one of {sorted(FRAME_ROTATIONS)}")
+    path = frame_path(capture_path)
+    path.write_text(json.dumps({"session_id": capture_path.stem, "rotation": name, "evidence": evidence,
+                                "set": datetime.now(timezone.utc).isoformat(timespec="seconds")}, indent=1))
+    return path
+
+
+def frame_for(capture_path: Path):
+    """(3, 3) rotation to apply to the session's stream, identity when no frame file exists."""
+    path = frame_path(capture_path)
+    name = json.loads(path.read_text())["rotation"] if path.exists() else "identity"
+    return np.asarray(FRAME_ROTATIONS[name], dtype=float)

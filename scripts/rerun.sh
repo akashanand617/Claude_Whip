@@ -16,7 +16,7 @@ set -u
 cd "$(dirname "$0")/.."
 export PYTHONPATH="$PWD${PYTHONPATH:+:$PYTHONPATH}"
 WORK=${WHIP_WORK:-data/work}; mkdir -p "$WORK"
-CH=${WHIP_CHANNELS:-shape,scale,saturation,gref}
+CH=${WHIP_CHANNELS:-shape,scale,saturation,room}
 # Ambient sessions to HOLD OUT of the deployed checkpoint, space-separated.
 # With two ambient hours, hold out the newest and train on the older one:
 # the rollout then measures false positives on 60 held-out minutes (30

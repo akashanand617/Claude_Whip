@@ -84,7 +84,7 @@ FULL_SCALE_G = 32767 / 8005.0
 DEFAULT_CHANNELS = ("shape", "scale")
 
 CHANNEL_WIDTHS = {"shape": 3, "gravity": 3, "linear": 3, "scale": 1, "saturation": 1,
-                  "posture": 3, "invariant": 3, "gref": 2}
+                  "posture": 3, "invariant": 3, "gref": 2, "room": 3}
 
 
 def _moving_average(x, width: int):
@@ -137,6 +137,14 @@ def to_model_input(x, channels=DEFAULT_CHANNELS, gravity=None):
       ring frame, because a and g rotate together. This is the physically
       right way to tell a vertical flick from a horizontal one: `posture`
       encodes the same fact as an absolute vector that drifts between days.
+    - `room` (3): the impulsive motion in a frame built from gravity and the
+      finger: along gravity (signed: up vs down), lateral = along
+      gravity x finger (signed: room-left vs room-right), and forward (the
+      finger's direction with gravity removed). Needs `gravity`. Invariant to
+      the ring spinning on the finger, NOT to the ring being worn back to
+      front -- that flips the lateral sign, and it is the one bit a room-frame
+      left/right needs (decided 2026-09-16: every direction is the direction
+      the hand moved in the room, in any posture). Requires the wear rule.
 
     `gravity + linear == shape` exactly, so passing all three is redundant; the
     useful comparison is `("shape", "scale")` against
@@ -201,6 +209,23 @@ def to_model_input(x, channels=DEFAULT_CHANNELS, gravity=None):
             mag = np.sqrt((x ** 2).sum(axis=1, keepdims=True))
             perp = np.sqrt((x[:, 1:3] ** 2).sum(axis=1, keepdims=True))
             parts.append(np.concatenate([mag, x[:, 0:1], perp], axis=1) / peak)
+        elif name == "room":
+            if gravity is None:
+                raise ValueError("the 'room' channel group needs the per-window gravity "
+                                 "vectors (export format v5+)")
+            g = np.asarray(gravity, dtype="float32")
+            g = g / np.maximum(np.linalg.norm(g, axis=1, keepdims=True), SCALE_FLOOR_G)
+            finger = np.zeros_like(g); finger[:, 0] = 1.0
+            lateral = np.cross(g, finger)
+            lat_norm = np.linalg.norm(lateral, axis=1, keepdims=True)
+            # Fingers pointing straight at the floor or ceiling: no lateral
+            # direction exists. The channel goes to zero rather than to noise.
+            lateral = np.where(lat_norm > 0.05, lateral / np.maximum(lat_norm, 1e-6), 0.0)
+            forward = np.cross(lateral, g)
+            lin = x - _moving_average(x, GRAVITY_WINDOW)
+            parts.append(np.stack([np.einsum("ntw,nt->nw", lin, g),
+                                   np.einsum("ntw,nt->nw", lin, lateral),
+                                   np.einsum("ntw,nt->nw", lin, forward)], axis=1) / peak)
         elif name == "gref":
             # Gravity-referenced: the impulsive (linear) part of the motion
             # resolved along the window's gravity vector and perpendicular to
@@ -368,9 +393,15 @@ FRAME_FLIPS = (
 def random_frames(n: int, rng, flips: bool = True, spin_deg: float = ROTATION_DEGREES):
     """
     (n, 3, 3) proper rotations of the ring frame: a random half-turn flip
-    (when `flips`) composed with a small random spin about the finger axis.
-    Every matrix has determinant +1, so rotation SENSE -- what tells left
-    from right -- is preserved; a mirror would silently relabel directions.
+    (when `flips`) composed with a random spin of up to `spin_deg` about the
+    finger axis. Every matrix has determinant +1, so rotation SENSE is
+    preserved; a mirror would silently relabel directions.
+
+    Two regimes. `flips=True, spin_deg=10` makes the model blind to which way
+    the ring is on -- and therefore blind to room-left vs room-right.
+    `flips=False, spin_deg=180` (the `room` regime) covers every way the ring
+    can SPIN on the finger while keeping the finger axis, the one bit that a
+    room-frame left/right needs; the wear rule supplies it.
     """
     import numpy as np
 

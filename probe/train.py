@@ -41,11 +41,13 @@ def main() -> int:
     # architecture; enable with more data and re-measure.
     parser.add_argument("--direction-weight", type=float, default=0.0,
                         help="auxiliary direction-head loss weight; 0 disables (measured default)")
-    parser.add_argument("--frame-aug", default="flips", choices=("none", "flips"),
-                        help="'flips': each batch is rotated by a random half-turn of the ring frame "
-                             "(plus the small finger-axis spin), windows and gravity together, so the "
-                             "model does not depend on which way the ring was put on (default); "
-                             "'none': the small spin only, on the shape channels")
+    parser.add_argument("--frame-aug", default="spin", choices=("none", "flips", "spin"),
+                        help="'spin' (default): each batch is rotated by a random full spin about the "
+                             "finger axis, windows and gravity together -- the ring may sit anywhere "
+                             "around the finger but must point the known way (wear rule), so room-frame "
+                             "left/right stays learnable; 'flips': also random half-turns, blind to which "
+                             "way the ring is on (and to room-left vs room-right); 'none': the small "
+                             "spin only, on the shape channels")
     parser.add_argument("--channels", default="shape,scale,saturation",
                         help="comma-separated channel groups; see model.to_model_input")
     parser.add_argument("--loud-factor", type=float, default=1.0,
@@ -146,9 +148,10 @@ def main() -> int:
         for i in range(0, len(perm), args.batch):
             idx = perm[i:i + args.batch]
             opt.zero_grad()
-            if args.frame_aug == "flips":
+            if args.frame_aug in ("flips", "spin"):
                 ii = idx.cpu().numpy()
-                frames = gm.random_frames(len(ii), frame_rng, flips=True)
+                frames = (gm.random_frames(len(ii), frame_rng, flips=True) if args.frame_aug == "flips"
+                          else gm.random_frames(len(ii), frame_rng, flips=False, spin_deg=180.0))
                 xr, gr = gm.rotate_frame(raw_tr[ii], grav_tr if grav_tr is None else grav_tr[ii], frames)
                 xb = torch.tensor(gm.to_model_input(xr, channels, gravity=gr), device=device)
                 xb = gm.augment(xb, rotation_deg=0.0)   # spin already applied to the frame

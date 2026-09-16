@@ -378,3 +378,26 @@ def test_invalid_gestures_from_the_audit_are_excluded_not_relabelled(tmp_path, m
     assert any(w.label != "none" and abs(w.start_s - 4.4) < 1.0 for w in after)
     # and the audit file names the cue that was excluded
     assert audit_mod.invalid_cues(cap) == [10.0]
+
+
+
+def test_a_frame_file_rotates_the_whole_session_before_windowing(tmp_path):
+    """
+    A session recorded with the ring back to front is corrected at export by
+    the named half-turn, gravity and waveform together; no file means identity.
+    """
+    import numpy as np
+    from whip import audit as audit_mod
+
+    cap = tmp_path / "s.jsonl"
+    write_capture(cap, seconds=6.0)
+    before = dataset.windows_from_session(cap, declared_negative=True)
+    audit_mod.set_frame(cap, "flip_axis2", evidence="test")
+    after = dataset.windows_from_session(cap, declared_negative=True)
+    assert len(before) == len(after)
+    gb, ga = np.array(before[0].gravity), np.array(after[0].gravity)
+    assert np.allclose(ga, gb * np.array([-1, -1, 1]), atol=1e-6)
+    xb, xa = np.array(before[0].axes), np.array(after[0].axes)
+    assert np.allclose(xa, xb * np.array([[-1], [-1], [1]]), atol=1e-6)
+    with __import__("pytest").raises(ValueError):
+        audit_mod.set_frame(cap, "mirror")

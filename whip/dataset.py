@@ -124,6 +124,11 @@ def _excluded_cues(capture_path: Path) -> list[float]:
     return audit.excluded_cues(capture_path)
 
 
+def _frame_for(capture_path: Path):
+    from whip import audit
+    return audit.frame_for(capture_path)
+
+
 def _marks_from_notes(notes, registry: Registry, duration_override: float | None):
     """
     Split a session's marks into point marks and span marks, canonically named.
@@ -208,6 +213,11 @@ def windows_from_session(
     # times, with a different neighbourhood each time.
     stream = despike.hampel(np.array(
         [[s.x for s in samples], [s.y for s in samples], [s.z for s in samples]], dtype=float))
+    # A session recorded with the ring the other way round is rotated back
+    # into the canonical frame here, before windows are cut, so every
+    # downstream channel sees one frame. `<session>.frame.json` names the
+    # rotation; absent means identity. See `audit.set_frame`.
+    stream = _frame_for(capture_path) @ stream
 
     rate = _sample_rate(times)
     if abs(rate - SAMPLE_RATE_HZ) > rate_tolerance:

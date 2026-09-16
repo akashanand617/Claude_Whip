@@ -432,3 +432,30 @@ def test_frame_flips_are_proper_rotations_and_gref_ignores_them():
     # flips=False is the old behaviour: a small spin about the finger axis only
     spin = gm.random_frames(8, rng, flips=False)
     assert np.allclose(spin[:, 0, 0], 1.0) and np.allclose(spin[:, 0, 1:], 0.0)
+
+
+def test_room_channels_are_spin_invariant_and_lateral_flips_with_the_finger():
+    """
+    The room frame is gravity, gravity x finger, and forward. Spinning the ring
+    about the finger must not change it; wearing the ring back to front must
+    flip the lateral (left/right) sign -- that is the bit the wear rule keeps.
+    """
+    import numpy as np
+
+    rng = np.random.default_rng(2)
+    raw = rng.standard_normal((16, gm.N_AXES, gm.WINDOW_SAMPLES)).astype("float32")
+    grav = rng.standard_normal((16, 3)).astype("float32")
+    grav[:, 0] *= 0.3   # fingers roughly level, so a lateral direction exists
+    a = gm.to_model_input(raw, ("room",), gravity=grav)
+    assert a.shape[1] == gm.CHANNEL_WIDTHS["room"] == 3
+    spin = gm.random_frames(16, rng, flips=False, spin_deg=180.0)
+    assert np.allclose(spin[:, 0, 0], 1.0)
+    xr, gr = gm.rotate_frame(raw, grav, spin)
+    assert np.allclose(a, gm.to_model_input(xr, ("room",), gravity=gr), atol=1e-4)
+    flip = np.tile(np.diag([-1.0, -1.0, 1.0]).astype("float32"), (16, 1, 1))   # back to front
+    xf, gf = gm.rotate_frame(raw, grav, flip)
+    b = gm.to_model_input(xf, ("room",), gravity=gf)
+    assert np.allclose(a[:, 0], b[:, 0], atol=1e-4)        # up/down unchanged
+    assert np.allclose(a[:, 1], -b[:, 1], atol=1e-4)       # left/right sign flips
+    with pytest.raises(ValueError):
+        gm.to_model_input(raw, ("room",))
