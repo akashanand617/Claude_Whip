@@ -90,14 +90,16 @@ class GestureSpec:
 # `approve`, and the negative session cued spans as `waving` / `snapping` /
 # `clapping`. Those map in via aliases so old captures need no rewriting.
 DEFAULT_GESTURES: tuple[GestureSpec, ...] = (
-    # split_by_direction defaults OFF, measured: on the held-out session the
-    # split cost 6-9 recall points (2 seeds) and every up/down flick came out
-    # as left/right -- a clean permutation, i.e. the ring sat rotated on the
-    # finger between sessions. Direction learned from one placement does not
-    # transfer to another; no class design fixes a rotated frame. The
-    # mechanism stays for when placement is calibrated or recorded across.
-    GestureSpec("flick", "impulsive", aliases=("flag",)),
-    GestureSpec("double_flick", "impulsive", aliases=("approve",)),
+    # split_by_direction ON for the flicks, measured twice. Trained on ONE
+    # session it cost 6-9 recall points and permuted directions on the next
+    # session (same-sense/different-posture pairs: down->right, up->left).
+    # Trained on TWO sessions and tested on a fresh third, it costs nothing --
+    # recall 90.6% vs 90.6-93.8% unsplit, a tie at n=32 -- and delivers
+    # direction at 93% (96% with the posture channel). The earlier reading that
+    # a rotated ring frame made direction unlearnable was wrong; it was data
+    # quantity plus posture being subtracted out.
+    GestureSpec("flick", "impulsive", aliases=("flag",), split_by_direction=True),
+    GestureSpec("double_flick", "impulsive", aliases=("approve",), split_by_direction=True),
     # "snapping" was cued as a 20 s span in the adversarial negative session.
     # Promoting it to a class converts a hard negative into a positive -- which
     # is exactly right here: instead of hoping the model treats snaps as `none`,

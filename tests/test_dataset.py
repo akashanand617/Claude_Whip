@@ -31,15 +31,22 @@ def write_notes(path, session_id, gestures):
     }))
 
 
-def split_registry():
-    """The default vocabulary with the flicks direction-split, for split tests."""
+def _registry(split: bool):
     import dataclasses
 
     from whip.registry import DEFAULT_GESTURES, Registry
 
     return Registry(tuple(
-        dataclasses.replace(g, split_by_direction=True) if g.name in ("flick", "double_flick") else g
+        dataclasses.replace(g, split_by_direction=split) if g.name in ("flick", "double_flick") else g
         for g in DEFAULT_GESTURES))
+
+
+def split_registry():
+    return _registry(True)
+
+
+def unsplit_registry():
+    return _registry(False)
 
 
 def test_windowing_geometry():
@@ -81,7 +88,7 @@ def test_a_gesture_produces_several_positive_windows(tmp_path):
     write_capture(cap, seconds=20.0, gestures=gestures)
     write_notes(notes, "s", gestures)
 
-    w = dataset.windows_from_session(cap, notes)
+    w = dataset.windows_from_session(cap, notes, registry=unsplit_registry())
     positives = [x for x in w if x.label == "flick"]   # canonical name, not the legacy alias
     assert 3 <= len(positives) <= 8, f"expected ~5 positive windows, got {len(positives)}"
 
@@ -105,7 +112,7 @@ def test_ambiguous_windows_are_dropped_not_guessed(tmp_path):
 def test_labels_are_ordered_with_none_first():
     from whip.registry import Registry
 
-    labels = Registry().labels_for({"wave", "flick"})
+    labels = unsplit_registry().labels_for({"wave", "flick"})
     assert labels[0] == "none"
     assert labels == ["none", "flick", "wave"], "registry order, not discovery order"
     split = split_registry().labels_for({"wave", "flick_left"})
@@ -244,7 +251,7 @@ def test_legacy_labels_resolve_to_canonical_names(tmp_path):
     gestures = [(5.0, "flag"), (10.0, "approve")]
     write_capture(cap, seconds=20.0, gestures=gestures)
     write_notes(notes, "s", gestures)
-    labels = {x.label for x in dataset.windows_from_session(cap, notes)}
+    labels = {x.label for x in dataset.windows_from_session(cap, notes, registry=unsplit_registry())}
     assert "flick" in labels and "double_flick" in labels
     assert "flag" not in labels and "approve" not in labels
     # with the split enabled the direction rides in the class name instead
@@ -264,7 +271,8 @@ def test_prompted_windows_carry_their_direction(tmp_path):
                    "windup": "none", "posture": "raised", "tempo": "natural",
                    "index": 0, "cue_at": 5.0}],
     }))
-    positives = [x for x in dataset.windows_from_session(cap, notes) if x.label == "flick"]
+    positives = [x for x in dataset.windows_from_session(cap, notes, registry=unsplit_registry())
+                 if x.label == "flick"]
     assert positives
     assert all(x.direction == "up" for x in positives)
 

@@ -16,11 +16,11 @@ preferences written into a context file as context fills.
 |---|---|
 | M0 hardware gate | **PASSED** on `#4`: 25.00 Hz, 0.24% loss, 10 min worn |
 | M1 gesture classifier | **general gesture platform**: registry vocabulary, live engine, web console |
-| M2 calibration corpus | **corpus finalized**: 60 gold items (5 per dimension) in `corpus/gold/`, validated; session planner ready (`python -m probe.calibrate plan`); awaiting rule-3 read-through, then M3 |
-| M3 labeling session | **next milestone.** Needs: rule-3 read-through of `corpus/gold/`, then a presenter that replays a `plan_s*.json` and joins resolved actions from `data/live/events_*.jsonl` by slot. Keyboard fallback suffices — not blocked on the ring or the gesture model |
-| M4 reward model | not started; input interface now defined -- per-presentation `(prompt, response, label)` plus pair preferences via `whip.corpus.label_pair`, split by item and by held-out day (`docs/CALIBRATION.md`) |
-| M5 LoRA adapter | not started; trains against M4 |
-| M6 three-arm eval | not started; the context arm generates mechanically from `corpus/taxonomy.json` `context_statement`s + the winning poles in `data/calibration/preferences.json` |
+| M2 calibration corpus | **two layers.** Layer 1 (artifact style) finalized: 60 items, 5 per dimension. Layer 2 (agency / working style, `docs/AGENCY.md`): 11 axes, 28 items, situation-conditioned; `step_size` at a full 2x2, the rest paired exemplars. 88 items total, validated. Planner is layer-scoped |
+| M3 labeling session | **tooling built, keypress-primary**: `python -m probe.label run / join / score / aggregate` (`whip/labeling.py`). Ring joined offline from `data/live/events_*.jsonl` as a secondary source. Blocked only on the rule-3 read-through of `corpus/gold/`, then four sessions on different days |
+| M4 reward model | **architected** (`docs/PIPELINE.md`): factored RM = pole classifiers (trained on the corpus's own variant labels, held out by item) x preference weights from `preferences.json`; Bradley-Terry as the baseline it must not lose to |
+| M5 LoRA adapter | **architected**: DPO on calibration pairs, KTO on singles as ablation, optional GRPO against the factored RM on a broader prompt pool; KL + correctness-canary guards; self-describing adapter metadata |
+| M6 three-arm eval | **architected**: base / mechanical context file / adapter, swept across neutral context fill; adherence via pole classifier + human blind spot-check + correctness canary. Built first, before M4/M5 |
 
 **M2–M6 need no ring.** They are the path to the research question. The ring only
 ever replaces a keypress in the labeling UI. Do not let hardware work block them.
@@ -339,18 +339,52 @@ into two. Judgement happens exactly once per run. Batch `events.detect` is a
 loop over the incremental `RunTracker`; the realtime engine feeds the same
 tracker, so live and offline are one implementation.
 
-**Direction is a head, not classes** -- splitting flick by direction would
-leave ~200 windows per class. But the head's loss is **off by default,
-measured**: at 264 directed gestures, training it at weight 0.3 cost ~10 points
-of gesture recall. The head stays in the architecture; checkpoints record
-`direction_trained`, and the engine forces direction "none" when false so a
-`flick:up` mapping can never route on an untrained head's deterministic
-garbage. Re-enable and re-measure with more data.
+**Direction: what it physically is, measured** (`probe/directions.py`). In the
+ring's frame, `down`, `left` and `right` all rotate about ONE shared axis
+(2-11 degrees apart in every session) and `up` is the opposite sense
+(119-153 degrees away). What separates the palm-down pair from the
+hand-vertical pair is POSTURE: the gravity vector during the gesture differs
+by 42-57 degrees between the pairs and 7-19 within them. Every direction is a
+repeatable motion -- unsigned axis consistency 0.88-1.00 in all three
+prompted sessions.
 
-**Training recipe, isolated one factor at a time (2 seeds, held out):**
-3-class old recipe 63.3%; 6-class costs ~5 (58.6%); the saturation channel buys
-it back (65.6%); direction at 0.3 drops it to 55.5%. Default channels are
-therefore `shape,scale,saturation`, direction weight 0.
+Two earlier claims in this file were wrong and are withdrawn: the ring did not
+sit "60 degrees rotated" between sessions (rest gravity in the finger-
+perpendicular plane differs by ~15 degrees; hand PITCH differs by ~50 -- the
+60 came from averaging rotation axes across directions that rotate about
+different axes); and `up` was never "random" (signed consistency 0.06 was the
+rotation-SENSE estimator flipping sign; unsigned it is 0.97).
+
+**Why the first direction models permuted** (down->right, up->left): trained on
+ONE session, they could only see the sense of the flexion, because posture --
+the per-window gravity vector -- was subtracted before the model saw anything.
+Same-sense/different-posture pairs were indistinguishable by construction.
+
+**Fixed by data first, posture second.** Trained on two sessions and tested on
+a fresh 32-gesture session: direction 93% with the plain channels, 96% with the
+`posture` channel group (the window's unit gravity vector, export v5 keeps it),
+recall 88-91% on both seeds. Direction-split classes (`split_by_direction`)
+and the direction head both exist; the head's loss is still off (it cost ~10
+recall points when trained on 264 gestures). `invariant` channels (|a|,
+along-finger, perpendicular magnitude) are exactly spin-invariant and exist for
+gesture TYPE; with posture they scored worse for direction (81%), as expected.
+
+**Training recipe.** Default channels `shape,scale,saturation`, direction
+head off, flicks direction-split. Isolated one factor at a time on session 2
+(2 seeds): 3-class old recipe 63.3%; 6-class costs ~5 (58.6%); saturation
+buys it back (65.6%); direction head at 0.3 drops it to 55.5%. On the fresh
+reference session (32 gestures, trained on sessions 1+2, 2 seeds), all of
+unsplit / split / +posture tie on recall at 88-94% (thr 0.4) and ~85-88%
+(thr 0.9); the split is free and yields direction, and `posture` raised
+low-threshold ambient false positives in every arm (unsplit+posture worst:
+0.53-0.80/min at thr 0.4 vs 0.30-0.37 without), so it stays off by default.
+Session 2 is the hard session -- 76.6% recall even trained on session 1 + the
+reference -- recorded at 1 a.m. at a ~50-degree different hand pitch.
+
+**What "satisfactory" currently means, honestly.** Recall ~90% is on ONE
+cleanly performed 32-gesture session (95% CI 75-100). The false-positive side
+is bounded, not demonstrated: zero ambient events in 30 held-out minutes at
+threshold 0.9 bounds the rate at 6/hour; <1/hour needs 190+ minutes.
 
 **Realtime engine** (`whip/realtime.py`): decode -> `StreamingHampel` (fixed
 120 ms lag; same maths as batch, running MAD floor because a stream has no
@@ -630,11 +664,12 @@ axis that every gesture in a session shares (agreement 0.97). That axis is 0.919
 aligned with axis 0, so `model.augment` rotating axes 1 and 2 about axis 0 is
 right. `probe/axes.py` measures it.
 
-**But between sessions the axis agrees only 0.505 -- roughly 60° apart.** The
-augmentation covers ±10°. That is a 6x under-coverage of variation that actually
-occurs, and it means part of the session-holdout gap is **distribution shift from
-the ring sitting differently on the finger, not memorisation**. Those need
-different fixes, and a train/test split alone cannot tell them apart.
+**Between-session change is posture, not ring spin.** An earlier reading of
+"60 degrees of ring rotation between sessions" was wrong -- it averaged the
+rotation axes of directions that rotate about different axes. Measured
+directly, the ring's spin about the finger differs by ~15 degrees between
+sessions and the hand's pitch by ~50. The session-holdout gap is posture and
+execution variety, which more sessions cover; see "The gesture platform".
 
 **Measured false-positive baselines.** Typing and walking are cleanly separable:
 a conjunction of amplitude, duration and oscillation count gives zero false
@@ -659,8 +694,18 @@ whip/       protocol.py  packets, commands, UUIDs
             fwimage.py   OTA container parsing, timer-site location
             fwbuild.py   custom image construction
             dfu.py       DFU framing, pure and hardware-free
+            corpus.py    M2 corpus: both layers, situations, validation, session plans
+            labeling.py  M3 labels: records, ring join by wall/action, scoring, preferences.json
 probe/      scan stream sweep drain report simulate find quiet
             firmware flash build ledsweep ledtest gestures subdata
+            calibrate    M2: validate / stats / plan
+            label        M3: run / join / score / aggregate
+corpus/     taxonomy.json  layer 1: 12 artifact-style dimensions
+            agency.json    layer 2: 11 working-style axes + 5 situation factors
+            gold/          contrast items, both layers
+docs/       CALIBRATION.md  M2/M3 design and confounds
+            AGENCY.md       layer 2: trajectories, situations, conditional policies
+            PIPELINE.md     M4-M6 architecture, gates, falsifiers
 firmware/   archived images + SHA256SUMS
               rt02cr-stock-3.12.02.bin   vendor stock, the recovery path
               rt02cr-low-latency.bin     upstream #2, 50 Hz
@@ -717,6 +762,38 @@ the data it is scored on.
 - If M1's false-positive target proves hard, `#3` offers 33% more samples at
   the cost of the loss criterion. Revisit then, not now.
 - LED: find and NOP the optical enable in the raw path.
+- **Preferences are policies, not archetypes.** The first taxonomy measured
+  only what a single response looks like, because the presentation format
+  (one response, one screen) could not show anything else. The properties that
+  actually distinguish coders -- how much the model does before checking in,
+  what makes it stop, whether it narrates, whether it proves its work -- are
+  properties of a *trajectory*. Layer 2 (`docs/AGENCY.md`) measures those by
+  contrasting **compressed action logs**, which do fit the 40-second budget.
+  Two rules came out of it:
+  - **Do not box a coder into an archetype.** Nobody is hands-off all the
+    time. Items declare a *situation* (reversible/irreversible,
+    familiar/foreign, determined/underdetermined, exploring/shipping,
+    small/large) and each axis declares which factors might flip it; whether
+    they do is measured. The output is "large steps by default, small when the
+    action cannot be undone", not "prefers autonomy".
+  - **Conditionals are detected before the main effect.** A preference that
+    flips cleanly cancels out in aggregate -- four votes each way -- and the
+    first implementation dismissed exactly that as `contested`. Backwards: a
+    perfect flip is the most informative result there is. A flip needs 4
+    decided pairs per level, each lopsided, so the design detects flips, not
+    gradients.
+- **Layer 2's next steps are specific**, and `probe.calibrate stats` prints
+  them: four items per level on any axis whose policy matters (the detection
+  threshold); items for the three declared-but-unprobed second conditioners
+  (`stop_trigger`/`scope_renegotiation` on reversibility, `verification` on
+  familiarity) or drop those conditioners; and two sentinels, since the agency
+  layer currently has none and the fatigue check would not run.
+- **Guardrails are not dimensions.** Secrets, destructive commands, unilateral
+  deploys: those have right answers, are trained in regardless, and never
+  appear on screen -- putting one in the corpus invites approving reckless
+  behaviour. Operationally: in an irreversible situation **both variants stop
+  at the same safety line**, and the axis is how much is prepared before
+  returning. If one pole is wrong, it is not a dimension.
 - **M2 is a curated contrastive corpus, not mined repo data.** The earlier plan
   to pull interactions from the FDD pipeline and AsyncWorld repos is replaced
   (2026-09-15): mined responses differ from their alternatives on many axes at
@@ -726,20 +803,79 @@ the data it is scored on.
   the gesture identifies the class by construction. Finalized at 60 gold items
   (5 per dimension, `corpus/gold/`), machine-validated for schema, poles, and
   length leaks. Design and confound table: `docs/CALIBRATION.md`.
-- **M3 is the path, in order:**
+- **M3 tooling is built; the sessions are not run.** `probe/label.py` is the
+  presenter. Order of operations:
   1. Rule-3 read-through of the 48 expanded items in `corpus/gold/` -- both
      variants correct, no strawmen. A bug found after labeling voids that
      item's labels, so this is human review, not a formality.
-  2. A session presenter: replay
-     `python -m probe.calibrate plan --session 1 --pairs 40 --seed <fixed>`
-     one slot at a time and record labels by joining the gesture platform's
-     resolved actions (`data/live/events_*.jsonl`, `flick`->flag,
-     `double_flick`->approve) to slots by timing. Keyboard fallback writes the
-     same record shape with a `source` tag -- so M3 can start before the
-     gesture model is trusted, and ring-vs-key agreement is itself a check.
-  3. Per-session acceptance: sentinel agreement >= 80%, all 12 dimensions
-     present, first-shown balance verified from the plan artifact.
-  4. Four sessions on different days; then emit
-     `data/calibration/preferences.json` (winning pole or `indifferent` per
-     dimension, with margins) -- the M2/M3 exit artifact that feeds both M4
-     training and the M6 context arm.
+  2. `python -m probe.calibrate plan --session N --pairs 40 --seed <fixed>
+     --layer artifact|agency` (one layer per session -- 23 axes cannot each
+     get enough pairs in one sitting),
+     then `python -m probe.label run --plan ...`. Keys f / a / Enter; the
+     file appends per slot and resumes. The presenter never shows the
+     dimension or pole.
+  3. If the ring was streaming (`probe.serve` or `probe.live`):
+     `python -m probe.label join --labels ... --events data/live/events_*.jsonl`.
+     Joins by `wall` on `action` in {flag, approve} only, nearest key-label
+     time, 2.0 s window past the key. Missed slots are reported, not skipped.
+  4. `python -m probe.label score` -- sentinel agreement >= 80%, all 12
+     dimensions, none-rate <= 85%, first-shown balance; exit 2 on reject.
+     Ring-vs-key agreement is printed as matched / mismatched / missed and
+     silent / spurious, which is M1's acceptance check at the same time.
+  5. Four sessions on different days, then
+     `python -m probe.label aggregate --labels data/calibration/labels_s*.jsonl`
+     -> `data/calibration/preferences.json`: per dimension the winning pole,
+     `indifferent` (> 60% indifferent pairs), `contested` (a later session
+     flips it -- back to item review), or `unmeasured`; plus the ordered
+     `context_file` statements the M6 context arm uses verbatim.
+- **The ring is secondary in M3 by measurement, not caution.** Held-out
+  recall is ~58% (95% CI 45-69) at threshold 0.4, latency ~1.3 s gesture-end
+  to event, ambient false positives ~8-12/h but every one so far unmapped
+  (wave/snap, `action: null`) -- zero spurious flag/approve in 30 min, which
+  bounds it only at ~6/h. Direction transfers at 93-96% to a fresh session
+  once two sessions are in training (2026-09-15, `probe/directions.py`), but
+  it is not yet routed anywhere. The ring becomes primary when recall clears
+  ~90% on more than one held-out session; the presenter then needs an
+  explicit no-gesture-arrived path, never a silent skip.
+- **M4-M6 are architected, not built.** `docs/PIPELINE.md` has the design,
+  gates, and falsifiers. The decisions that matter:
+  - **M4's direction term is a function of the prompt**, not a constant:
+    `s_d(prompt)`, because a conditional preference cannot be scored by a
+    fixed sign. That needs a second classifier over *prompts* -- which level
+    of each situation factor does this task sit at -- supervised free by the
+    corpus, since every item records its situation in frontmatter. A factor
+    below the 90% bar forces the dimensions conditioned on it back to their
+    unconditional default rather than guessing.
+  - **M6 gets a sharper prediction from layer 2.** A style rule ("be terse")
+    is a local constraint on every output; a conditional policy has to fire at
+    a decision point buried in a filled context. So the context arm should
+    degrade **fastest on conditional axes and slowest on unconditional ones**
+    -- a per-dimension prediction that a pooled adherence number would hide.
+  - **M4 is a factored reward**, `sum_d w_d * s_d * (2 p_d - 1)`: pole
+    classifiers `p_d` trained on the corpus's own variant labels (120
+    examples, free by construction, held out *by item*), direction `s_d` and
+    weight `w_d` from `preferences.json`. Indifferent dimensions get `w_d = 0`
+    -- flat by construction, not by hoping a scalar head learns it. An
+    LLM-judge with the taxonomy text as rubric is tried first (>= 90% per
+    dimension or that dimension is not scorable). Bradley-Terry on the pairs
+    is the baseline; if it beats the factored RM outside its interval, the
+    taxonomy is wrong, not the RM.
+  - **M5 is DPO first, GRPO second.** DPO on ~160 pairs (rank-16 LoRA, beta
+    picked by held-out win-rate under the RM, not by DPO loss), KTO on ~320
+    singles as an ablation, then optional GRPO against the factored RM on
+    prompts the corpus never contained -- the only stage where the RM
+    generalizes beyond the 60 contrasts. Guards: KL budget, reward-hacking
+    check (RM score rising while human spot-check agreement falls), and a
+    functional-correctness canary that must hold at the base model's rate.
+  - **M6 is built first.** Three arms on one base model: none / mechanical
+    context file from `preferences.json` / adapter. Neutral non-code filler
+    at 0, 8k, 32k, 64k, max tokens between system prompt and task. Metrics
+    in order of authority: pole-classifier adherence per dimension, human
+    blind spot-check through the same keypress presenter, correctness canary,
+    BT score. The research question is two numbers: the B-C gap at zero fill
+    and the two slopes against fill, with bootstrap CIs and a per-dimension
+    breakdown -- because "weights hold for style axes, context for behavioral
+    ones" is a plausible honest result that pooling would hide.
+  - **Falsifiers are written down** for each stage in `docs/PIPELINE.md`;
+    a flat result across all three arms is a result, not a failure to find
+    one.

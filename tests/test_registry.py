@@ -33,8 +33,14 @@ def split_registry():
         for g in DEFAULT_GESTURES))
 
 
+def unsplit_registry():
+    return Registry(tuple(
+        dataclasses.replace(g, split_by_direction=False) if g.name in ("flick", "double_flick") else g
+        for g in DEFAULT_GESTURES))
+
+
 def test_labels_follow_registry_order_and_data_presence():
-    r = Registry()
+    r = unsplit_registry()
     assert r.labels_for({"wave", "flick"}) == ["none", "flick", "wave"]
     assert r.labels_for(set()) == ["none"]
     # a name the registry never declared cannot become a class by accident
@@ -45,14 +51,18 @@ def test_labels_follow_registry_order_and_data_presence():
     assert r.labels_for({"flick"}) == ["none"]
 
 
-def test_split_is_off_by_default_measured():
+def test_flicks_are_direction_split_by_default_measured():
     """
-    Splitting cost 6-9 recall points on two seeds, and every held-out up/down
-    flick was classified as left/right -- a permutation from the ring sitting
-    rotated between sessions. Direction from one placement does not transfer.
+    Trained on two sessions and tested on a fresh third, the split costs no
+    recall (90.6% vs 90.6-93.8% unsplit, n=32, two seeds) and delivers
+    direction at 93-96%. The earlier one-session result (6-9 points lost, a
+    clean permutation) was data quantity plus posture being subtracted out.
+    Only the flicks have a direction; snap/wave/clap do not split.
     """
-    assert not any(g.split_by_direction for g in Registry().gestures)
-    assert Registry().collapse("flick_up") == ("flick_up", "none"), "no split, no sub-class"
+    r = Registry()
+    assert {g.name for g in r.gestures if g.split_by_direction} == {"flick", "double_flick"}
+    assert r.collapse("flick_up") == ("flick", "up")
+    assert r.collapse("snap") == ("snap", "none")
 
 
 def test_split_sub_classes_collapse_back_to_the_gesture():
