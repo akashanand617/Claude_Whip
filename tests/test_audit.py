@@ -175,4 +175,11 @@ def test_corpus_shortfall_sums_every_audit_file(tmp_path):
     ok = audit.GestureAudit(3, 11.0, "flick", "left", "hard", "", 4.0, 0.1, [(0.1, 4.0)])
     (tmp_path / "s1.jsonl").write_text(""); (tmp_path / "s2.jsonl").write_text("")
     audit.write_audit(tmp_path / "s1.jsonl", [a, b, ok]); audit.write_audit(tmp_path / "s2.jsonl", [a, c])
-    assert audit.corpus_shortfall(tmp_path) == {"flick_left": 2, "double_flick_down": 1, "snap": 1}
+    # valid counts: flick_left 1, double_flick_down 0, snap 0 -> bring the others up to 1
+    assert audit.corpus_shortfall(tmp_path) == {"double_flick_down": 1, "snap": 1}
+    assert audit.corpus_shortfall(tmp_path, target=3) == {"flick_left": 2, "double_flick_down": 3, "snap": 3}
+    assert audit.corpus_shortfall(tmp_path, target=1) == {"double_flick_down": 1, "snap": 1}
+    # a class that reached the target is not asked for again, however many exclusions it collected
+    more = [audit.GestureAudit(i, 20.0 + i, "flick", "left", "hard", "", 4.0, 0.1, [(0.1, 4.0)]) for i in range(4)]
+    (tmp_path / "s3.jsonl").write_text(""); audit.write_audit(tmp_path / "s3.jsonl", more)
+    assert "flick_left" not in audit.corpus_shortfall(tmp_path, target=5)

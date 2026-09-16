@@ -368,19 +368,28 @@ def shortfall(audits: list[GestureAudit]) -> dict[str, int]:
     return out
 
 
-def corpus_shortfall(sessions_dir: Path) -> dict[str, int]:
+def corpus_shortfall(sessions_dir: Path, target: int | None = None) -> dict[str, int]:
     """
-    Sum of `shortfall` over every audit file in a directory: what the next
-    session has to make up for the corpus as a whole. Reads the files, so
-    `probe.audit --all --write` must have run.
+    What the next session has to record to make every class the same size:
+    `target - valid` per class, over every audit file in the directory.
+
+    `target` defaults to the largest valid count any class has, so the answer
+    is "bring the others up to the best one" -- a symmetric corpus. Passing a
+    target grows every class to it. Counting excluded gestures instead (the
+    first version) kept re-asking for gestures that a later session had
+    already replaced, because each fill session adds its own exclusions.
+    Reads the files, so `probe.audit --all --write` must have run.
     """
-    total: dict[str, int] = {}
+    valid: dict[str, int] = {}
     for path in sorted(Path(sessions_dir).glob("*" + AUDIT_SUFFIX)):
         doc = json.loads(path.read_text())
         for g in doc.get("gestures", []):
-            if g.get("verdict") == "valid":
-                continue
             d = g.get("direction", "none")
             key = f"{g['label']}_{d}" if d not in ("", "none", "any") else g["label"]
-            total[key] = total.get(key, 0) + 1
-    return total
+            valid.setdefault(key, 0)
+            if g.get("verdict") == "valid":
+                valid[key] += 1
+    if not valid:
+        return {}
+    goal = target if target is not None else max(valid.values())
+    return {k: goal - v for k, v in valid.items() if goal - v > 0}

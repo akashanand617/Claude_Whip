@@ -14,7 +14,8 @@ rather than discovered as a held-out miss weeks later.
 With --write the verdicts land in `<session>.audit.json`; `whip.dataset` then
 drops every window touching a gesture that is not valid (suspect AND invalid:
 uncertain data is made up next session, not trained on) and `probe.rollout`
-does not score it. The "to re-record" line is that make-up list, per class.
+does not score it. The final "to re-record, corpus-wide" line is what
+`probe.collect --fill` will cue: enough of each class to match the largest.
 Without --write nothing changes on disk.
 """
 
@@ -63,7 +64,7 @@ def report(session_id: str, verbose: bool, write: bool) -> bool:
         print(line)
     short = audit.shortfall(audits)
     if short:
-        print(f"  to re-record ({sum(short.values())} not valid): " + "  ".join(f"{k}:{n}" for k, n in short.items()))
+        print(f"  excluded in this session ({sum(short.values())}): " + "  ".join(f"{k}:{n}" for k, n in short.items()))
     if write:
         print(f"  wrote {audit.write_audit(cap, audits)}")
     return v["invalid"] == 0
@@ -84,6 +85,12 @@ def main() -> int:
     ok = True
     for sid in ids:
         ok = report(sid, args.verbose, args.write) and ok
+    corpus = audit.corpus_shortfall(SESSIONS)
+    if corpus:
+        print(f"\nto re-record, corpus-wide (bring every class to the largest, {sum(corpus.values())} gestures): "
+              + "  ".join(f"{k}:{n}" for k, n in corpus.items()) + "\n  -> python -m probe.collect --fill")
+    else:
+        print("\nevery class has as many valid gestures as the largest; nothing to fill")
     return 0 if ok else 2
 
 
