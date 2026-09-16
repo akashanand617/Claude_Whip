@@ -73,6 +73,9 @@ def schedule_for(args) -> list[session.Prompt]:
     return session.build_schedule(args.prompts, seed=args.seed)
 
 
+POSTURE_PAUSE_S = 5.0
+
+
 async def run_prompts(rec: capture.Capture, notes: session.SessionNotes,
                       schedule: list[session.Prompt], gap_lo: float, gap_hi: float,
                       rng: random.Random) -> None:
@@ -92,8 +95,8 @@ async def run_prompts(rec: capture.Capture, notes: session.SessionNotes,
         # pause: reorienting the hand is not a 3-second job, and a gesture
         # done while still turning the wrist would be labelled as if still.
         if prompt.posture not in ("", "as you are") and (i == 0 or schedule[i - 1].posture != prompt.posture):
-            print(f"\n  ---- hand: {prompt.posture.upper()} -- get set (5 s) ----", flush=True)
-            await asyncio.sleep(5.0)
+            print(f"\n  ---- hand: {prompt.posture.upper()} -- get set ({POSTURE_PAUSE_S:.0f} s) ----", flush=True)
+            await asyncio.sleep(POSTURE_PAUSE_S)
         # Show it, give a short countdown, cue, then settle -- and during the
         # settle, show the next one so it is already read by the time its
         # countdown starts.
@@ -119,7 +122,12 @@ async def run(args: argparse.Namespace) -> int:
     if args.kind == "prompted":
         schedule = schedule_for(args)
         mean_gap = (args.gap_min + args.gap_max) / 2
-        duration = 2.0 + len(schedule) * (COUNTDOWN_S + mean_gap) + 8.0
+        # Posture blocks (matrix schedules) each add a spoken "get set" pause;
+        # the first --matrix run ended one block early because this did not
+        # count them, and the last four gestures were never cued.
+        posture_changes = sum(1 for i, p in enumerate(schedule)
+                              if p.posture not in ("", "as you are") and (i == 0 or schedule[i - 1].posture != p.posture))
+        duration = 2.0 + len(schedule) * (COUNTDOWN_S + mean_gap) + posture_changes * POSTURE_PAUSE_S + 8.0
     elif args.cues:
         motions = [m.strip() for m in args.cues.split(",") if m.strip()]
         duration = 2.0 + len(motions) * args.cue_seconds + 5.0
