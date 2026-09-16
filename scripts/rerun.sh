@@ -9,25 +9,27 @@
 #
 # The audit's exit code is reported, not obeyed: an invalid gesture is excluded
 # by the exporter, so the pipeline still runs; re-record what the "to re-record"
-# lines list. Env: WHIP_CHANNELS, WHIP_AMBIENT ("id1 id2": ambient sessions held
-# out of the deployed checkpoint), WHIP_REF (held-out reference for the
-# experiments), WHIP_WORK.
+# lines list. Env: WHIP_CHANNELS, WHIP_REF (held-out reference for the
+# notebook experiments), WHIP_WORK. Which sessions train / validate / test is
+# data/split.json (`probe.split`).
 set -u
 cd "$(dirname "$0")/.."
 export PYTHONPATH="$PWD${PYTHONPATH:+:$PYTHONPATH}"
 WORK=${WHIP_WORK:-data/work}; mkdir -p "$WORK"
 CH=${WHIP_CHANNELS:-shape,scale,saturation,room}
-# Ambient sessions to HOLD OUT of the deployed checkpoint, space-separated.
-# With two ambient hours, hold out the newest and train on the older one:
-# the rollout then measures false positives on 60 held-out minutes (30
-# calibrate + 30 report) plus the whole of any other held-out negative.
-AMBIENT=${WHIP_AMBIENT:-negative_20260915_021616}
-HELD=(); for s in $AMBIENT; do HELD+=(--held-out "$s"); done
+# The split plan (data/split.json) decides which sessions train, validate
+# and test; WHIP_AMBIENT is no longer used.
 
 echo "### 1. audit"; python -m probe.audit --all --write; echo "audit exit $? (2 = something invalid; it is excluded, re-record it)"
 echo "### 2. export (valid only)"; python -m probe.dataset --out data/windows.npz || exit 1
-echo "### 3. train deployed checkpoint ($CH, ambient held out)"; python -m probe.train --quiet --channels "$CH" "${HELD[@]}" || exit 1
-echo "### 4. rollout"; python -m probe.rollout
+echo "### 2b. fixed split (data/split.json -> data/split/{train,val,test,trainval}.npz)"; python -m probe.split make | grep -v "split by" || exit 1
+echo "### 3. train deployed checkpoint ($CH) on train + val; the test part is never trained on"
+python -m probe.train --quiet --channels "$CH" --windows data/split/trainval.npz || exit 1
+echo "### 4. validation score (threshold and seed are chosen here, never on test)"
+python -m probe.split score --part val --threshold 0.4 | grep -v "split by"
+python -m probe.split score --part val --threshold 0.9 | grep -v "split by"
+echo "    test part: python -m probe.split score --part test --checkpoint <a checkpoint trained on data/split/train.npz>"
+echo "    (the deployed checkpoint trains on val, so it is not scored on test; score a train-only checkpoint)"
 
 if [[ "${1:-}" == "--notebook" ]]; then
   echo "### 5. held-out experiments (reference ${WHIP_REF:-prompted_20260915_184744})"
