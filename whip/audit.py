@@ -497,3 +497,60 @@ def frame_for(capture_path: Path):
     path = frame_path(capture_path)
     name = json.loads(path.read_text())["rotation"] if path.exists() else "identity"
     return np.asarray(FRAME_ROTATIONS[name], dtype=float)
+
+
+# ---------------------------------------------------------------------------
+# The hand rule: which way round was the ring, from the gestures themselves.
+#
+# In the room frame (gravity, gravity x finger), a left flick's first stroke
+# accelerates one way along the lateral axis and a right flick's the other.
+# Which sign is "left" depends only on which way the finger axis points, i.e.
+# which way round the ring is on. Measured over every session: 25-39 of the
+# left/right flicks in a session agree with the majority sign, 1-8 disagree,
+# so a session's majority is unambiguous. CANONICAL is the sensor-below
+# wearing (2026-09-16): left flicks lateral-NEGATIVE, right POSITIVE.
+
+CANONICAL_LEFT_SIGN = -1
+STROKE_SAMPLES = 5   # first 200 ms of the stroke: acceleration leads velocity, so this is the way the hand moved
+
+
+def lateral_sign(window_g: np.ndarray, gravity: np.ndarray) -> int | None:
+    """Sign of the first stroke's lateral component for one (3, W) centred window in g, or None if no stroke."""
+    from whip.model import _moving_average, GRAVITY_WINDOW, FINGER_AXIS
+    g = gravity / max(np.linalg.norm(gravity), 1e-6)
+    f = np.zeros(3); f[FINGER_AXIS] = 1.0
+    l = np.cross(g, f); ln = np.linalg.norm(l)
+    if ln < 0.3:
+        return None
+    lin = window_g - _moving_average(window_g, GRAVITY_WINDOW)
+    mag = np.linalg.norm(lin, axis=0); above = np.where(mag > STROKE_FLOOR_G)[0]
+    if not len(above):
+        return None
+    k0 = above[0]
+    h = float(((l / ln) @ lin)[k0:k0 + STROKE_SAMPLES].sum())
+    return 1 if h > 0 else -1
+
+
+def hand_rule(capture_path: Path, notes_path: Path, registry: Registry | None = None) -> dict:
+    """
+    Majority lateral sign of the session's valid left and right flicks, in the
+    frame the exporter would use (frame file applied). Returns
+    {"left": (+n, -n), "right": (+n, -n), "agrees": True/False/None}; `agrees`
+    is whether the session matches CANONICAL, None when there are no
+    left/right flicks to judge by.
+    """
+    from whip import dataset
+    registry = registry or load_registry()
+    windows = dataset.windows_from_session(capture_path, notes_path, registry=registry)
+    counts = {"left": [0, 0], "right": [0, 0]}
+    for w in windows:
+        if w.direction not in counts or not w.label.startswith("flick"):
+            continue
+        s = lateral_sign(np.asarray(w.axes, dtype=float), np.asarray(w.gravity, dtype=float))
+        if s is None:
+            continue
+        counts[w.direction][0 if s > 0 else 1] += 1
+    votes = counts["left"][1] + counts["right"][0] - counts["left"][0] - counts["right"][1]   # + = canonical
+    total = sum(counts["left"]) + sum(counts["right"])
+    return {"left": tuple(counts["left"]), "right": tuple(counts["right"]),
+            "agrees": None if total < 3 else votes > 0, "windows": total}

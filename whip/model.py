@@ -83,6 +83,15 @@ FULL_SCALE_G = 32767 / 8005.0
 
 DEFAULT_CHANNELS = ("shape", "scale")
 
+# Which ring axis runs along the finger. MEASURED 2026-09-16 from the resting
+# gravity vector in three known palm orientations (`probe.collect --matrix`):
+# palm up puts gravity on axis 0 (so axis 0 is the palm normal), palm left /
+# palm right put it on -/+ axis 2 (so axis 2 is the thumb-pinky line), which
+# leaves axis 1 along the finger. An earlier assumption that axis 0 was the
+# finger came from the flick's ROTATION axis being axis 0 -- which is right:
+# a wrist flick rotates about the palm normal / thumb line, not the finger.
+FINGER_AXIS = 1
+
 CHANNEL_WIDTHS = {"shape": 3, "gravity": 3, "linear": 3, "scale": 1, "saturation": 1,
                   "posture": 3, "invariant": 3, "gref": 2, "room": 3}
 
@@ -215,7 +224,7 @@ def to_model_input(x, channels=DEFAULT_CHANNELS, gravity=None):
                                  "vectors (export format v5+)")
             g = np.asarray(gravity, dtype="float32")
             g = g / np.maximum(np.linalg.norm(g, axis=1, keepdims=True), SCALE_FLOOR_G)
-            finger = np.zeros_like(g); finger[:, 0] = 1.0
+            finger = np.zeros_like(g); finger[:, FINGER_AXIS] = 1.0
             lateral = np.cross(g, finger)
             lat_norm = np.linalg.norm(lateral, axis=1, keepdims=True)
             # Fingers pointing straight at the floor or ceiling: no lateral
@@ -408,7 +417,9 @@ def random_frames(n: int, rng, flips: bool = True, spin_deg: float = ROTATION_DE
     theta = (rng.random(n) * 2 - 1) * np.radians(spin_deg) if spin_deg else np.zeros(n)
     c, s = np.cos(theta), np.sin(theta)
     spin = np.zeros((n, 3, 3), dtype="float32")
-    spin[:, 0, 0] = 1; spin[:, 1, 1] = c; spin[:, 1, 2] = -s; spin[:, 2, 1] = s; spin[:, 2, 2] = c
+    # rotation about FINGER_AXIS: the other two axes turn into each other
+    a, b = [k for k in range(3) if k != FINGER_AXIS]
+    spin[:, FINGER_AXIS, FINGER_AXIS] = 1; spin[:, a, a] = c; spin[:, a, b] = -s; spin[:, b, a] = s; spin[:, b, b] = c
     if not flips:
         return spin
     flip = np.asarray(FRAME_FLIPS, dtype="float32")[rng.integers(0, len(FRAME_FLIPS), n)]

@@ -216,3 +216,25 @@ def test_manual_exclude_and_reanchor_round_trip(tmp_path):
     assert audit.exclude_marks(notes, [0], "redid it") == [0]
     A3 = audit.audit_session(cap, notes)
     assert "MANUAL_EXCLUDE" in A3[0].flags and A3[0].verdict == "invalid"
+
+
+def test_hand_rule_reads_the_lateral_sign_and_a_frame_flip_reverses_it():
+    """
+    In the room frame the first stroke of a left flick is lateral-negative
+    (sensor-below wearing). Turning the ring round about the palm normal must
+    reverse that sign and nothing else about the window.
+    """
+    from whip import model as gm
+
+    rng = np.random.default_rng(3)
+    W = gm.WINDOW_SAMPLES
+    grav = np.zeros(3); grav[0] = 1.0                     # palm down: gravity on the palm normal
+    f = np.zeros(3); f[gm.FINGER_AXIS] = 1.0
+    lateral = np.cross(grav, f)
+    win = np.zeros((3, W)); win[:, 20:26] = -2.0 * lateral[:, None] * np.hanning(6)[None, :]   # a stroke to the lateral-negative side
+    win += 0.01 * rng.standard_normal(win.shape)
+    assert audit.lateral_sign(win, grav) == -1
+    flip = np.diag([1.0, -1.0, -1.0])                     # half-turn about the palm normal (axis 0)
+    assert audit.lateral_sign(flip @ win, flip @ grav) == +1
+    # fingers pointing straight down: no lateral direction, no verdict
+    assert audit.lateral_sign(win, f) is None

@@ -22,6 +22,7 @@ Without --write nothing changes on disk.
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -62,6 +63,10 @@ def report(session_id: str, verbose: bool, write: bool) -> bool:
         if max(med.values()) - min(med.values()) < 0.08:
             line += "   (NO EFFECT: the tempo words did not change execution)"
         print(line)
+    hr = audit.hand_rule(cap, notes)
+    fr = audit.frame_path(cap); frame = json.loads(fr.read_text())["rotation"] if fr.exists() else "identity"
+    verdict = "-" if hr["agrees"] is None else ("matches the sensor-below wearing" if hr["agrees"] else "WORN THE OTHER WAY ROUND -- set a frame")
+    print(f"  ring frame: {frame}; hand rule on left/right windows: left +{hr['left'][0]}/-{hr['left'][1]}, right +{hr['right'][0]}/-{hr['right'][1]} -> {verdict}")
     short = audit.shortfall(audits)
     if short:
         print(f"  excluded in this session ({sum(short.values())}): " + "  ".join(f"{k}:{n}" for k, n in short.items()))
@@ -76,6 +81,9 @@ def main() -> int:
     parser.add_argument("--all", action="store_true", help="every prompted session in data/sessions")
     parser.add_argument("-v", "--verbose", action="store_true", help="print every gesture, not just flagged ones")
     parser.add_argument("--write", action="store_true", help="write <session>.audit.json with the verdicts")
+    parser.add_argument("--auto-frame", action="store_true",
+                        help="if the hand rule says a session was worn the other way round, write its frame file "
+                             "(a half-turn about the palm normal) so the exporter corrects it")
     parser.add_argument("--reanchor", action="store_true",
                         help="move the cue of each late-but-clean gesture to its measured onset (keeps "
                              "cue_at_original on the mark), then re-audit")
@@ -93,6 +101,15 @@ def main() -> int:
             parser.error("--exclude takes exactly one session id")
         done = audit.exclude_marks(SESSIONS / f"{ids[0]}.notes.json", args.exclude, args.reason)
         print(f"excluded marks {done} in {ids[0]} ({args.reason})")
+    if args.auto_frame:
+        for sid in ids:
+            cap, notes = SESSIONS / f"{sid}.jsonl", SESSIONS / f"{sid}.notes.json"
+            if not notes.exists() or audit.frame_path(cap).exists():
+                continue
+            hr = audit.hand_rule(cap, notes)
+            if hr["agrees"] is False:
+                audit.set_frame(cap, "flip_axis0", evidence=f"hand rule: left +{hr['left'][0]}/-{hr['left'][1]}, right +{hr['right'][0]}/-{hr['right'][1]}")
+                print(f"{sid}: worn the other way round -> frame flip_axis0 written")
     if args.reanchor:
         for sid in ids:
             cap, notes = SESSIONS / f"{sid}.jsonl", SESSIONS / f"{sid}.notes.json"

@@ -431,7 +431,8 @@ def test_frame_flips_are_proper_rotations_and_gref_ignores_them():
     assert not np.allclose(gm.to_model_input(raw, ("shape",)), gm.to_model_input(xr, ("shape",)))
     # flips=False is the old behaviour: a small spin about the finger axis only
     spin = gm.random_frames(8, rng, flips=False)
-    assert np.allclose(spin[:, 0, 0], 1.0) and np.allclose(spin[:, 0, 1:], 0.0)
+    fa = gm.FINGER_AXIS
+    assert np.allclose(spin[:, fa, fa], 1.0) and np.allclose(np.delete(spin[:, fa, :], fa, axis=1), 0.0)
 
 
 def test_room_channels_are_spin_invariant_and_lateral_flips_with_the_finger():
@@ -445,14 +446,16 @@ def test_room_channels_are_spin_invariant_and_lateral_flips_with_the_finger():
     rng = np.random.default_rng(2)
     raw = rng.standard_normal((16, gm.N_AXES, gm.WINDOW_SAMPLES)).astype("float32")
     grav = rng.standard_normal((16, 3)).astype("float32")
-    grav[:, 0] *= 0.3   # fingers roughly level, so a lateral direction exists
+    grav[:, gm.FINGER_AXIS] *= 0.3   # fingers roughly level, so a lateral direction exists
     a = gm.to_model_input(raw, ("room",), gravity=grav)
     assert a.shape[1] == gm.CHANNEL_WIDTHS["room"] == 3
     spin = gm.random_frames(16, rng, flips=False, spin_deg=180.0)
-    assert np.allclose(spin[:, 0, 0], 1.0)
+    assert np.allclose(spin[:, gm.FINGER_AXIS, gm.FINGER_AXIS], 1.0)
     xr, gr = gm.rotate_frame(raw, grav, spin)
     assert np.allclose(a, gm.to_model_input(xr, ("room",), gravity=gr), atol=1e-4)
-    flip = np.tile(np.diag([-1.0, -1.0, 1.0]).astype("float32"), (16, 1, 1))   # back to front
+    back_to_front = np.diag([1.0, 1.0, 1.0]).astype("float32"); back_to_front[gm.FINGER_AXIS, gm.FINGER_AXIS] = -1
+    other = [k for k in range(3) if k != gm.FINGER_AXIS][0]; back_to_front[other, other] = -1   # a half-turn that reverses the finger
+    flip = np.tile(back_to_front, (16, 1, 1))
     xf, gf = gm.rotate_frame(raw, grav, flip)
     b = gm.to_model_input(xf, ("room",), gravity=gf)
     assert np.allclose(a[:, 0], b[:, 0], atol=1e-4)        # up/down unchanged
