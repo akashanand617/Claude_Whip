@@ -65,3 +65,13 @@ def test_negatives_and_spans_are_dealt_in_chunks(tmp_path):
     # a window inside a chunk is assigned; one straddling two chunks is dropped
     assert sp.part_of_window(plan, "n", 5.0) == plan.intervals["n"][0].part
     assert sp.part_of_window(plan, "n", 19.0) is None
+
+
+def test_an_external_assignment_replaces_the_dealing(tmp_path):
+    marks = [{"index": i, "label": "flag", "direction": "up", "cue_at": 5.0 + 3 * i} for i in range(6)]
+    _session(tmp_path, "a", marks)
+    units = sp.gesture_units(tmp_path, ["a"])
+    assert [u[2] for u in units] == ["flick_up"] * 6
+    assignment = {(s, c): ("test" if i % 2 else "train") for i, (s, c, _) in enumerate(units)}
+    plan = sp.resolve(sp.Plan(seed=0), tmp_path, {"a": (0.0, 30.0)}, assignment=assignment)
+    assert [sp.part_of_mark(plan, "a", m["cue_at"]) for m in marks] == ["train", "test"] * 3

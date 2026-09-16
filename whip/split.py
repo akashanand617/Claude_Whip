@@ -94,10 +94,36 @@ def _chunks(t0: float, t1: float, chunk_s: float, rng, unit: str) -> list[Interv
     return out
 
 
-def resolve(plan: Plan, sessions_dir: Path, session_spans: dict[str, tuple[float, float]], registry=None) -> Plan:
+def gesture_units(sessions_dir: Path, session_ids, registry=None) -> list[tuple[str, float, str]]:
+    """Every valid cued gesture as (session, cue_at, class) -- the units a split deals out."""
+    registry = registry or load_registry()
+    out = []
+    for sid in sorted(session_ids):
+        notes = sessions_dir / f"{sid}.notes.json"
+        if not notes.exists():
+            continue
+        bad = set(audit.excluded_cues(sessions_dir / f"{sid}.jsonl"))
+        for m in json.loads(notes.read_text()).get("marks", []):
+            if "until" in m or m["cue_at"] in bad:
+                continue
+            spec = registry.resolve(m.get("label", ""))
+            if spec is None:
+                continue
+            d = m.get("direction", "none")
+            name = f"{spec.name}_{d}" if spec.split_by_direction and d in ("up", "down", "left", "right") else spec.name
+            out.append((sid, float(m["cue_at"]), name))
+    return out
+
+
+def resolve(plan: Plan, sessions_dir: Path, session_spans: dict[str, tuple[float, float]], registry=None,
+            assignment: dict[tuple[str, float], str] | None = None) -> Plan:
     """
     Build every session's intervals. Two passes: gestures are dealt per class
     across all sessions (stratified), then chunks and span pieces are dealt.
+
+    `assignment` -- {(session, cue_at): part} -- replaces the dealing of
+    gestures with a split made elsewhere (a scikit-learn train_test_split
+    over `gesture_units`, say); chunks and spans are still dealt here.
     """
     registry = registry or load_registry()
     rng = np.random.default_rng(plan.seed)
@@ -125,7 +151,9 @@ def resolve(plan: Plan, sessions_dir: Path, session_spans: dict[str, tuple[float
     assigned: dict[str, list[tuple[float, str, str]]] = {}     # session -> [(cue, part, class)]
     for name in sorted(gestures):
         units = gestures[name]
-        for (sid, cue), part in zip(units, _deal(len(units), plan.fractions, rng)):
+        parts = ([assignment[(sid, cue)] for sid, cue in units] if assignment is not None
+                 else _deal(len(units), plan.fractions, rng))
+        for (sid, cue), part in zip(units, parts):
             assigned.setdefault(sid, []).append((cue, part, name))
     for sid, (t0, t1) in session_spans.items():
         ivs: list[Interval] = []
