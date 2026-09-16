@@ -268,6 +268,11 @@ def _select_pairs(items: list[Item], n_pairs: int,
         by_dim.setdefault(it.dimension, []).append(it)
     for pool in by_dim.values():
         rng.shuffle(pool)
+        # Sentinels must actually be in the session to be repeated, so they
+        # cannot be left to the draw once the pool outgrows the session.
+        # Stable sort after the shuffle: sentinels go to the end, and pop()
+        # selects from the end first.
+        pool.sort(key=lambda it: it.sentinel)
     selected = []
     dims = sorted(by_dim)
     while len(selected) < n_pairs:

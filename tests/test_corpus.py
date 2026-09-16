@@ -40,15 +40,17 @@ def test_corpus_validates_clean(taxonomy, items):
     assert corpus.validate(taxonomy, items) == []
 
 
-def test_every_dimension_has_gold_and_specs(taxonomy, items):
+def test_every_dimension_has_five_gold(taxonomy, items):
     for key in taxonomy:
-        statuses = [it.status for it in items if it.dimension == key]
-        assert "gold" in statuses, key
-        assert statuses.count("spec") >= 3, key
+        gold = [it for it in items
+                if it.dimension == key and it.status == "gold"]
+        assert len(gold) >= 5, key
+        domains = {it.domain for it in gold}
+        assert len(domains) >= 3, f"{key}: domain leak, only {domains}"
 
 
 def test_gold_items_are_complete(gold):
-    assert len(gold) >= 12
+    assert len(gold) >= 60
     for it in gold:
         assert it.task and it.a.text and it.b.text and it.notes
         assert it.a.pole != it.b.pole
@@ -173,6 +175,20 @@ def test_sentinels_repeat_same_variant_early_and_late(taxonomy, items):
         assert match["variant"] == e["variant"]
         assert e["slot"] < n / 4
         assert match["slot"] >= 3 * n / 4 - 1
+
+
+def test_full_session_always_contains_the_sentinels(taxonomy, items, gold):
+    # The pool (60) outgrows a session (40 pairs); sentinels must be selected
+    # deliberately, not left to the draw, or the fatigue check silently
+    # disappears from some sessions.
+    sentinel_ids = {it.id for it in gold if it.sentinel}
+    for seed in range(5):
+        plan = corpus.plan_session(taxonomy, items, 1, 40, seed)
+        planned = {p["item"] for p in plan["presentations"]}
+        assert sentinel_ids <= planned, seed
+        early = [p for p in plan["presentations"]
+                 if p["sentinel_phase"] == "early"]
+        assert len(early) == min(len(sentinel_ids), corpus.MAX_SENTINELS)
 
 
 def test_plan_rejects_too_few_pairs(taxonomy, items):

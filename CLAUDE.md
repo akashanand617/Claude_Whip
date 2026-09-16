@@ -16,11 +16,11 @@ preferences written into a context file as context fills.
 |---|---|
 | M0 hardware gate | **PASSED** on `#4`: 25.00 Hz, 0.24% loss, 10 min worn |
 | M1 gesture classifier | **general gesture platform**: registry vocabulary, live engine, web console |
-| M2 calibration corpus | designed (`docs/CALIBRATION.md`); 12-dimension taxonomy + 12 gold / 48 spec items in `corpus/`, planner in `whip/corpus.py` |
-| M3 labeling session | not started, **not blocked on hardware** |
-| M4 reward model | not started |
-| M5 LoRA adapter | not started |
-| M6 three-arm eval | not started |
+| M2 calibration corpus | **corpus finalized**: 60 gold items (5 per dimension) in `corpus/gold/`, validated; session planner ready (`python -m probe.calibrate plan`); awaiting rule-3 read-through, then M3 |
+| M3 labeling session | **next milestone.** Needs: rule-3 read-through of `corpus/gold/`, then a presenter that replays a `plan_s*.json` and joins resolved actions from `data/live/events_*.jsonl` by slot. Keyboard fallback suffices — not blocked on the ring or the gesture model |
+| M4 reward model | not started; input interface now defined -- per-presentation `(prompt, response, label)` plus pair preferences via `whip.corpus.label_pair`, split by item and by held-out day (`docs/CALIBRATION.md`) |
+| M5 LoRA adapter | not started; trains against M4 |
+| M6 three-arm eval | not started; the context arm generates mechanically from `corpus/taxonomy.json` `context_statement`s + the winning poles in `data/calibration/preferences.json` |
 
 **M2–M6 need no ring.** They are the path to the research question. The ring only
 ever replaces a keypress in the labeling UI. Do not let hardware work block them.
@@ -723,7 +723,23 @@ the data it is scored on.
   once with no counterfactual, so a flag cannot identify *which* property was
   disliked, and correctness confounds taste. Each corpus item is instead a pair
   of equally-correct responses differing on exactly one of 12 taste dimensions;
-  the gesture identifies the class by construction. Design and confound table:
-  `docs/CALIBRATION.md`. Next: expand the 48 specs in `corpus/specs.jsonl` to
-  gold (following the same-dimension exemplar in `corpus/gold/`), then run
-  session 1 via `python -m probe.calibrate plan`.
+  the gesture identifies the class by construction. Finalized at 60 gold items
+  (5 per dimension, `corpus/gold/`), machine-validated for schema, poles, and
+  length leaks. Design and confound table: `docs/CALIBRATION.md`.
+- **M3 is the path, in order:**
+  1. Rule-3 read-through of the 48 expanded items in `corpus/gold/` -- both
+     variants correct, no strawmen. A bug found after labeling voids that
+     item's labels, so this is human review, not a formality.
+  2. A session presenter: replay
+     `python -m probe.calibrate plan --session 1 --pairs 40 --seed <fixed>`
+     one slot at a time and record labels by joining the gesture platform's
+     resolved actions (`data/live/events_*.jsonl`, `flick`->flag,
+     `double_flick`->approve) to slots by timing. Keyboard fallback writes the
+     same record shape with a `source` tag -- so M3 can start before the
+     gesture model is trusted, and ring-vs-key agreement is itself a check.
+  3. Per-session acceptance: sentinel agreement >= 80%, all 12 dimensions
+     present, first-shown balance verified from the plan artifact.
+  4. Four sessions on different days; then emit
+     `data/calibration/preferences.json` (winning pole or `indifferent` per
+     dimension, with margins) -- the M2/M3 exit artifact that feeds both M4
+     training and the M6 context arm.

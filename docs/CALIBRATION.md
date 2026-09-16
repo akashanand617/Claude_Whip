@@ -52,6 +52,13 @@ screen, answered with one gesture:
 | double flick | `approve` -- I want this behavior |
 | nothing | `none` -- no reaction either way |
 
+Labels arrive from the gesture platform as **resolved actions**, not raw
+classes: `data/app_config.json` maps `flick`->flag and `double_flick`->approve,
+and the live engine writes events plus resolved actions to
+`data/live/events_*.jsonl` -- that stream, joined to the session plan by slot
+timing, is the labeling record. A keyboard fallback must write the same record
+shape with a `source` tag.
+
 Pairing exists only in analysis. The two variants of an item are shown as two
 separate ordinary presentations, never side by side, at least 4 slots apart --
 because deployment is single-response and labels collected comparatively do not
@@ -151,12 +158,17 @@ different days ≈ **160 pair-labels, ~13 per dimension** -- enough to call a
 direction per dimension (10-of-13 one way excludes chance at 95%), and 320+
 single-presentation labels for reward-model training on top of that.
 
-Corpus target: **150-200 items** so no item repeats within the first four
-sessions except sentinels. Currently: 12 gold items (one per dimension, fully
-written, in `corpus/gold/`) and 48 specs (`corpus/specs.jsonl`) awaiting
-expansion. Expansion protocol: write the spec'd variants following the gold
-exemplar of the same dimension, run `python -m probe.calibrate validate`, then
-have both variants reviewed for rule 3 before first use.
+Corpus: **60 gold items, 5 per dimension**, in `corpus/gold/`. Four 40-pair
+sessions draw 160 pair-slots from those 60 items, so each item appears ~2-3
+times across the campaign. That repetition is deliberate, not a shortage: the
+cross-session gate requires test-retest agreement on repeated items, which
+only repeats can supply. Within a single session no item appears twice except
+sentinels.
+
+Growing the corpus further (new `-06`, `-07`... items per dimension) is always
+allowed and never blocks a session: write the item following any same-dimension
+exemplar, run `python -m probe.calibrate validate`, and have both variants
+reviewed for rule 3 (correctness held equal) before first use.
 
 ---
 
