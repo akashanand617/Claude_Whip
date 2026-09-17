@@ -166,6 +166,31 @@ def build_blocked_schedule(gestures: list[str], per_gesture: int, seed: int | No
     return out
 
 
+def build_blocked_fill_schedule(shortfall: dict[str, int], seed: int | None = None) -> list[Prompt]:
+    """
+    The fill list as blocks: every class in one run, its exact shortfall,
+    soft/hard balanced inside the block, directed classes keep their direction.
+    Block order is shuffled once so the same class is not always first.
+    """
+    rng = random.Random(seed)
+    keys = list(shortfall)
+    rng.shuffle(keys)
+    out: list[Prompt] = []
+    for key in keys:
+        n = shortfall[key]
+        label, direction = key, "any"
+        for d in DIRECTIONS:
+            if key.endswith("_" + d):
+                label, direction = key[: -len(d) - 1], d
+                break
+        amps = ["soft", "hard"] * (n // 2) + (["hard"] if n % 2 else [])
+        rng.shuffle(amps)
+        for amp in amps:
+            out.append(Prompt(index=len(out), label=label, direction=direction, amplitude=amp, windup="natural",
+                              posture=f"block: {key}", tempo="natural"))
+    return out
+
+
 def build_gesture_schedule(
     gestures: list[str], count: int, seed: int | None = None
 ) -> list[Prompt]:

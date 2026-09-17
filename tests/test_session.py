@@ -326,3 +326,17 @@ def test_blocked_schedule_runs_each_gesture_in_one_block_with_balanced_amplitude
         assert abs(amps["soft"] - amps["hard"]) <= 1
     assert sched[0].posture == "block: snap" and "[" not in sched[0].spoken()
     # the exporter treats a block name like "as you are": no posture is being claimed
+
+
+def test_blocked_fill_schedule_is_one_block_per_class_with_exact_counts():
+    from whip import session
+
+    sched = session.build_blocked_fill_schedule({"double_snap": 5, "flick_left": 3, "clap": 2}, seed=2)
+    assert len(sched) == 10
+    runs = []
+    for p in sched:
+        key = f"{p.label}_{p.direction}" if p.direction != "any" else p.label
+        if not runs or runs[-1][0] != key: runs.append([key, 0])
+        runs[-1][1] += 1
+    assert sorted(runs) == [["clap", 2], ["double_snap", 5], ["flick_left", 3]]      # each class exactly once, in one run
+    assert all(p.posture.startswith("block:") for p in sched)

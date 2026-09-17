@@ -54,6 +54,8 @@ def schedule_for(args) -> list[session.Prompt]:
         if not short:
             raise SystemExit("nothing to fill: no class is below the median (or below --target); "
                              f"audit files are read from {DATA_DIR} (run `python -m probe.audit --all --write` first)")
+        if getattr(args, "blocked", False):
+            return session.build_blocked_fill_schedule(short, seed=args.seed)
         return session.build_fill_schedule(short, seed=args.seed)
     if args.gestures:
         names = [g.strip() for g in args.gestures.split(",") if g.strip()]
@@ -322,8 +324,9 @@ def main() -> int:
                         help="prompted mode over arbitrary registry gestures, "
                              "e.g. 'snap,double_snap' -- how a new class gets data")
     parser.add_argument("--blocked", action="store_true",
-                        help="with --gestures: one block per gesture (all snaps, then all double snaps, ...), "
-                             "--prompts split evenly, instead of interleaving")
+                        help="one block per class (all the snaps, then all the double snaps, ...) instead of "
+                             "interleaving; with --gestures the --prompts are split evenly, with --fill each "
+                             "class's block is exactly its shortfall")
     parser.add_argument("--matrix", action="store_true",
                         help="posture x direction matrix: every hand orientation (palm down/up/left/right) "
                              "x every flick direction, --reps each, for --gestures (default flick); the "
