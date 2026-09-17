@@ -557,7 +557,11 @@ def hand_rule(capture_path: Path, notes_path: Path, registry: Registry | None = 
     """
     from whip import dataset
     registry = registry or load_registry()
-    windows = dataset.windows_from_session(capture_path, notes_path, registry=registry)
+    try:
+        windows = dataset.windows_from_session(capture_path, notes_path, registry=registry)
+    except dataset.UnlabelledCapture:
+        # every mark excluded: nothing to judge the frame by
+        return {"left": (0, 0), "right": (0, 0), "agrees": None, "windows": 0}
     counts = {"left": [0, 0], "right": [0, 0]}
     for w in windows:
         if w.direction not in counts or not w.label.startswith("flick"):
