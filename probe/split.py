@@ -127,12 +127,17 @@ def score(args) -> int:
         evc = events.detect(evaluate.labels_at(R.collapse_probabilities(probs, labels), cn, args.threshold), starts.tolist(), policies=R.policies(cn))
         truth = part_marks.get(sid, [])
         if not truth and not sid.startswith("prompted_"):
-            # a negative recording: every window of this part is `none`, and the
-            # part's chunks are scattered through the session, so runs are
-            # counted per chunk (RunTracker breaks at every hole) and minutes
-            # are the part's windows x stride
-            fp_minutes += len(starts) * events.STRIDE_S / 60
-            for e in evc: fp_events[e.label] += 1
+            # a negative recording: the part's chunks are scattered through
+            # the session, so runs are counted per chunk (RunTracker breaks
+            # at every hole) and minutes are the part's windows x stride.
+            # Windows that carry a span label (the old "keep clapping" block
+            # exports as `clap`) are not negatives: an event there is a hit,
+            # not a false positive, and they are left out of the count.
+            neg = np.where(d["y"][order] == 0)[0]
+            fp_minutes += len(neg) * events.STRIDE_S / 60
+            neg_starts = set(np.round(starts[neg], 3).tolist())
+            for e in evc:
+                if round(float(e.start_s), 3) in neg_starts: fp_events[e.label] += 1
             continue
         hx = evaluate.gesture_hits(ev, truth); ht = evaluate.gesture_hits(evc, [(t, R.collapse(n)[0]) for t, n in truth])
         ha = evaluate.gesture_hits(evc, [(t, R.collapse(n)[0]) for t, n in truth], require_class=False)
