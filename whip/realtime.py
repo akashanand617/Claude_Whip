@@ -94,7 +94,7 @@ class Engine:
         # is remembered so a fired event can report its direction.
         self.collapsed = registry.collapsed_names(self.labels)
         self.tracker = events.RunTracker(policies=registry.policies(self.collapsed))
-        self._despike = despike.StreamingHampel()
+        self._despike = despike.StreamingHampel(enabled=despike.ENABLED)
         self._samples: list[np.ndarray] = []       # despiked, in counts
         self._times: list[float] = []
         self._pending_times: list[float] = []      # awaiting their despiked sample

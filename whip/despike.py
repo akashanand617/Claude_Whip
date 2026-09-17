@@ -51,6 +51,24 @@ N_SIGMAS = 8.0
 MAD_TO_SIGMA = 1.4826
 
 
+# OFF (2026-09-16). The filter was built for single-sample BLE artifacts, but
+# measured on the raw stream the narrow events it removes are real: ambient
+# wear has 47-92 one-to-two-sample shocks above 3 g per hour and 88% of them
+# deviate on two or three axes -- desk taps, not corrupt packets -- and a
+# finger snap is exactly such a shock at 4-8 g. With the filter on, 19 of 21
+# correctly performed double snaps lost one or both strokes, and wide strokes
+# lost up to half their peak (per-axis judgement on a 3-D event). Those taps
+# are the hard negatives the shock classes must learn against, so the stream
+# is used raw. `hampel` and `StreamingHampel` stay for the record and for
+# `enabled=True` experiments; `apply` and the engine honour this flag.
+ENABLED = False
+
+
+def apply(x):
+    """The stream as the pipeline uses it: filtered when ENABLED, else a copy."""
+    return hampel(x) if ENABLED else np.asarray(x, dtype="float64").copy()
+
+
 def hampel(x, half_window: int = HALF_WINDOW, n_sigmas: float = N_SIGMAS):
     """
     Replace outlying samples with their local median, along the last axis.
@@ -139,7 +157,8 @@ class StreamingHampel:
     """
 
     def __init__(self, half_window: int = HALF_WINDOW, n_sigmas: float = N_SIGMAS,
-                 n_axes: int = 3):
+                 n_axes: int = 3, enabled: bool = True):
+        self.enabled = enabled                    # False: same buffering and lag, no replacement
         self.half_window = half_window
         self.n_sigmas = n_sigmas
         self.n_axes = n_axes
@@ -163,6 +182,8 @@ class StreamingHampel:
         # centre's baseline. The buffer holds both neighbours already.
         outlier = np.abs(centre - med) > threshold
         quiet = (np.abs(window[:, hw - 1] - med) <= threshold) & (np.abs(window[:, hw + 1] - med) <= threshold)
+        if not self.enabled:
+            return centre.copy()
         return np.where(outlier & quiet, med, centre)
 
     def push(self, sample) -> list[np.ndarray]:

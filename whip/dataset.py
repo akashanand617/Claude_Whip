@@ -31,9 +31,11 @@ SAMPLE_RATE_HZ = 25.0
 # per-window direction. Version 5 keeps each window's mean gravity vector
 # alongside the centred waveform: it was being subtracted and discarded, and it
 # is the one feature that separates a palm-down flick from a hand-vertical one.
-# Label indices and fields move at every one of these steps, so a stale export
-# read by newer code silently means something else.
-FORMAT_VERSION = 5
+# Version 6 stops despiking: the filter was removing real shocks (snaps, desk
+# taps), see `despike.ENABLED`. Label indices and fields move at every one of
+# these steps, so a stale export read by newer code silently means something
+# else.
+FORMAT_VERSION = 6
 
 # 50 samples = 2.0 s. Sized so a 1395 ms worst-case gesture leaves ~600 ms of
 # alignment slack; an earlier 38-sample window left only 125 ms, which meant
@@ -211,7 +213,7 @@ def windows_from_session(
     # local, so applying it window by window would treat every window boundary
     # as a stream edge -- and at 88% overlap each sample would be filtered nine
     # times, with a different neighbourhood each time.
-    stream = despike.hampel(np.array(
+    stream = despike.apply(np.array(
         [[s.x for s in samples], [s.y for s in samples], [s.z for s in samples]], dtype=float))
     # A session recorded with the ring the other way round is rotated back
     # into the canonical frame here, before windows are cut, so every

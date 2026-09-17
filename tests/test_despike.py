@@ -148,3 +148,23 @@ def test_a_two_sample_shock_survives_and_a_one_sample_glitch_does_not():
         got.extend(f.drain())
         got = np.stack(got, axis=1)
         assert (abs(got[1, 30]) > 4.0) == keep
+
+
+def test_the_pipeline_switch_is_off_and_apply_is_a_copy():
+    """
+    Real shocks (snaps, desk taps) are one-to-two samples wide, exactly the
+    filter's target, so the pipeline runs on the raw stream. `apply` honours
+    the switch; `hampel` itself still filters when called directly.
+    """
+    import numpy as np
+    from whip import despike
+
+    assert despike.ENABLED is False
+    x = np.zeros((3, 40)); x[1, 20] = 5.0
+    out = despike.apply(x)
+    assert out[1, 20] == 5.0 and out is not x
+    assert abs(despike.hampel(x)[1, 20]) < 0.5
+    s = despike.StreamingHampel(enabled=False); got = []
+    for k in range(40): got.extend(s.push(x[:, k]))
+    got.extend(s.drain())
+    assert np.stack(got, axis=1)[1, 20] == 5.0 and len(got) == 40

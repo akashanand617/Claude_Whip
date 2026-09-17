@@ -40,8 +40,9 @@ the first. That range is the measured corpus (p5-p95 of 132 training doubles:
 0.7 s pause is a different gesture, and the prompt words that were supposed
 to vary tempo ("brisk", "deliberate") did not move it in any session.
 
-Everything here is numpy on the despiked stream, so it needs no model and no
-hardware, and its findings do not depend on any checkpoint.
+Everything here is numpy on the stream as the pipeline uses it (raw since
+`despike.ENABLED` went off), so it needs no model and no hardware, and its
+findings do not depend on any checkpoint.
 """
 
 from __future__ import annotations
@@ -255,7 +256,7 @@ def audit_session(capture_path: Path, notes_path: Path, registry: Registry | Non
     registry = registry or load_registry()
     times_l, samples = dataset._decode_stream(capture_path)
     times = np.asarray(times_l)
-    stream = despike.hampel(np.array(
+    stream = despike.apply(np.array(
         [[s.x for s in samples], [s.y for s in samples], [s.z for s in samples]], dtype=float))
     x_g = stream / accel.COUNTS_PER_G
     notes = session.load_notes(notes_path)
