@@ -7,7 +7,7 @@ struct TodayScreen: View {
     @Binding var tab: Tab
     var open: (Metric) -> Void
 
-    private let data = HealthData.today
+    private var data: HealthData.TodaySummary { model.today }
 
     var body: some View {
         Screen(tab: $tab) {
@@ -15,6 +15,20 @@ struct TodayScreen: View {
                 ScreenHeader(title: data.date) {
                     BatteryPill(percent: model.ring.batteryPercent)
                 }
+
+                HStack(spacing: 7) {
+                    Circle()
+                        .fill(model.ringManager.isReady ? Tok.accent : Tok.dim)
+                        .frame(width: 6, height: 6)
+                    Text(model.ringManager.isReady ? model.syncMessage : model.connectionLabel)
+                        .font(.mono(10))
+                        .foregroundStyle(Tok.muted)
+                        .lineLimit(1)
+                    Spacer()
+                    if model.isSyncing { ProgressView().controlSize(.small).tint(Tok.accent) }
+                }
+                .padding(.horizontal, Tok.side)
+                .padding(.top, 8)
 
                 sleepHero
 
@@ -26,9 +40,6 @@ struct TodayScreen: View {
                     Hairline()
                 }
                 .padding(.top, 10)
-
-                OutlineButton(title: "Health")
-                    .padding(.top, 12)
             }
         }
     }
@@ -45,26 +56,34 @@ struct TodayScreen: View {
                 }
 
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Text("\(data.sleepHours)")
+                    Text(data.sleepHours.map(String.init) ?? "0")
                         .font(.mono(72, .medium)).tracking(-4)
                     Text("h").font(.mono(18)).foregroundStyle(Tok.muted)
-                    Text("\(data.sleepMinutes)")
+                    Text(data.sleepMinutes.map(String.init) ?? "0")
                         .font(.mono(72, .medium)).tracking(-4)
                         .padding(.leading, 8)
                     Text("m").font(.mono(18)).foregroundStyle(Tok.muted)
                 }
                 .padding(.top, 4)
 
-                hypnogram.padding(.top, 16)
-                sleepTimeline.padding(.top, 4)
-                sleepLegend.padding(.top, 6)
+                if data.hypnogram.isEmpty {
+                    Text("No sleep session recorded yet")
+                        .font(.mono(11)).foregroundStyle(Tok.dim)
+                        .frame(maxWidth: .infinity, minHeight: 64, alignment: .leading)
+                        .padding(.top, 12)
+                } else {
+                    hypnogram.padding(.top, 16)
+                    sleepTimeline.padding(.top, 4)
+                    sleepLegend.padding(.top, 6)
+                }
             }
             .padding(.horizontal, Tok.side)
             .padding(.top, 18)
             .contentShape(Rectangle())
         }
         .buttonStyle(RowPressStyle())
-        .accessibilityLabel("Sleep, \(data.sleepHours) hours \(data.sleepMinutes) minutes")
+        .accessibilityLabel(data.sleepHours.map { "Sleep, \($0) hours \(data.sleepMinutes ?? 0) minutes" }
+                            ?? "No sleep data")
     }
 
     /// Stage runs sized in proportion to their duration, 1pt apart.
@@ -157,26 +176,29 @@ struct TodayScreen: View {
                 HStack {
                     Text("Heart rate").labelType(10).foregroundStyle(Tok.muted)
                     Spacer()
-                    Text("● live").font(.mono(10)).foregroundStyle(Tok.accent)
+                    Text(model.isMeasuringHeartRate ? "● measuring" : data.heartRateFreshness)
+                        .font(.mono(10))
+                        .foregroundStyle(model.isMeasuringHeartRate ? Tok.accent : Tok.muted)
                 }
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Text("\(data.heartRate)").font(.mono(40, .medium)).tracking(-2)
+                    Text((model.liveHeartRate ?? data.heartRate).map(String.init) ?? "—")
+                        .font(.mono(40, .medium)).tracking(-2)
                     Text("bpm").font(.mono(13)).foregroundStyle(Tok.muted)
                 }
                 .padding(.top, 4)
 
                 VStack(spacing: 0) {
                     Hairline()
-                    PulseScope().frame(maxHeight: .infinity)
+                    PulseScope(bpm: model.liveHeartRate ?? data.heartRate).frame(maxHeight: .infinity)
                     Hairline()
                 }
                 .frame(minHeight: 36)
                 .padding(.top, 10)
 
                 HStack {
-                    Text("live ppg · 1 Hz").font(.mono(10)).foregroundStyle(Tok.muted)
+                    Text("ring heart rate").font(.mono(10)).foregroundStyle(Tok.muted)
                     Spacer()
-                    Text("24h history ›").font(.mono(10)).foregroundStyle(Tok.accent)
+                    Text("history & measure ›").font(.mono(10)).foregroundStyle(Tok.accent)
                 }
                 .padding(.top, 6)
             }
@@ -186,7 +208,8 @@ struct TodayScreen: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(RowPressStyle())
-        .accessibilityLabel("Heart rate, \(data.heartRate) beats per minute")
+        .accessibilityLabel(data.heartRate.map { "Heart rate, \($0) beats per minute" }
+                            ?? "No heart-rate data")
     }
 
     // MARK: Steps
@@ -200,10 +223,17 @@ struct TodayScreen: View {
                     Text("›").font(.mono(10)).foregroundStyle(Tok.accent)
                 }
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Text(verbatim: "\(data.steps)").font(.mono(40, .medium)).tracking(-2)
+                    Text(verbatim: (data.steps ?? 0).formatted()).font(.mono(40, .medium)).tracking(-2)
                     Text("/ 10 000").font(.mono(13)).foregroundStyle(Tok.muted)
                 }
                 .padding(.top, 4)
+
+                if data.steps == nil {
+                    Text("No steps recorded today")
+                        .font(.mono(10))
+                        .foregroundStyle(Tok.dim)
+                        .padding(.top, 3)
+                }
 
                 VStack(spacing: 0) {
                     GeometryReader { geo in
@@ -240,6 +270,6 @@ struct TodayScreen: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(RowPressStyle())
-        .accessibilityLabel("Steps, \(data.steps) of \(data.stepGoal)")
+        .accessibilityLabel(data.steps.map { "Steps, \($0) of \(data.stepGoal)" } ?? "No step data")
     }
 }

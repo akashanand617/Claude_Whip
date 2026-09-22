@@ -9,29 +9,70 @@ import Foundation
 struct SleepNight: Identifiable {
     let id = UUID()
     let axis: String
+    /// Full period label shown while scrubbing (for example "Tue 22 Sep").
+    let label: String
     /// Column height as a fraction of the plot (0…1).
     let height: Double
     /// Segment weights, top to bottom: light, REM, deep.
     let light: Double
     let rem: Double
     let deep: Double
+
+    init(axis: String, label: String? = nil, height: Double,
+         light: Double, rem: Double, deep: Double) {
+        self.axis = axis
+        self.label = label ?? axis
+        self.height = height
+        self.light = light
+        self.rem = rem
+        self.deep = deep
+    }
+
+    var totalMinutes: Int { Int((light + rem + deep).rounded()) }
 }
 
 struct HeartRateDay: Identifiable {
     let id = UUID()
+    let label: String
+    let minimumBPM: Int
+    let maximumBPM: Int
+    let averageBPM: Int
     /// Band top edge, measured down from the top of the plot (0…1) — the day's peak HR.
     let top: Double
     /// Band bottom edge, measured up from the bottom of the plot (0…1) — the day's resting HR,
     /// where the accent dot sits.
     let bottom: Double
+
+    init(top: Double, bottom: Double, label: String = "Period",
+         minimumBPM: Int? = nil, maximumBPM: Int? = nil, averageBPM: Int? = nil) {
+        self.top = top
+        self.bottom = bottom
+        self.label = label
+        let inferredHigh = Int((35 + (1 - top) * 170).rounded())
+        let inferredAverage = Int((35 + bottom * 170).rounded())
+        self.minimumBPM = minimumBPM ?? inferredAverage
+        self.maximumBPM = maximumBPM ?? inferredHigh
+        self.averageBPM = averageBPM ?? inferredAverage
+    }
 }
 
 struct StepBar: Identifiable {
     let id = UUID()
     let axis: String
+    let label: String
+    let steps: Int
     let height: Double
     /// The current bucket draws in `accent`, earlier ones in `accentDeep`.
     let isCurrent: Bool
+
+    init(axis: String, label: String? = nil, steps: Int? = nil,
+         height: Double, isCurrent: Bool) {
+        self.axis = axis
+        self.label = label ?? axis
+        self.steps = steps ?? Int((height * 10_000).rounded())
+        self.height = height
+        self.isCurrent = isCurrent
+    }
 }
 
 enum ChartData {
@@ -50,6 +91,23 @@ struct Headline {
 struct MetricSeries {
     let headline: Headline
     let chart: ChartData
+}
+
+extension MetricSeries {
+    static func empty(for metric: Metric) -> MetricSeries {
+        let headline = Headline(value: "—", delta: "", caption: "No synced data")
+        switch metric {
+        case .sleep:
+            return .init(headline: headline, chart: .sleep(nights: [], average: 0.5))
+        case .heartRate:
+            return .init(headline: headline,
+                         chart: .heartRate(days: [], gridlines: [0.2, 0.8], average: 0.5, axis: []))
+        case .steps:
+            return .init(headline: headline,
+                         chart: .steps(bars: [], goal: 0.5, goalLabel: "goal 10k",
+                                       average: 0.5, note: "No synced days"))
+        }
+    }
 }
 
 // MARK: - Fixtures
@@ -244,35 +302,48 @@ enum HealthData {
     // MARK: Today (5a)
 
     struct TodaySummary {
-        let date = "Mon 15 Sep"
-        let sleepHours = 7
-        let sleepMinutes = 12
+        var date = "Today"
+        var sleepHours: Int? = nil
+        var sleepMinutes: Int? = nil
         /// Hypnogram run lengths, in the order they were slept.
-        let hypnogram: [(stage: SleepStage, weight: Double)] = [
-            (.rem, 6), (.deep, 18), (.light, 9), (.deep, 12), (.awake, 3),
-            (.light, 14), (.deep, 10), (.rem, 9), (.awake, 4), (.rem, 8),
-        ]
-        let asleepAt = "11:42 PM"
-        let wokeAt = "6:54 AM"
-        let stageTotals: [(SleepStage, String)] = [
-            (.deep, "2h 41"), (.light, "3h 32"), (.rem, "0h 46"), (.awake, "0h 13"),
-        ]
-        let heartRate = 62
-        let steps = 6842
-        let stepGoal = 10_000
+        var hypnogram: [(stage: SleepStage, weight: Double)] = []
+        var asleepAt = "—"
+        var wokeAt = "—"
+        var stageTotals: [(SleepStage, String)] = []
+        var heartRate: Int? = nil
+        var heartRateFreshness = "No reading"
+        var steps: Int? = nil
+        var stepGoal = 10_000
         /// Per-hour step bars across the 24h day; zero-height hours are still to come.
-        let stepsByHour: [Double] = [
-            0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.12, 0.48, 0.90, 0.30, 0.18, 0.22,
-            0.74, 0.40, 0.14, 0.26, 0, 0, 0, 0, 0, 0, 0, 0,
-        ]
+        var stepsByHour: [Double] = Array(repeating: 0, count: 24)
         /// Overnight hours draw dim; the waking day draws in accent.
-        let stepsAccentFromHour = 7
+        var stepsAccentFromHour = 0
     }
 
-    static let today = TodaySummary()
+    static let today = TodaySummary(
+        date: "Mon 15 Sep", sleepHours: 7, sleepMinutes: 12,
+        hypnogram: [
+            (.rem, 6), (.deep, 18), (.light, 9), (.deep, 12), (.awake, 3),
+            (.light, 14), (.deep, 10), (.rem, 9), (.awake, 4), (.rem, 8),
+        ],
+        asleepAt: "11:42 PM", wokeAt: "6:54 AM",
+        stageTotals: [(.deep, "2h 41"), (.light, "3h 32"), (.rem, "0h 46"), (.awake, "0h 13")],
+        heartRate: 62, heartRateFreshness: "Just now", steps: 6842, stepGoal: 10_000,
+        stepsByHour: [
+            0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.12, 0.48, 0.90, 0.30, 0.18, 0.22,
+            0.74, 0.40, 0.14, 0.26, 0, 0, 0, 0, 0, 0, 0, 0,
+        ],
+        stepsAccentFromHour: 7
+    )
+
+    static func emptyToday(at date: Date = .now) -> TodaySummary {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEE d MMM"
+        return TodaySummary(date: formatter.string(from: date))
+    }
 }
 
-enum SleepStage {
+enum SleepStage: String, Codable, CaseIterable {
     case deep, light, rem, awake
 }
 
