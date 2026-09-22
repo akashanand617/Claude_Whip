@@ -337,7 +337,11 @@ def span_hits(events: list[Event], spans: list[tuple[float, float, str]]) -> lis
 
 ONSET_G = 1.0            # impulsive magnitude that opens a burst (the audit's stroke floor)
 QUIET_S = 0.6            # this long below ONSET_G closes a burst; a double's gap is at most 0.5 s
-MAX_IMPULSIVE_S = 2.0    # a burst longer than a window is sustained motion, not a gesture
+MAX_IMPULSIVE_S = 2.0    # a burst longer than a window is sustained motion, not a gesture...
+SPLIT_QUIET_S = 0.35     # ...unless it holds a lull this long below ONSET_G: then it is two gestures that
+                         # came too fast for QUIET_S (live: consecutive flicks 0.40-0.56 s apart, both lost).
+                         # Only bursts over MAX_IMPULSIVE_S are split, so a double clap (internal lull up to
+                         # 0.5 s, whole burst under 1.3 s) is never cut in two.
 CORE_S = 1.3             # the part of a burst a vote window must contain (two strokes and a recoil)
 MARGIN_S = 0.08          # two samples of context either side of the core
 MIN_VOTES = 2            # agreeing windows containing the core; the ablation put min_run 2 at zero ambient cost
@@ -371,6 +375,7 @@ class Burst:
     judged_s: float | None = None
     peak_g: float = 0.0
     n_above: int = 0                    # samples at or above ONSET_G
+    lull: tuple[float, float, float] = (0.0, 0.0, 0.0)   # longest internal stretch below ONSET_G: (length, from, to)
 
     @property
     def duration_s(self) -> float:
@@ -435,6 +440,9 @@ class BurstTracker:
             if self._open is None:
                 self._open = Burst(on_s=t_s, off_s=t_s)
             else:
+                gap = t_s - self._open.off_s
+                if gap > self._open.lull[0]:
+                    self._open.lull = (gap, self._open.off_s, t_s)
                 self._open.off_s = t_s
             self._open.peak_g = max(self._open.peak_g, mag_g)
             self._open.n_above += 1
@@ -447,9 +455,20 @@ class BurstTracker:
             # gesture that follows it (live, a 1 g blip 0.7 s before a double
             # flick took that gesture's windows and fired in its place).
             if not (b.n_above == 1 and b.peak_g < MIN_BLIP_PEAK_G):
-                self.bursts.append(b)
-                self._pending.append(b)
+                for part in self._split(b):
+                    self.bursts.append(part)
+                    self._pending.append(part)
         return self._judge_ready(t_s)
+
+    @staticmethod
+    def _split(b: Burst) -> list[Burst]:
+        """A too-long burst with a real lull inside is two gestures; cut it there, once."""
+        if b.duration_s <= MAX_IMPULSIVE_S or b.lull[0] < SPLIT_QUIET_S:
+            return [b]
+        length, lo, hi = b.lull
+        first = Burst(on_s=b.on_s, off_s=lo, closed_s=b.closed_s, peak_g=b.peak_g, n_above=b.n_above)
+        second = Burst(on_s=hi, off_s=b.off_s, closed_s=b.closed_s, peak_g=b.peak_g, n_above=b.n_above)
+        return [first, second]
 
     # ---------------------------------------------------------------- windows
 
@@ -550,7 +569,13 @@ class BurstTracker:
             tally[label] = tally.get(label, 0) + 1
         ranked = sorted(tally.values(), reverse=True)
         runner = ranked[1] if len(ranked) > 1 else 0
-        return ranked[0] > runner + remaining
+        if ranked[0] > runner + remaining:
+            return True
+        # Three or more votes, all agreeing, on a burst that has already closed:
+        # decided. Measured on the test part and two 20-cue live tests it
+        # changes no outcome and brings the median decision from 1.56 s to
+        # 1.40 s after onset.
+        return b.closed_s is not None and len(votes) >= 3 and len(tally) == 1
 
     def _judge(self, b: Burst, now_s: float) -> Event | None:
         b.judged_s = now_s

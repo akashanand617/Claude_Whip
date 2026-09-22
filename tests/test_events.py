@@ -259,3 +259,17 @@ def test_impulsive_magnitude_matches_the_engine_buffer_mean():
     i = 60
     tail = x[:, i - GRAVITY_SAMPLES + 1:i + 1]
     assert m[i] == np.linalg.norm(tail[:, -1] - tail.mean(axis=1))
+
+
+def test_two_gestures_too_close_for_the_quiet_gap_are_split_at_their_lull():
+    """Consecutive flicks 0.45 s apart merge into one 2.3 s burst; it is cut at the lull and both are judged."""
+    from whip.events import detect_bursts, BurstTracker
+    t, mag, starts, labels = _burst_case(((3.0, 4.0), (4.45, 5.3)),
+                                         lambda s, e: "flick" if (_contains(s, e, 3.0, 4.0) or _contains(s, e, 4.45, 5.3)) else "none")
+    tracker = BurstTracker(policies={"flick": RunPolicy()})
+    for tt, m in zip(t, mag):
+        tracker.feed_sample(float(tt), float(m))
+    tracker.finish()
+    assert [(round(b.on_s, 2), round(b.off_s, 2)) for b in tracker.bursts] == [(3.0, 3.96), (4.48, 5.28)]
+    ev = detect_bursts(labels, starts, t, mag, policies={"flick": RunPolicy()})
+    assert [round(e.at_s, 2) for e in ev] == [3.0, 4.48]
