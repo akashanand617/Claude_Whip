@@ -90,3 +90,4 @@ DerivedData/
 !data/model.pt
 !data/split.json
 !data/app_config.json
+!data/scripts/

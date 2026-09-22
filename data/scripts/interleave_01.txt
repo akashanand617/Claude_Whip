@@ -1,0 +1,28 @@
+# Scripted free run: shocks in the flow of flicks, fast, no cues.
+# One gesture per token, left to right; a blank line is a block boundary:
+# hold the hand STILL for 3 s between blocks (that is how the labeller
+# finds the blocks). Tokens: F^ Fv F< F> = flick up/down/left/right,
+# D^ Dv D< D> = double flick, S = snap, C = double clap.
+F^ S Fv S F< S
+
+F> C F^ C Fv C
+
+S F< S F> S F^
+
+C Fv C F< C F>
+
+D^ S Dv C D< S
+
+D> C S D^ C S
+
+F^ F^ S Fv Fv C
+
+F< F< C F> F> S
+
+S S C C S C
+
+F^ S C Fv C S
+
+D< S F< C D> S
+
+F> C S F^ S C
