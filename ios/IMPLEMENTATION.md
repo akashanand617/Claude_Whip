@@ -10,8 +10,9 @@ R02Ring/
   Design/Tokens.swift     colours, type scale, metrics
   Design/Components.swift tab bar, battery pill, toggle, rules, legend, Screen chrome
   Model/AppModel.swift    tabs, metrics, ranges, gesture map, device/user state
-  Model/HealthData.swift  chart fixtures + headline copy per metric × range
-  Screens/                Today, the three detail screens, Gestures, Settings
+  Model/HealthData.swift  health view models and preview-only fixtures
+  Health/                 Colmi protocol, BLE manager, SwiftData store, sync service
+  Screens/                Today, metric details, ring onboarding, Gestures, Settings
   Hand/                   the procedural 3D hand renderer
 ```
 
@@ -55,10 +56,44 @@ at 53% matches the mean of the resting dots. Both only work plot-relative, so th
 `MetricCharts.swift` places them — otherwise the "average" line wouldn't sit on the
 average.
 
-`HealthData.swift` holds the design's exact numbers for the range each screen opens in
-(sleep W, heart rate M, steps 6M). The other ranges are generated from a seeded PRNG in
-the same shape, so the picker genuinely re-aggregates and re-animates (200ms ease-out)
-rather than being decorative, and the series stay stable across launches.
+Production charts are aggregated from the local SwiftData store. `HealthData.swift`
+still holds preview-only fixtures so the SwiftUI canvas remains useful without a ring.
+
+## Ring health implementation
+
+This build supports the stock Colmi R02 health firmware only. It lists every nearby R02
+by its advertised suffix so households with multiple rings can choose the right one,
+then remembers that ring, reconnects whenever possible, restores Core Bluetooth state,
+and shows an AirPods-style setup sheet the first time. A successful connection configures
+five-minute automatic heart-rate logging and imports battery, heart-rate history, step
+buckets, and sleep history. Readings are stored locally and can be exported as CSV from
+Settings. Sync runs automatically on connection, whenever the app returns to the
+foreground, and every five minutes while the app remains active; there is no manual sync
+control. Sync only imports the ring's offline history. Live heart-rate measurement is a
+separate user action on the Heart Rate detail screen and starts and stops the optical
+sensor explicitly.
+
+The ring clock is initialized only on the first full sync. Colmi command `0x01` clears
+accumulated activity on stock firmware, so routine foreground and five-minute syncs must
+never resend it; doing so makes steps, periodic heart rate, and sleep appear permanently
+empty.
+
+The gesture firmware path is intentionally unchanged. Do not flash or switch firmware
+while validating this health build.
+
+## Run it on an iPhone
+
+1. Open `R02Ring.xcodeproj` in Xcode and choose the `R02Ring` scheme.
+2. Connect and unlock an iPhone running iOS 17 or newer. Trust the Mac if prompted.
+3. In Signing & Capabilities, confirm team `RK84XQQA5U` and bundle ID
+   `com.abhayanand.R02Ring`, then press Run.
+4. Open the stock R02 ring/put it near the phone, grant Bluetooth permission, and tap
+   Connect in the setup sheet. Keep the ring off its charger for live heart-rate tests.
+
+For TestFlight, Product → Archive, then Distribute App → App Store Connect → Upload.
+The project includes its Bluetooth background mode, permission string, 1024px app icon,
+version 2.8.0, and build 1149. If build 1149 was already uploaded, increment
+`CURRENT_PROJECT_VERSION` before archiving.
 
 ## Other deviations, all deliberate
 
@@ -74,12 +109,12 @@ rather than being decorative, and the series stay stable across launches.
 - **Grid rules.** Only the left column draws a vertical hairline; the design's CSS puts a
   `border-right` on every cell, which would leave a stray 1px line on the screen edge.
 
-## Not verified
+## Verification status
 
-Xcode isn't installed on this machine (Command Line Tools only), so **the app has not
-been compiled for iOS or run in a simulator**. What was verified: every source file
-type-checks with `swiftc -typecheck` against the macOS SDK, and the screens and gesture
-tiles were rasterised through `ImageRenderer` at 393×852 and checked against the canvas.
-The `.xcodeproj` is hand-written using Xcode 16 synchronized folder groups (so it needs
-no per-file bookkeeping), but it has not been opened by Xcode — expect to confirm the
-bundle id and signing team on first run.
+Xcode 26.3 successfully builds and signs the app for iPhone hardware. The protocol tests
+cover packet checksums, heart-rate epoch decoding and out-of-order packets, step buckets,
+fragmented Big Data reassembly, and signed sleep offsets/stages. Physical-ring testing
+has verified discovery, selection among multiple nearby R02 rings, reconnect, battery,
+offline step import, periodic heart-rate import, live heart-rate measurement, local
+persistence, and the day-level chart interactions. Sleep parsing is unit-tested; its
+overnight end-to-end check is still pending a recorded night on the test ring.

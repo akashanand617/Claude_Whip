@@ -6,16 +6,41 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		5B1A0C0011E24A7F9D3A001B /* Exceptions for "R02Ring" folder in "R02Ring" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 5B1A0C0011E24A7F9D3A0007 /* R02Ring */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		5B1A0C0011E24A7F9D3A0001 /* R02Ring */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				5B1A0C0011E24A7F9D3A001B /* Exceptions for "R02Ring" folder in "R02Ring" target */,
+			);
 			path = R02Ring;
+			sourceTree = "<group>";
+		};
+		5B1A0C0011E24A7F9D3A0010 /* R02RingTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = R02RingTests;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		5B1A0C0011E24A7F9D3A0003 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		5B1A0C0011E24A7F9D3A0014 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -29,6 +54,7 @@
 			isa = PBXGroup;
 			children = (
 				5B1A0C0011E24A7F9D3A0001 /* R02Ring */,
+				5B1A0C0011E24A7F9D3A0010 /* R02RingTests */,
 				5B1A0C0011E24A7F9D3A0006 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -37,6 +63,7 @@
 			isa = PBXGroup;
 			children = (
 				5B1A0C0011E24A7F9D3A0009 /* R02Ring.app */,
+				5B1A0C0011E24A7F9D3A0012 /* R02RingTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -64,7 +91,46 @@
 			productReference = 5B1A0C0011E24A7F9D3A0009 /* R02Ring.app */;
 			productType = "com.apple.product-type.application";
 		};
+		5B1A0C0011E24A7F9D3A0011 /* R02RingTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 5B1A0C0011E24A7F9D3A0016 /* Build configuration list for PBXNativeTarget "R02RingTests" */;
+			buildPhases = (
+				5B1A0C0011E24A7F9D3A0013 /* Sources */,
+				5B1A0C0011E24A7F9D3A0014 /* Frameworks */,
+				5B1A0C0011E24A7F9D3A0015 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				5B1A0C0011E24A7F9D3A001A /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				5B1A0C0011E24A7F9D3A0010 /* R02RingTests */,
+			);
+			name = R02RingTests;
+			productName = R02RingTests;
+			productReference = 5B1A0C0011E24A7F9D3A0012 /* R02RingTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
+
+/* Begin PBXContainerItemProxy section */
+		5B1A0C0011E24A7F9D3A0019 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 5B1A0C0011E24A7F9D3A0008 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 5B1A0C0011E24A7F9D3A0007;
+			remoteInfo = R02Ring;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXTargetDependency section */
+		5B1A0C0011E24A7F9D3A001A /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 5B1A0C0011E24A7F9D3A0007 /* R02Ring */;
+			targetProxy = 5B1A0C0011E24A7F9D3A0019 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin PBXProject section */
 		5B1A0C0011E24A7F9D3A0008 /* Project object */ = {
@@ -94,12 +160,20 @@
 			projectRoot = "";
 			targets = (
 				5B1A0C0011E24A7F9D3A0007 /* R02Ring */,
+				5B1A0C0011E24A7F9D3A0011 /* R02RingTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		5B1A0C0011E24A7F9D3A0004 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		5B1A0C0011E24A7F9D3A0015 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -116,6 +190,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		5B1A0C0011E24A7F9D3A0013 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXFileReference section */
@@ -124,6 +205,13 @@
 			explicitFileType = wrapper.application;
 			includeInIndex = 0;
 			path = R02Ring.app;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		5B1A0C0011E24A7F9D3A0012 /* R02RingTests.xctest */ = {
+			isa = PBXFileReference;
+			explicitFileType = wrapper.cfbundle;
+			includeInIndex = 0;
+			path = R02RingTests.xctest;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
 /* End PBXFileReference section */
@@ -171,16 +259,18 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = RK84XQQA5U;
 				CURRENT_PROJECT_VERSION = 1149;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = R02Ring/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UIStatusBarStyle = UIStatusBarStyleLightContent;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				INFOPLIST_KEY_UIUserInterfaceStyle = Dark;
 				MARKETING_VERSION = 2.8.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.r02.ring;
+				PRODUCT_BUNDLE_IDENTIFIER = com.abhayanand.R02Ring;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -194,20 +284,54 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = RK84XQQA5U;
 				CURRENT_PROJECT_VERSION = 1149;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = R02Ring/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UIStatusBarStyle = UIStatusBarStyleLightContent;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				INFOPLIST_KEY_UIUserInterfaceStyle = Dark;
 				MARKETING_VERSION = 2.8.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.r02.ring;
+				PRODUCT_BUNDLE_IDENTIFIER = com.abhayanand.R02Ring;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		5B1A0C0011E24A7F9D3A0017 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = RK84XQQA5U;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.abhayanand.R02RingTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/R02Ring.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/R02Ring";
+			};
+			name = Debug;
+		};
+		5B1A0C0011E24A7F9D3A0018 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = RK84XQQA5U;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.abhayanand.R02RingTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/R02Ring.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/R02Ring";
 			};
 			name = Release;
 		};
@@ -228,6 +352,15 @@
 			buildConfigurations = (
 				5B1A0C0011E24A7F9D3A000E /* Debug */,
 				5B1A0C0011E24A7F9D3A000F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		5B1A0C0011E24A7F9D3A0016 /* Build configuration list for PBXNativeTarget "R02RingTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5B1A0C0011E24A7F9D3A0017 /* Debug */,
+				5B1A0C0011E24A7F9D3A0018 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

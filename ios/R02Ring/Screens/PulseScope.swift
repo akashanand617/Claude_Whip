@@ -5,6 +5,7 @@ import SwiftUI
 struct PulseScope: View {
     var color: Color = Tok.accent
     var lineWidth: CGFloat = 3
+    var bpm: Int? = nil
 
     private static let beatWidth: Double = 120
     private static let beatHeight: Double = 96
@@ -39,7 +40,8 @@ struct PulseScope: View {
                 ctx.stroke(grid, with: .color(Color(hex: 0x0D150F)), lineWidth: 1)
 
                 let t = timeline.date.timeIntervalSinceReferenceDate
-                let shift = t.truncatingRemainder(dividingBy: 1) * Self.beatWidth
+                let period = 60.0 / Double(max(35, min(220, bpm ?? 60)))
+                let shift = t.truncatingRemainder(dividingBy: period) / period * Self.beatWidth
 
                 var trace = Path()
                 var x = -shift

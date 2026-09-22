@@ -46,7 +46,7 @@ struct RowPressStyle: ButtonStyle {
 
 /// 22×10 outline pill filled to `percent`, with the reading beside it.
 struct BatteryPill: View {
-    var percent: Int
+    var percent: Int?
 
     var body: some View {
         HStack(spacing: 6) {
@@ -56,19 +56,19 @@ struct BatteryPill: View {
                         .strokeBorder(Tok.dim, lineWidth: Tok.hairlineWidth)
                     // Fill sits inside the 1pt outline, so it measures against the inner track.
                     Tok.accent
-                        .frame(width: max(0, (geo.size.width - 2) * Double(percent) / 100),
+                        .frame(width: max(0, (geo.size.width - 2) * Double(percent ?? 0) / 100),
                                height: max(0, geo.size.height - 2))
                         .offset(x: 1)
                 }
             }
             .frame(width: 22, height: 10)
 
-            Text("\(percent)%")
+            Text(percent.map { "\($0)%" } ?? "—")
                 .labelType()
                 .foregroundStyle(Tok.text)
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Ring battery \(percent) percent")
+        .accessibilityLabel(percent.map { "Ring battery \($0) percent" } ?? "Ring battery unavailable")
     }
 }
 
@@ -155,7 +155,7 @@ struct RingTabBar: View {
         VStack(spacing: 0) {
             Hairline()
             HStack(spacing: 56) {
-                ForEach(Tab.allCases) { tab in
+                ForEach(Tab.healthTabs) { tab in
                     let active = tab == selection
                     Button {
                         selection = tab

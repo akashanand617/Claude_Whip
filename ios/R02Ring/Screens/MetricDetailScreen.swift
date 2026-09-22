@@ -44,6 +44,7 @@ struct RangePicker: View {
 /// One frame, three datasets: the period average with its delta, and a chart that
 /// fills everything left over. Reached by tapping a stat on Today.
 struct MetricDetailScreen: View {
+    @EnvironmentObject private var model: AppModel
     let metric: Metric
     @Binding var tab: Tab
     var onBack: () -> Void
@@ -57,7 +58,7 @@ struct MetricDetailScreen: View {
         self._range = State(initialValue: metric.defaultRange)
     }
 
-    private var series: MetricSeries { HealthData.series(for: metric, range: range) }
+    private var series: MetricSeries { model.series(for: metric, range: range) }
 
     var body: some View {
         Screen(tab: $tab) {
@@ -79,7 +80,16 @@ struct MetricDetailScreen: View {
                     .padding(.horizontal, Tok.side)
                     .padding(.top, 0)   // the back button's tap target already carries the gap
 
+                if metric == .heartRate {
+                    heartRateMeasurement
+                        .padding(.horizontal, Tok.side)
+                        .padding(.top, 16)
+                }
+
                 chart
+                    // A new range starts with a clean chart. Its exact values appear
+                    // only after the user taps or drags across a day/bucket.
+                    .id(range)
                     .padding(.horizontal, Tok.side)
                     .padding(.top, 26)
                     .frame(maxHeight: .infinity)
@@ -91,6 +101,35 @@ struct MetricDetailScreen: View {
             }
             .animation(.easeOut(duration: 0.2), value: range)
         }
+        .onDisappear {
+            if metric == .heartRate { model.stopHeartRateMeasurement() }
+        }
+    }
+
+    private var heartRateMeasurement: some View {
+        Button {
+            if model.isMeasuringHeartRate {
+                model.stopHeartRateMeasurement()
+            } else {
+                model.measureHeartRate()
+            }
+        } label: {
+            HStack {
+                if model.isMeasuringHeartRate { ProgressView().tint(Tok.accent) }
+                Text(model.isMeasuringHeartRate ? "Measuring…" : "Measure now")
+                    .font(.mono(11, .medium))
+                Spacer()
+                if let bpm = model.liveHeartRate {
+                    Text("\(bpm) bpm").font(.mono(12)).foregroundStyle(Tok.accent)
+                }
+            }
+            .foregroundStyle(Tok.text)
+            .frame(minHeight: 44)
+            .padding(.horizontal, 12)
+            .overlay { Rectangle().strokeBorder(Tok.hairline, lineWidth: Tok.hairlineWidth) }
+        }
+        .buttonStyle(.plain)
+        .disabled(!model.ringManager.isReady)
     }
 
     private var headline: some View {
