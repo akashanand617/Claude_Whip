@@ -38,6 +38,11 @@ from whip.realtime import Engine, EventLog, RouterConfig
 from whip.registry import load_registry
 
 LIVE_DIR = Path("data/live")
+# The raw stream and the cues are ALSO written as an ordinary prompted
+# session, so a live run can be replayed offline through the exporter and
+# scored by the same tools -- the only real parity check between the live
+# engine and the offline pipeline on identical bytes.
+SESSIONS_DIR = Path("data/sessions")
 COUNTDOWN_S = 3
 # An event for a cue must land in this window after the cue: the gesture
 # takes up to ~1.5 s and the engine reports ~1.3 s after it ends.
@@ -130,9 +135,13 @@ async def run(args: argparse.Namespace) -> int:
     threshold = args.threshold if args.threshold is not None else config.threshold
     engine = Engine.from_checkpoint(args.checkpoint, threshold=threshold)
     schedule = [] if args.free else build_schedule(args, registry)
-    LIVE_DIR.mkdir(parents=True, exist_ok=True)
+    LIVE_DIR.mkdir(parents=True, exist_ok=True); SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
     stamp = time.strftime("%Y%m%d_%H%M%S")
     out = LIVE_DIR / f"livetest_{stamp}.jsonl"
+    session_id = f"livetest_{stamp}"
+    sink = SESSIONS_DIR / f"{session_id}.jsonl"
+    notes = session.SessionNotes(session_id=session_id, started_wall=time.time(), kind="prompted",
+                                 hand="left", ring_position="index", note="live test; cues scored against live events")
     log = EventLog()
     fh = out.open("w")
     fh.write(json.dumps({"kind": "header", "checkpoint": str(args.checkpoint), "threshold": threshold,
@@ -183,6 +192,7 @@ async def run(args: argparse.Namespace) -> int:
             for n in range(COUNTDOWN_S, 0, -1):
                 print(f"        {n}...", end="\r", flush=True); await asyncio.sleep(1.0)
             cue_at = stream_clock(); print("        >>> NOW                       ", flush=True)
+            notes.add_mark(prompt, cue_at)
             cues.append(CueResult(index=prompt.index, cue_at=cue_at, expected=exp))
             await asyncio.sleep(WINDOW_S)
             c = cues[-1]; c.verdict, c.latency_s, c.fired = score_cue(exp, events, cue_at)
@@ -200,13 +210,16 @@ async def run(args: argparse.Namespace) -> int:
         check_ring(info, None if args.any_ring else protocol.EXPECTED_RING, False)
         battery = await capture.read_battery(client)
         print(f"connected   {info.name}  fw {info.firmware}" + (f"  battery {battery[0]}%" if battery else ""))
-        rec = capture.Capture(device=info, started_wall=time.time(), param=protocol.RAW_ENABLE_ALL, label=f"livetest_{stamp}", notes={"stream_t0": 0.0})
+        rec = capture.Capture(device=info, started_wall=time.time(), param=protocol.RAW_ENABLE_ALL, label=session_id,
+                              notes={"session_kind": "prompted", "hand": "left", "ring_position": "index", "stream_t0": 0.0})
         consumer = asyncio.create_task(consume()); cuer = asyncio.create_task(cue_all(rec))
         started = time.perf_counter()
         try:
-            await capture.stream(client, duration=0, stop=stop, param=protocol.RAW_ENABLE_ALL, on_record=queue.append, capture=rec)
+            await capture.stream(client, duration=0, stop=stop, param=protocol.RAW_ENABLE_ALL, on_record=queue.append, capture=rec, sink=sink)
         finally:
             stop.set(); cuer.cancel()
+            if not args.free:
+                notes.write(SESSIONS_DIR / f"{session_id}.notes.json")
             await consumer
             for ev in engine.finish():
                 log.write(ev, config.action_for(ev))
@@ -215,6 +228,8 @@ async def run(args: argparse.Namespace) -> int:
             summary = summarize(cues, events, minutes)
             fh.write(json.dumps({"kind": "summary", **summary}) + "\n"); fh.close()
             print_summary(summary, out)
+            if not args.free:
+                print(f"  replay offline: python -m probe.audit {session_id} && python -m probe.livetest --replay {session_id}")
     return 0
 
 
@@ -225,6 +240,38 @@ def print_summary(s: dict, path: Path) -> None:
         for k, d in s["by_class"].items():
             print(f"    {k:20s} {d['hit']}/{d['n']}  wrong {d['wrong']}  miss {d['miss']}  latency {d['latency_s']}")
     print(f"  spurious events {s['spurious_events']} in {s['minutes']:.1f} min = {s['spurious_per_hour']}/h")
+
+
+def replay(session_id: str, checkpoint: Path, threshold: float | None) -> int:
+    """
+    Score the saved live session OFFLINE: exporter windows -> the same
+    checkpoint -> the same event logic -> the same cue scoring. If this
+    agrees with the live summary, the live engine is faithful; if it does
+    not, the difference is in the engine's stream handling, not the model.
+    """
+    import numpy as np, torch
+    from whip import dataset, evaluate, events
+    from whip import model as gm
+    registry = load_registry()
+    cap, notes_path = SESSIONS_DIR / f"{session_id}.jsonl", SESSIONS_DIR / f"{session_id}.notes.json"
+    ws = dataset.windows_from_session(cap, notes_path, registry=registry)
+    X = np.array([w.axes for w in ws], dtype="float32"); G = np.array([w.gravity for w in ws], dtype="float32"); starts = np.array([w.start_s for w in ws])
+    model, meta = gm.load(checkpoint); model.eval(); labels = meta["labels"]
+    thr = threshold if threshold is not None else RouterConfig.load().threshold
+    with torch.no_grad(): probs = torch.softmax(model(torch.tensor(gm.to_model_input(X, meta["channels"], gravity=G))), 1).numpy()
+    ev = events.detect(evaluate.labels_at(probs, labels, thr), starts.tolist(), policies=registry.policies(labels))
+    evs = [{"t_s": float(e.centre_s), "name": registry.collapse(e.label)[0], "direction": registry.collapse(e.label)[1], "confidence": 1.0} for e in ev]
+    marks = json.loads(notes_path.read_text())["marks"]
+    cues = []
+    for m in marks:
+        p = session.Prompt(index=m["index"], label=m["label"], direction=m["direction"], amplitude=m.get("amplitude", ""), windup="", posture="", tempo="")
+        c = CueResult(m["index"], m["cue_at"], expected_name(p, registry)); c.verdict, c.latency_s, c.fired = score_cue(c.expected, evs, c.cue_at); cues.append(c)
+    minutes = (starts[-1] - starts[0]) / 60 if len(starts) > 1 else 0
+    print(f"offline replay of {session_id} with {checkpoint} at thr {thr} ({len(ws)} windows):")
+    print_summary(summarize(cues, evs, minutes), cap)
+    for c in cues:
+        if c.verdict != "hit": print(f"    #{c.index:3d} {c.expected:20s} {c.verdict:5s} fired {[f'{e['name']}/{e['direction']}' for e in c.fired]}")
+    return 0
 
 
 def report(path: Path) -> int:
@@ -252,11 +299,14 @@ def main() -> int:
     parser.add_argument("--minutes", type=float, default=5.0, help="with --free: how long")
     parser.add_argument("--seed", type=int, default=None)
     parser.add_argument("--report", type=Path, default=None, help="summarise a finished log instead of running")
+    parser.add_argument("--replay", default=None, metavar="SESSION_ID", help="score a saved live session offline through the exporter")
     parser.add_argument("--address"); parser.add_argument("--timeout", type=float, default=25.0)
     parser.add_argument("--any-ring", action="store_true")
     args = parser.parse_args()
     if args.report:
         return report(args.report)
+    if args.replay:
+        return replay(args.replay, args.checkpoint, args.threshold)
     logging.basicConfig(level=logging.WARNING, format="%(levelname)s: %(message)s")
     try:
         return asyncio.run(run(args))
