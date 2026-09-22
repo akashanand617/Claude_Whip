@@ -1,0 +1,8 @@
+{
+  "mappings": {
+    "flick": "flag",
+    "double_flick": "approve"
+  },
+  "threshold": 0.5,
+  "_note": "gesture -> action for the Whip app. Keys may be direction-qualified ('flick:up' beats 'flick'). Available gestures: flick, double_flick (with up/down/left/right), snap, double_clap, wave. Unmapped gestures are still logged with action null."
+}
