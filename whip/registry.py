@@ -70,6 +70,16 @@ class GestureSpec:
     # (gesture, direction) before debouncing, so events and app config are
     # unchanged and the flag is reversible.
     split_by_direction: bool = False
+    # The audit's definition of a DOUBLE of this gesture: stroke-peak spacing
+    # in seconds, second/first peak ratio, and the fraction of the largest
+    # stroke a second stroke must reach to count. Defaults are the measured
+    # double flick (p5-p95 with margin). A double clap at the ring is one
+    # strong impact and one weak one 0.2-0.45 s apart, ratio 0.25-4, because
+    # only one of the two claps lands squarely on the ring hand -- 16 of 21
+    # correctly performed double claps failed the flick ranges (2026-09-21).
+    double_gap_s: tuple[float, float] = (0.20, 0.50)
+    double_ratio: tuple[float, float] = (0.50, 2.00)
+    stroke_ratio_floor: float = 0.35
 
     def __post_init__(self):
         if self.kind not in ("impulsive", "sustained"):
@@ -113,7 +123,7 @@ DEFAULT_GESTURES: tuple[GestureSpec, ...] = (
     # `clapping` alias, as repeated single claps). double_clap: two claps as
     # one gesture, the same two-quick-strokes range as double_flick.
     GestureSpec("clap", "impulsive", aliases=("clapping",)),
-    GestureSpec("double_clap", "impulsive"),
+    GestureSpec("double_clap", "impulsive", double_gap_s=(0.15, 0.50), double_ratio=(0.20, 5.00), stroke_ratio_floor=0.20),
     # Wave is the one sustained gesture: it has no fixed length, so it is
     # cued as a span ("keep waving") and fires once per run with a refractory.
     GestureSpec("wave", "sustained", aliases=("waving",), min_run=3, max_run=None, refractory_s=2.0),

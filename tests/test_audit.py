@@ -238,3 +238,16 @@ def test_hand_rule_reads_the_lateral_sign_and_a_frame_flip_reverses_it():
     assert audit.lateral_sign(flip @ win, flip @ grav) == +1
     # fingers pointing straight down: no lateral direction, no verdict
     assert audit.lateral_sign(win, f) is None
+
+
+def test_double_ranges_come_from_the_gesture_spec():
+    """A double clap is one strong impact and one weak one; the flick ranges would reject it."""
+    from whip.registry import load_registry
+    reg = load_registry(); dc = reg.resolve("double_clap"); df = reg.resolve("double_flick")
+    x, t = _stream([(2.1, 6.5), (2.4, 2.0)])           # 0.3 s apart, ratio 0.31
+    mf = audit.audit_gesture(x, t, 2.0, df); mc = audit.audit_gesture(x, t, 2.0, dc)
+    assert len(mf["strokes"]) == 1                      # under the flick stroke floor (35%)
+    assert len(mc["strokes"]) == 2                      # over the clap floor (20%)
+    gf = audit.GestureAudit(0, 2.0, "double_flick", "up", "", "", **mf); gf.flags = audit._flags_for(gf, df)
+    gc = audit.GestureAudit(0, 2.0, "double_clap", "any", "", "", **mc); gc.flags = audit._flags_for(gc, dc)
+    assert gf.verdict == "invalid" and gc.verdict == "valid"

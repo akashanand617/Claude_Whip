@@ -155,19 +155,20 @@ class GestureAudit:
         return d
 
 
-def strokes_in(mag: np.ndarray, t_rel: np.ndarray) -> list[tuple[float, float]]:
-    """Local maxima of |a| above the floor, at least MIN_STROKE_SPACING_S apart, in time order."""
+def strokes_in(mag: np.ndarray, t_rel: np.ndarray, ratio_floor: float = STROKE_RATIO_FLOOR,
+               min_spacing_s: float = MIN_STROKE_SPACING_S) -> list[tuple[float, float]]:
+    """Local maxima of |a| above the floor, at least `min_spacing_s` apart, in time order."""
     cand = [i for i in range(1, len(mag) - 1)
             if mag[i] >= mag[i - 1] and mag[i] > mag[i + 1] and mag[i] > STROKE_FLOOR_G]
     cand.sort(key=lambda i: -mag[i])
     kept: list[int] = []
     for i in cand:
-        if all(abs(t_rel[i] - t_rel[j]) >= MIN_STROKE_SPACING_S for j in kept):
+        if all(abs(t_rel[i] - t_rel[j]) >= min_spacing_s for j in kept):
             kept.append(i)
     if not kept:
         return []
     top = mag[kept[0]]
-    kept = [i for i in kept if mag[i] >= STROKE_RATIO_FLOOR * top]
+    kept = [i for i in kept if mag[i] >= ratio_floor * top]
     return sorted((float(t_rel[i]), float(mag[i])) for i in kept)
 
 
@@ -188,7 +189,7 @@ def vertical_fraction(x_g: np.ndarray, rest: np.ndarray) -> float | None:
     return float((along ** 2).sum() / tot) if tot > 0 else None
 
 
-def audit_gesture(x_g: np.ndarray, times: np.ndarray, cue_at: float) -> dict:
+def audit_gesture(x_g: np.ndarray, times: np.ndarray, cue_at: float, spec=None) -> dict:
     """
     Measurements for one cued gesture. `x_g` is (3, N) in g, despiked; rest is
     the mean over the second before the cue.
@@ -207,11 +208,15 @@ def audit_gesture(x_g: np.ndarray, times: np.ndarray, cue_at: float) -> dict:
     expected = (SPAN_S + 0.3) * dataset.SAMPLE_RATE_HZ
     loss = max(0.0, 1.0 - win.sum() / expected)
     clip = float((np.abs(seg) >= 0.98 * FULL_SCALE_G).any(axis=0).mean())
-    return dict(peak_g=peak, onset_s=onset, strokes=strokes_in(mag, t_rel),
+    floor = spec.stroke_ratio_floor if spec is not None else STROKE_RATIO_FLOOR
+    spacing = min(MIN_STROKE_SPACING_S, spec.double_gap_s[0]) if spec is not None else MIN_STROKE_SPACING_S
+    return dict(peak_g=peak, onset_s=onset, strokes=strokes_in(mag, t_rel, floor, spacing),
                 vertical_frac=vertical_fraction(seg, rest), clip_frac=clip, loss=loss)
 
 
-def _flags_for(g: GestureAudit) -> list[str]:
+def _flags_for(g: GestureAudit, spec=None) -> list[str]:
+    gap_range = spec.double_gap_s if spec is not None else DOUBLE_GAP_RANGE_S
+    ratio_range = spec.double_ratio if spec is not None else DOUBLE_RATIO_RANGE
     flags: list[str] = []
     if g.loss > MAX_LOSS:
         flags.append("SAMPLE_LOSS")
@@ -227,10 +232,10 @@ def _flags_for(g: GestureAudit) -> list[str]:
         if len(g.strokes) == 1:
             flags.append("DOUBLE_WITH_ONE_STROKE")
         elif len(g.strokes) >= 2:
-            lo, hi = DOUBLE_GAP_RANGE_S
+            lo, hi = gap_range
             if not (lo <= g.stroke_gap_s <= hi):
                 flags.append("DOUBLE_GAP_OUT_OF_RANGE")
-            lo, hi = DOUBLE_RATIO_RANGE
+            lo, hi = ratio_range
             if not (lo <= g.stroke_ratio <= hi):
                 flags.append("DOUBLE_RATIO_OUT_OF_RANGE")
     else:
@@ -266,12 +271,12 @@ def audit_session(capture_path: Path, notes_path: Path, registry: Registry | Non
         spec = registry.resolve(m.get("label", ""))
         if spec is None or spec.kind != "impulsive":
             continue
-        meas = audit_gesture(x_g, times, m["cue_at"])
+        meas = audit_gesture(x_g, times, m["cue_at"], spec)
         nxt = point_marks[n + 1][1]["cue_at"] - m["cue_at"] if n + 1 < len(point_marks) else None
         g = GestureAudit(index=m.get("index", i), cue_at=float(m["cue_at"]), label=spec.name,
                          direction=m.get("direction", "none"), amplitude=m.get("amplitude", ""),
                          tempo=m.get("tempo", ""), next_cue_s=nxt, **meas)
-        g.flags = _flags_for(g)
+        g.flags = _flags_for(g, spec)
         if m.get("exclude"):
             # The wearer's own call, recorded on the mark ("did it too early
             # and redid it late", "phone rang"). The audit cannot know that.
