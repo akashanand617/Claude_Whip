@@ -43,7 +43,7 @@ from whip.registry import Registry, load_registry
 DEFAULT_CONFIG_PATH = Path("data/app_config.json")
 EVENT_LOG_DIR = Path("data/live")
 
-DEFAULT_THRESHOLD = 0.6
+DEFAULT_THRESHOLD = 0.5   # chosen on val 2026-09-21: recovers mid-run confidence dips, ambient still 0
 
 
 @dataclass(frozen=True)

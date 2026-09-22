@@ -44,11 +44,11 @@ def test_gestures_are_dealt_per_class_across_sessions_and_windows_follow_their_g
 
 def test_stratification_is_per_class_and_the_seed_fixes_it(tmp_path):
     marks = ([{"index": i, "label": "snap", "direction": "any", "cue_at": 5.0 + 3 * i} for i in range(10)]
-             + [{"index": 10 + i, "label": "clap", "direction": "any", "cue_at": 40.0 + 3 * i} for i in range(10)])
+             + [{"index": 10 + i, "label": "double_clap", "direction": "any", "cue_at": 40.0 + 3 * i} for i in range(10)])
     _session(tmp_path, "s", marks)
     p1 = sp.resolve(sp.Plan(seed=7, fractions=[0.6, 0.2, 0.2]), tmp_path, {"s": (0.0, 75.0)})
     p2 = sp.resolve(sp.Plan(seed=7, fractions=[0.6, 0.2, 0.2]), tmp_path, {"s": (0.0, 75.0)})
-    for lab in ("snap", "clap"):
+    for lab in ("snap", "double_clap"):
         c = Counter(sp.part_of_mark(p1, "s", m["cue_at"]) for m in marks if m["label"] == lab)
         assert c == {"train": 6, "val": 2, "test": 2}
     assert [iv.part for iv in p1.intervals["s"]] == [iv.part for iv in p2.intervals["s"]]

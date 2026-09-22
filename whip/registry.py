@@ -115,14 +115,18 @@ DEFAULT_GESTURES: tuple[GestureSpec, ...] = (
     # is exactly right here: instead of hoping the model treats snaps as `none`,
     # it is forced to learn the snap/flick boundary explicitly, and the app
     # simply does not map `snap` to any action unless asked to.
+    # Snap and clap are the same 2-3 sample shock at the ring: a random
+    # forest on hand features tells the families apart at only 89.7%, and the
+    # CNN's remaining errors were exactly that pair. Vocabulary decided
+    # 2026-09-21: single SNAP and DOUBLE CLAP -- a pair that differs by count,
+    # never by width alone. double_snap and single clap are retired; their
+    # recordings stay on disk and export as unlabelled negatives.
     GestureSpec("snap", "impulsive", aliases=("snapping",)),
-    GestureSpec("double_snap", "impulsive"),
     # A single clap is as impulsive as a snap and is point-cued like one
     # (2026-09-16; it was a sustained span because the only clap data was a
     # 20 s "keep clapping" block -- that block still exports under the
     # `clapping` alias, as repeated single claps). double_clap: two claps as
     # one gesture, the same two-quick-strokes range as double_flick.
-    GestureSpec("clap", "impulsive", aliases=("clapping",)),
     GestureSpec("double_clap", "impulsive", double_gap_s=(0.15, 0.50), double_ratio=(0.20, 5.00), stroke_ratio_floor=0.20),
     # Wave is the one sustained gesture: it has no fixed length, so it is
     # cued as a span ("keep waving") and fires once per run with a refractory.

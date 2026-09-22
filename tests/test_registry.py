@@ -12,7 +12,7 @@ def test_legacy_aliases_resolve_to_canonical_names():
     assert r.canonical("approve") == "double_flick"
     assert r.canonical("waving") == "wave"
     assert r.canonical("snapping") == "snap"
-    assert r.canonical("clapping") == "clap"
+    assert r.resolve("clapping") is None            # single clap retired 2026-09-21
 
 
 def test_unknown_names_resolve_to_nothing():
@@ -122,6 +122,6 @@ def test_double_clap_and_clap_are_impulsive_and_wave_is_the_only_span():
     r = load_registry()
     spec = r.resolve("double_clap")
     assert spec is not None and spec.kind == "impulsive" and spec.max_run is not None
-    assert r.resolve("clap").kind == "impulsive" and r.resolve("clap").max_run is not None
+    assert r.resolve("clap") is None and r.resolve("double_snap") is None
     assert r.resolve("wave").kind == "sustained"
     assert "double_clap" in r.training_names()
