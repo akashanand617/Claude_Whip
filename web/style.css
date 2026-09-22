@@ -90,3 +90,6 @@ th, td { text-align: left; padding: 6px 14px 6px 0; border-bottom: 1px solid var
 th { color: var(--muted); font-weight: 500; font-size: 13px; }
 
 footer { padding: 14px 22px; border-top: 1px solid var(--line); margin-top: 24px; }
+
+#frame-line.warn { color: #b8860b; font-weight: 600; }
+#frame-line.ok { color: #2e8b57; font-weight: 600; }

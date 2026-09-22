@@ -107,10 +107,10 @@ function renderProbs(probs) {
 
 function renderEvent(ev) {
   const li = document.createElement("li");
-  const dir = ev.direction && ev.direction !== "none" ? ` ${ev.direction}` : "";
+  const dir = ev.direction && ev.direction !== "none" ? ` <strong>${ev.direction.toUpperCase()}</strong>` : "";
   const action = ev.action ? ` → <strong>${ev.action.toUpperCase()}</strong>` : "";
   li.innerHTML = `<span class="t">${ev.t_s.toFixed(1)}s</span>
-    <span class="gesture">${ev.name}${dir}</span>
+    <span class="gesture">${ev.name.replace("_", " ")}${dir}</span>
     <span class="conf">${(ev.confidence * 100).toFixed(0)}%</span>${action}`;
   $("events").prepend(li);
   while ($("events").children.length > 40) $("events").lastChild.remove();
@@ -264,6 +264,11 @@ function connectSocket() {
       drawWave();
       renderProbs(msg.probabilities || {});
       renderFrame(msg.frame);
+    } else if (msg.type === "calibration") {
+      const el = $("frame-line");
+      el.textContent = msg.message;
+      el.className = msg.status === "ok" ? "ok" : "warn";
+      if (msg.status === "ok") lastFrame = msg.frame;
     } else if (msg.type === "event") renderEvent(msg);
     else if (msg.type === "flash") renderFlash(msg);
     else if (msg.type === "error") alertBox(msg.message);

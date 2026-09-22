@@ -59,6 +59,9 @@ CONFIRM_WORD = "FLASH"
 UI_PUSH_INTERVAL_S = 0.15
 
 
+CALIBRATION_S = 3.0
+
+
 class RingManager:
     """All ring state, mutated only under its lock."""
 
@@ -222,6 +225,14 @@ class RingManager:
 
         async def consume() -> None:
             last_push = 0.0
+            # Tracking starts with the fingers-down pose: 3 s of stillness with
+            # the arm hanging tells the engine which way round the ring is.
+            # No event is scored, logged or shown until the pose has been
+            # held; samples still flow so the waveform is visible.
+            pose: list[tuple[float, float, float]] = []
+            pose_started = None
+            last_hint = 0.0
+            self.calibrated = False
             while not stop.is_set():
                 drained = False
                 while self._queue:
@@ -232,6 +243,27 @@ class RingManager:
                         from whip import accel
                         s = accel.decode(payload)
                         recent.append((round(t, 3), s.x, s.y, s.z))
+                        if not self.calibrated:
+                            pose.append((s.x, s.y, s.z)); pose = pose[-Engine.POSE_SAMPLES:]
+                            pose_started = t if pose_started is None else pose_started
+                    if not self.calibrated:
+                        if pose_started is not None and t - pose_started >= CALIBRATION_S and len(pose) >= Engine.POSE_SAMPLES:
+                            frame = Engine.frame_from_pose(pose)
+                            if frame is not None:
+                                engine.set_frame(frame, t)
+                                self.calibrated = True
+                                await self.broadcast({"type": "calibration", "status": "ok", "frame": frame,
+                                                      "message": "frame set -- tracking is live; bring the hand back slowly"})
+                            elif t - last_hint >= 1.0:
+                                last_hint = t
+                                await self.broadcast({"type": "calibration", "status": "retry",
+                                                      "message": "pose not held: arm hanging, fingers at the floor, still for 3 s"})
+                        elif t - last_hint >= 1.0:
+                            last_hint = t
+                            left = max(0.0, CALIBRATION_S - (t - (pose_started or t)))
+                            await self.broadcast({"type": "calibration", "status": "hold", "seconds_left": round(left, 1),
+                                                  "message": f"calibrating: let your arm hang, fingers at the floor, hold still ({left:.0f} s)"})
+                        continue
                     for event in engine.feed(t, payload):
                         action = config.action_for(event)
                         log.write(event, action)
