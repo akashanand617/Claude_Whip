@@ -48,7 +48,13 @@ def test_sustained_motion_is_rejected_by_the_upper_bound():
 
 
 def test_adjacent_runs_of_different_classes_are_separate_events():
-    preds = run_of("flag", 5) + run_of("approve", 5)
+    """
+    Two different classes back to back: the second is a new event only once
+    the dead time after the first has passed (a run starting one stride after
+    a fired run is that event's tail, see DEAD_TIME_S). Here the second run
+    starts 0.72 s after the first ends: two events.
+    """
+    preds = run_of("flag", 5) + run_of("none", 3) + run_of("approve", 5)
     ev = events.detect(preds, starts_for(len(preds)))
     assert [e.label for e in ev] == ["flag", "approve"]
 
@@ -163,3 +169,12 @@ def test_a_hole_in_the_stream_breaks_a_run():
     # and a normal one-stride step does not break anything
     c = [(i * stride, "flick") for i in range(12)]
     assert [e.run_length for e in events.detect([l for _, l in c], [t for t, _ in c])] == [12]
+
+
+def test_a_tail_run_right_after_an_event_is_absorbed_and_a_later_gesture_is_not():
+    """A double flick's second stroke, alone in the window after the event fires, is not a new single flick."""
+    st = events.STRIDE_S
+    seq = [(i * st, "double_flick") for i in range(6)] + [((6 + i) * st, "flick") for i in range(4)]   # tail starts one stride after
+    seq += [(5.0 + i * st, "flick") for i in range(5)]                                                   # a real flick 3 s later
+    got = events.detect([l for _, l in seq], [t for t, _ in seq])
+    assert [(e.label, round(e.start_s, 2)) for e in got] == [("double_flick", 0.0), ("flick", 5.0)]

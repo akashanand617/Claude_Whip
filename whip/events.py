@@ -31,6 +31,15 @@ WINDOW_S = 2.0    # 50 samples at 25 Hz
 # Consecutive windows arrive one stride apart. A step longer than this is a
 # hole in the stream, and a run does not continue across a hole.
 MAX_RUN_STEP_S = 2 * STRIDE_S
+# After an impulsive event fires, a run that STARTS within this of the fired
+# run's end is its tail, not a new gesture: as a double flick's first stroke
+# leaves the window the remaining windows hold one stroke and read as a
+# single flick -- live, "double_flick up" was followed 1.1 s later by
+# "flick up" (2026-09-21, 2 of 20 cues). The tail run starts ONE STRIDE after
+# the fired run ends; a real next gesture in a blocked session starts about
+# 1 s after, so the dead time is 0.5 s -- 1.0 s absorbed a genuine snap
+# whose run began 0.97 s after the previous one's.
+DEAD_TIME_S = 0.5
 
 # The impulsive default band: a 1.2 s gesture inside a 2.0 s window at 0.24 s
 # stride produces ~6 positive windows; sustained motion produces far more.
@@ -113,6 +122,9 @@ class RunTracker:
     # and measuring from the fire would let a long wave re-fire after its own
     # refractory while still in progress.
     _suppressed_until: dict[str, float] = field(default_factory=dict)
+    # End of the last fired impulsive run + DEAD_TIME_S; impulsive runs
+    # starting before this are absorbed as that event's tail.
+    _dead_until: float = float("-inf")
 
     def policy_for(self, label: str) -> RunPolicy:
         return self.policies.get(label, self.default)
@@ -180,7 +192,10 @@ class RunTracker:
             return None
 
         run = len(starts)
+        if starts[0] < self._dead_until:
+            return None
         if policy.min_run <= run <= (policy.max_run or run):
+            self._dead_until = end_at + DEAD_TIME_S
             return Event(label, starts[0], starts[-1], run)
         return None
 
