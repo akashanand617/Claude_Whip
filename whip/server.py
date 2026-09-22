@@ -28,6 +28,7 @@ import asyncio
 import collections
 import json
 import logging
+import time
 from pathlib import Path
 
 from aiohttp import WSMsgType, web
@@ -252,6 +253,9 @@ class RingManager:
                             if frame is not None:
                                 engine.set_frame(frame, t)
                                 self.calibrated = True
+                                from whip import audit
+                                if getattr(self, "_raw_sink", None) is not None:
+                                    audit.set_frame(self._raw_sink, frame, evidence="console calibration pose")
                                 await self.broadcast({"type": "calibration", "status": "ok", "frame": frame,
                                                       "message": "frame set -- tracking is live; bring the hand back slowly"})
                             elif t - last_hint >= 1.0:
@@ -284,9 +288,16 @@ class RingManager:
 
         consumer = asyncio.create_task(consume())
         try:
+            # The raw stream is kept next to the event log (data/live/
+            # console_<stamp>.jsonl) so any live session can be replayed
+            # offline: `python -m probe.live --replay <that file>`.
+            raw_sink = log.path.with_name(log.path.name.replace("events_", "console_"))
+            rec = capture.Capture(device=self.info, started_wall=time.time(), param=protocol.RAW_ENABLE_ALL,
+                                  label=raw_sink.stem, notes={"session_kind": "live", "stream_t0": 0.0})
+            self._raw_sink = raw_sink
             await capture.stream(self.client, duration=0, stop=stop,
                                  param=protocol.RAW_ENABLE_ALL,
-                                 on_record=self._queue.append)
+                                 on_record=self._queue.append, capture=rec, sink=raw_sink)
         except Exception as exc:  # noqa: BLE001 - surface, then settle state
             logger.warning("stream ended: %s", exc)
             await self.broadcast({"type": "error", "message": f"stream ended: {exc}"})

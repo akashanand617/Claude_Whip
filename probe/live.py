@@ -87,6 +87,29 @@ async def run(args: argparse.Namespace) -> int:
     return 0
 
 
+def replay(path: Path, checkpoint: Path, threshold: float | None) -> int:
+    """Run the engine over a saved raw stream (console_*.jsonl / livetest session) exactly as live, with its frame file."""
+    from whip import audit
+    config = RouterConfig.load()
+    engine = Engine.from_checkpoint(checkpoint, threshold=threshold if threshold is not None else config.threshold)
+    engine.auto_frame = False
+    fr = audit.frame_path(path)
+    if fr.exists():
+        import json as _json
+        engine.set_frame(_json.loads(fr.read_text())["rotation"])
+    print(f"replay {path}  frame {engine.frame_name}  threshold {engine.threshold:.2f}")
+    _, records = capture.load_capture(path)
+    n = 0
+    for t, payload in records:
+        for ev in engine.feed(t, payload):
+            n += 1; action = config.action_for(ev)
+            print(f"  [{ev.t_s:8.2f}s] {ev.name:<13} dir={ev.direction:<6} conf={ev.confidence:.2f} run={ev.run_length}{'  -> ' + action.upper() if action else ''}")
+    for ev in engine.finish():
+        n += 1; print(f"  [{ev.t_s:8.2f}s] {ev.name:<13} dir={ev.direction:<6} conf={ev.confidence:.2f} run={ev.run_length}")
+    print(f"{n} events over {len(records)} packets ({len(records)/25/60:.1f} min)")
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Live gesture tracking without the browser")
     parser.add_argument("--checkpoint", type=Path, default=Path("data/model.pt"))
@@ -94,7 +117,10 @@ def main() -> int:
                         help="detection threshold; default from data/app_config.json")
     parser.add_argument("--address")
     parser.add_argument("--timeout", type=float, default=25.0)
+    parser.add_argument("--replay", type=Path, default=None, help="run the engine over a saved raw stream instead of the ring")
     args = parser.parse_args()
+    if args.replay:
+        return replay(args.replay, args.checkpoint, args.threshold)
 
     logging.basicConfig(level=logging.WARNING, format="%(levelname)s: %(message)s")
     try:
