@@ -134,19 +134,27 @@ def gesture_hits(
     truth: list[tuple[float, str]],
     tolerance_s: float = events.MATCH_TOLERANCE_S,
     require_class: bool = True,
+    early_s: float | None = None,
 ) -> list[bool]:
     """
     One boolean per labelled gesture: was it detected?
 
     Returned per gesture rather than aggregated, because the bootstrap needs the
     individual outcomes to resample. A mean of this list is the recall.
+
+    `early_s` widens the window BEFORE the cue: burst events are timed at the
+    motion's onset, and a wearer on a predictable schedule starts up to 1.4 s
+    before the cue (the split's own `MARK_BEFORE_S`); the run decoder's
+    centre-of-run estimate landed inside +/-0.75 s by construction, an onset
+    does not. Defaults to the symmetric tolerance.
     """
+    early = tolerance_s if early_s is None else early_s
     remaining = list(detected)
     hits = []
     for t, label in truth:
         match = next(
             (e for e in remaining
-             if abs(e.centre_s - t) <= tolerance_s and (e.label == label or not require_class)),
+             if -early <= e.centre_s - t <= tolerance_s and (e.label == label or not require_class)),
             None)
         if match is not None:
             remaining.remove(match)

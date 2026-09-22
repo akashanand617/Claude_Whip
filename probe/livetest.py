@@ -47,6 +47,7 @@ COUNTDOWN_S = 3
 # An event for a cue must land in this window after the cue: the gesture
 # takes up to ~1.5 s and the engine reports ~1.3 s after it ends.
 WINDOW_S = 3.5
+EARLY_S = 0.6     # a gesture may start this long before its cue (a fifth of the corpus does; onset is the event time)
 GAP_S = (1.0, 2.0)
 
 
@@ -69,7 +70,7 @@ def score_cue(expected: str, events: list[dict], cue_at: float, window_s: float 
     The FIRST event in the window decides: hit if it matches, wrong if it is
     another gesture or direction, miss if nothing arrived.
     """
-    inside = [e for e in events if cue_at <= e["t_s"] <= cue_at + window_s]
+    inside = [e for e in events if cue_at - EARLY_S <= e["t_s"] <= cue_at + window_s]
     if not inside:
         return "miss", None, []
     first = inside[0]
@@ -80,15 +81,18 @@ def score_cue(expected: str, events: list[dict], cue_at: float, window_s: float 
 def summarize(cues: list[CueResult], events: list[dict], minutes: float) -> dict:
     by_class: dict[str, dict] = {}
     for c in cues:
-        d = by_class.setdefault(c.expected, {"n": 0, "hit": 0, "wrong": 0, "miss": 0, "latency": []})
+        d = by_class.setdefault(c.expected, {"n": 0, "hit": 0, "wrong": 0, "miss": 0, "latency": [], "decision": []})
         d["n"] += 1; d[c.verdict] += 1
         if c.latency_s is not None:
             d["latency"].append(c.latency_s)
-    cue_windows = [(c.cue_at, c.cue_at + WINDOW_S) for c in cues]
+        dec = [e.get("latency_s") for e in c.fired[:1] if e.get("latency_s") is not None]
+        d["decision"].extend(dec)
+    cue_windows = [(c.cue_at - EARLY_S, c.cue_at + WINDOW_S) for c in cues]
     spurious = [e for e in events if not any(lo <= e["t_s"] <= hi for lo, hi in cue_windows)]
     for d in by_class.values():
         d["latency_s"] = round(sum(d["latency"]) / len(d["latency"]), 2) if d["latency"] else None
-        del d["latency"]
+        d["decision_s"] = round(sum(d["decision"]) / len(d["decision"]), 2) if d["decision"] else None
+        del d["latency"], d["decision"]
     n = len(cues); hits = sum(c.verdict == "hit" for c in cues)
     return {"cues": n, "hits": hits, "wrong": sum(c.verdict == "wrong" for c in cues), "miss": sum(c.verdict == "miss" for c in cues),
             "recall": round(hits / n, 3) if n else None, "spurious_events": len(spurious),
@@ -218,7 +222,8 @@ async def run(args: argparse.Namespace) -> int:
             hits = sum(x.verdict == "hit" for x in cues)
             mark = {"hit": "HIT ", "wrong": "WRONG", "miss": "MISS"}[c.verdict]
             got = f" got {c.fired[0]['name']}/{c.fired[0]['direction']}" if c.verdict == "wrong" else ""
-            print(f"        {mark}{got}   latency {c.latency_s if c.latency_s is not None else '-'} s     score {hits}/{len(cues)}", flush=True)
+            dec = next((e.get("latency_s") for e in c.fired[:1] if e.get("latency_s") is not None), None)
+            print(f"        {mark}{got}   onset {c.latency_s if c.latency_s is not None else '-'} s after cue, decided {dec if dec is not None else '-'} s after onset     score {hits}/{len(cues)}", flush=True)
             await asyncio.sleep(rng.uniform(*GAP_S))
         await asyncio.sleep(2.0); stop.set()
 
@@ -260,7 +265,7 @@ def print_summary(s: dict, path: Path) -> None:
     if s["cues"]:
         print(f"  cues {s['cues']}  hits {s['hits']}  wrong {s['wrong']}  miss {s['miss']}  recall {100*s['recall']:.1f}%")
         for k, d in s["by_class"].items():
-            print(f"    {k:20s} {d['hit']}/{d['n']}  wrong {d['wrong']}  miss {d['miss']}  latency {d['latency_s']}")
+            print(f"    {k:20s} {d['hit']}/{d['n']}  wrong {d['wrong']}  miss {d['miss']}  onset after cue {d['latency_s']} s  decided after onset {d.get('decision_s')} s")
     print(f"  spurious events {s['spurious_events']} in {s['minutes']:.1f} min = {s['spurious_per_hour']}/h")
 
 
@@ -281,8 +286,11 @@ def replay(session_id: str, checkpoint: Path, threshold: float | None) -> int:
     model, meta = gm.load(checkpoint); model.eval(); labels = meta["labels"]
     thr = threshold if threshold is not None else RouterConfig.load().threshold
     with torch.no_grad(): probs = torch.softmax(model(torch.tensor(gm.to_model_input(X, meta["channels"], gravity=G))), 1).numpy()
-    ev = events.detect(evaluate.labels_at(probs, labels, thr), starts.tolist(), policies=registry.policies(labels))
-    evs = [{"t_s": float(e.centre_s), "name": registry.collapse(e.label)[0], "direction": registry.collapse(e.label)[1], "confidence": 1.0} for e in ev]
+    times, stream = dataset.stream_g(cap)
+    ev = events.detect_bursts(evaluate.labels_at(probs, labels, thr), starts.tolist(), times, events.impulsive_magnitude(stream),
+                              policies=registry.policies(labels))
+    evs = [{"t_s": float(e.centre_s), "name": registry.collapse(e.label)[0], "direction": registry.collapse(e.label)[1],
+            "confidence": 1.0, "latency_s": e.latency_s} for e in ev]
     marks = json.loads(notes_path.read_text())["marks"]
     cues = []
     for m in marks:

@@ -307,6 +307,11 @@ class RingManager:
                         log.write(event, action)
                         await self.broadcast({"type": "event",
                                               **event.as_dict(), "action": action})
+                    # Every movement the decoder judged, event or not, so the
+                    # console can say "that was one 4.4 s movement, too long
+                    # for a gesture" instead of showing nothing.
+                    for burst in engine.new_bursts():
+                        await self.broadcast({"type": "burst", **burst})
                 if not drained:
                     await asyncio.sleep(0.03)
                 now = asyncio.get_running_loop().time()

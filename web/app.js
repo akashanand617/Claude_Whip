@@ -109,9 +109,28 @@ function renderEvent(ev) {
   const li = document.createElement("li");
   const dir = ev.direction && ev.direction !== "none" ? ` <strong>${ev.direction.toUpperCase()}</strong>` : "";
   const action = ev.action ? ` → <strong>${ev.action.toUpperCase()}</strong>` : "";
+  const lat = ev.latency_s != null ? ` <span class="conf">decided ${ev.latency_s.toFixed(2)}s after onset</span>` : "";
   li.innerHTML = `<span class="t">${ev.t_s.toFixed(1)}s</span>
     <span class="gesture">${ev.name.replace("_", " ")}${dir}</span>
-    <span class="conf">${(ev.confidence * 100).toFixed(0)}%</span>${action}`;
+    <span class="conf">${(ev.confidence * 100).toFixed(0)}%</span>${action}${lat}`;
+  $("events").prepend(li);
+  while ($("events").children.length > 40) $("events").lastChild.remove();
+}
+
+/* A movement the decoder judged but did not turn into a gesture. Shown so
+   "nothing happened" and "that was one long movement" look different. */
+const BURST_REASONS = {
+  too_long: "one continuous movement, too long for a gesture",
+  no_consensus: "movement, but the windows did not agree on a gesture",
+  no_votes: "movement too close to another to judge on its own",
+};
+function renderBurst(b) {
+  if (!(b.outcome in BURST_REASONS)) return;   // outcomes that are gestures arrive as events
+  const li = document.createElement("li");
+  li.className = "movement";
+  li.innerHTML = `<span class="t">${b.on_s.toFixed(1)}s</span>
+    <span class="gesture">movement ${b.duration_s.toFixed(1)}s</span>
+    <span class="conf">${BURST_REASONS[b.outcome]}</span>`;
   $("events").prepend(li);
   while ($("events").children.length > 40) $("events").lastChild.remove();
 }

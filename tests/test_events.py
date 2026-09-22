@@ -178,3 +178,84 @@ def test_a_tail_run_right_after_an_event_is_absorbed_and_a_later_gesture_is_not(
     seq += [(5.0 + i * st, "flick") for i in range(5)]                                                   # a real flick 3 s later
     got = events.detect([l for _, l in seq], [t for t, _ in seq])
     assert [(e.label, round(e.start_s, 2)) for e in got] == [("double_flick", 0.0), ("flick", 5.0)]
+
+
+# ---------------------------------------------------------------- bursts
+
+from whip.events import RunPolicy
+
+def _burst_case(bursts, labeller, n_seconds=20.0):
+    """Synthetic stream: (t, magnitudes) with bursts above 1 g, and windows labelled by `labeller(start, end)`."""
+    import numpy as np
+    t = np.arange(0, n_seconds, 0.04); mag = np.zeros_like(t)
+    for a, b in bursts:
+        mag[(t >= a) & (t < b)] = 3.0
+    starts = [float(t[i]) for i in range(0, len(t) - 49, 6)]
+    labels = [labeller(s, s + 2.0) for s in starts]
+    return t, mag, starts, labels
+
+
+def _contains(s, e, a, b):
+    return s <= a - 0.1 and e >= b + 0.1
+
+
+def test_same_class_gestures_in_succession_are_separate_events():
+    """Two flicks 1 s apart made ONE run (one event) under the run tracker; a burst each now."""
+    from whip.events import detect_bursts
+    flicks = ((3.0, 3.3), (4.3, 4.6), (5.5, 5.8))
+    t, mag, starts, labels = _burst_case(flicks, lambda s, e: "flick" if any(_contains(s, e, a, b) for a, b in flicks) else "none")
+    ev = detect_bursts(labels, starts, t, mag, policies={"flick": RunPolicy()})
+    assert [(e.label, round(e.at_s, 2)) for e in ev] == [("flick", 3.0), ("flick", 4.32), ("flick", 5.52)]
+    assert all(e.latency_s is not None and 0.8 < e.latency_s < 2.2 for e in ev)
+
+
+def test_a_different_gesture_right_after_another_is_not_absorbed():
+    from whip.events import detect_bursts
+    t, mag, starts, labels = _burst_case(((8.0, 8.3), (9.0, 9.05)),
+                                         lambda s, e: "flick" if _contains(s, e, 8.0, 8.3) else "snap" if s <= 8.9 and e >= 9.15 else "none")
+    ev = detect_bursts(labels, starts, t, mag, policies={"flick": RunPolicy(), "snap": RunPolicy()})
+    assert [e.label for e in ev] == ["flick", "snap"]
+    # the snap was decided only on windows that start after the flick ended
+    assert all(v[0] >= 8.28 for v in ev[1].__dict__.get("votes", [])) or ev[1].run_length >= 2
+
+
+def test_continuous_motion_is_not_chopped_into_gestures():
+    """A 5 s shake the model calls double_flick throughout is one burst, too long to be impulsive: no event."""
+    from whip.events import detect_bursts, BurstTracker
+    t, mag, starts, labels = _burst_case(((12.0, 17.0),), lambda s, e: "double_flick" if s >= 12 and e <= 17 else "none")
+    assert detect_bursts(labels, starts, t, mag, policies={"double_flick": RunPolicy()}) == []
+    tracker = BurstTracker(policies={"double_flick": RunPolicy()})
+    for tt, m in zip(t, mag):
+        tracker.feed_sample(float(tt), float(m))
+    tracker.finish()
+    assert [b.outcome for b in tracker.bursts] == ["too_long"]
+
+
+def test_a_double_flick_is_one_burst_and_a_wave_still_fires():
+    from whip.events import detect_bursts
+    # two strokes 0.35 s apart = one burst (gap under QUIET_S); a 6 s wave the model labels wave
+    t, mag, starts, labels = _burst_case(((3.0, 3.2), (3.55, 3.75), (10.0, 16.0)),
+                                         lambda s, e: "double_flick" if _contains(s, e, 3.0, 3.75) else "wave" if s >= 10 and e <= 16 else "none")
+    ev = detect_bursts(labels, starts, t, mag, policies={"double_flick": RunPolicy(), "wave": RunPolicy(3, None, 2.0)})
+    assert [e.label for e in ev] == ["double_flick", "wave"]
+    assert round(ev[0].at_s, 2) == 3.0 and round(ev[0].end_s, 2) == 3.72
+
+
+def test_a_burst_needs_agreeing_votes():
+    from whip.events import detect_bursts
+    t, mag, starts, labels = _burst_case(((5.0, 5.3),), lambda s, e: "none")
+    assert detect_bursts(labels, starts, t, mag, policies={"flick": RunPolicy()}) == []
+    # exactly one window says flick: below MIN_VOTES
+    one = [i for i, s in enumerate(starts) if _contains(s, s + 2, 5.0, 5.3)][:1]
+    labels = ["flick" if i in one else "none" for i in range(len(starts))]
+    assert detect_bursts(labels, starts, t, mag, policies={"flick": RunPolicy()}) == []
+
+
+def test_impulsive_magnitude_matches_the_engine_buffer_mean():
+    import numpy as np
+    from whip.events import impulsive_magnitude, GRAVITY_SAMPLES
+    rng = np.random.default_rng(0); x = rng.normal(0, 1, (3, 80))
+    m = impulsive_magnitude(x)
+    i = 60
+    tail = x[:, i - GRAVITY_SAMPLES + 1:i + 1]
+    assert m[i] == np.linalg.norm(tail[:, -1] - tail.mean(axis=1))

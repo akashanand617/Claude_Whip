@@ -103,9 +103,11 @@ def replay(path: Path, checkpoint: Path, threshold: float | None) -> int:
     for t, payload in records:
         for ev in engine.feed(t, payload):
             n += 1; action = config.action_for(ev)
-            print(f"  [{ev.t_s:8.2f}s] {ev.name:<13} dir={ev.direction:<6} conf={ev.confidence:.2f} run={ev.run_length}{'  -> ' + action.upper() if action else ''}")
+            lat = f" decided +{ev.latency_s:.2f}s" if ev.latency_s is not None else ""
+            print(f"  [{ev.t_s:8.2f}s] {ev.name:<13} dir={ev.direction:<6} conf={ev.confidence:.2f} votes={ev.run_length}{lat}{'  -> ' + action.upper() if action else ''}")
     for ev in engine.finish():
-        n += 1; print(f"  [{ev.t_s:8.2f}s] {ev.name:<13} dir={ev.direction:<6} conf={ev.confidence:.2f} run={ev.run_length}")
+        n += 1; lat = f" decided +{ev.latency_s:.2f}s" if ev.latency_s is not None else ""
+        print(f"  [{ev.t_s:8.2f}s] {ev.name:<13} dir={ev.direction:<6} conf={ev.confidence:.2f} votes={ev.run_length}{lat}")
     print(f"{n} events over {len(records)} packets ({len(records)/25/60:.1f} min)")
     return 0
 

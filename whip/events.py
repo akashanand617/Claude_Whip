@@ -24,10 +24,12 @@ implementation, not two that started identical.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 
 STRIDE_S = 0.24   # 6 samples at 25 Hz
 WINDOW_S = 2.0    # 50 samples at 25 Hz
+WINDOW_SAMPLES = 50
 # Consecutive windows arrive one stride apart. A step longer than this is a
 # hole in the stream, and a run does not continue across a hole.
 MAX_RUN_STEP_S = 2 * STRIDE_S
@@ -81,18 +83,37 @@ class Event:
     start_s: float
     end_s: float
     run_length: int
+    # Burst-anchored events know exactly when the motion began (`at_s`, the
+    # burst onset) and when the decision was made (`judged_s`, stream clock),
+    # so latency is a measured number rather than a design estimate. Run-based
+    # events leave both None and fall back to the window arithmetic below.
+    at_s: float | None = None
+    judged_s: float | None = None
+    confidence: float = 0.0
+    direction: str = "none"
 
     @property
     def centre_s(self) -> float:
         """
-        Centre of the detected motion, not of the window indices.
+        Time of the detected motion.
 
-        Window timestamps are *start* times, so a window at T covers T..T+2.0 s.
-        Averaging start times alone puts the event a full second early -- more
-        than the matching tolerance, so every detection missed and event F1 read
-        zero while the model was working.
+        Burst events: the onset. Run events: the centre of the run's windows,
+        not of the window indices -- window timestamps are *start* times, so a
+        window at T covers T..T+2.0 s. Averaging start times alone puts the
+        event a full second early -- more than the matching tolerance, so
+        every detection missed and event F1 read zero while the model was
+        working.
         """
+        if self.at_s is not None:
+            return self.at_s
         return (self.start_s + self.end_s) / 2 + WINDOW_S / 2
+
+    @property
+    def latency_s(self) -> float | None:
+        """Decision time minus motion onset, when both are known."""
+        if self.at_s is None or self.judged_s is None:
+            return None
+        return self.judged_s - self.at_s
 
 
 @dataclass
@@ -292,3 +313,299 @@ def span_hits(events: list[Event], spans: list[tuple[float, float, str]]) -> lis
     for lo, hi, label in spans:
         hits.append(any(e.label == label and lo <= e.centre_s <= hi for e in events))
     return hits
+
+
+# ------------------------------------------------------------ burst-anchored
+#
+# Decoding gestures as runs of same-label windows has three failure modes,
+# all seen live on 2026-09-21: two gestures of the same class in succession
+# make ONE run (one event, or none past `MAX_RUN`); a different gesture whose
+# windows abut a fired run starts inside its dead time and is dropped; and
+# continuous motion -- a wave, a shaken hand -- is chopped into whatever the
+# model calls each stretch of it. The tracker never knew where one movement
+# ended and the next began, because it only saw labels.
+#
+# The signal itself says. Impulsive magnitude (|a - gravity|) crosses 1 g at
+# the start of every gesture in the corpus and stays below it between
+# gestures; a double flick's inter-stroke gap (0.20-0.50 s by definition) is
+# shorter than the quiet a wearer leaves between gestures. So: segment the
+# stream into BURSTS (above ONSET_G, merged across gaps under QUIET_S), and
+# decode one event per burst from the windows that contain that burst and
+# no other. Same-class succession counts; a gesture right after another is
+# judged on windows that start after the first one ended; a burst longer
+# than a window is not impulsive and is left to the sustained classes.
+
+ONSET_G = 1.0            # impulsive magnitude that opens a burst (the audit's stroke floor)
+QUIET_S = 0.6            # this long below ONSET_G closes a burst; a double's gap is at most 0.5 s
+MAX_IMPULSIVE_S = 2.0    # a burst longer than a window is sustained motion, not a gesture
+CORE_S = 1.3             # the part of a burst a vote window must contain (two strokes and a recoil)
+MARGIN_S = 0.08          # two samples of context either side of the core
+MIN_VOTES = 2            # agreeing windows containing the core; the ablation put min_run 2 at zero ambient cost
+MIN_BLIP_PEAK_G = 1.5    # a single sample above ONSET_G but under this is a blip, not a movement (the audit's WEAK floor)
+GRAVITY_SAMPLES = 25     # causal moving average for the impulsive magnitude, 1 s
+
+
+def impulsive_magnitude(stream_g: "np.ndarray") -> "np.ndarray":
+    """
+    |a - gravity| per sample for a (3, N) stream in g, gravity being the
+    causal 1 s moving average. Computed as the plain mean of the last
+    GRAVITY_SAMPLES samples, in the same order the live engine averages its
+    buffer, so offline bursts are bit-identical to live bursts.
+    """
+    import numpy as np
+    x = np.asarray(stream_g, dtype="float64")
+    n = x.shape[1]
+    ma = np.empty_like(x)
+    for i in range(n):
+        ma[:, i] = x[:, max(0, i - GRAVITY_SAMPLES + 1):i + 1].mean(axis=1)
+    return np.linalg.norm(x - ma, axis=0)
+
+
+@dataclass
+class Burst:
+    on_s: float
+    off_s: float | None = None          # last sample above ONSET_G so far
+    closed_s: float | None = None       # stream time the burst was closed (off + QUIET_S)
+    votes: list = field(default_factory=list)   # (start_s, label, confidence, direction)
+    outcome: str | None = None          # event label, or why not: "too_long" | "no_consensus" | "no_votes"
+    judged_s: float | None = None
+    peak_g: float = 0.0
+    n_above: int = 0                    # samples at or above ONSET_G
+
+    @property
+    def duration_s(self) -> float:
+        return (self.off_s if self.off_s is not None else self.on_s) - self.on_s
+
+    def as_dict(self) -> dict:
+        return {"on_s": round(self.on_s, 3), "off_s": round(self.off_s, 3) if self.off_s is not None else None,
+                "duration_s": round(self.duration_s, 3), "outcome": self.outcome, "peak_g": round(self.peak_g, 2),
+                "votes": len(self.votes), "judged_s": round(self.judged_s, 3) if self.judged_s is not None else None}
+
+
+@dataclass
+class BurstTracker:
+    """
+    One event per movement. Feed every sample's impulsive magnitude
+    (`feed_sample`) and every scored window (`feed_window`); events come back
+    from either call as soon as they can be decided, `finish()` flushes.
+
+    Impulsive gestures are decided per burst from its vote windows: windows
+    that start after the previous burst ended, start before the onset, and
+    reach past the burst's core. The winner is the most voted impulsive
+    label (ties by confidence) with at least MIN_VOTES; a burst longer than
+    MAX_IMPULSIVE_S gets no impulsive event. Sustained gestures (wave) keep
+    the run policy from `RunTracker`, fed only their own labels, so a long
+    burst can still be a wave and nothing else.
+
+    Decision time: a burst is judged once it is closed AND a window starting
+    after its last vote window has arrived (all votes are in), or at finish.
+    Votes are gathered at that moment from the recent windows, because a
+    burst's extent is only known once it has closed.
+    """
+
+    policies: dict[str, RunPolicy] = field(default_factory=dict)
+    default: RunPolicy = DEFAULT_POLICY
+    onset_g: float = ONSET_G
+    quiet_s: float = QUIET_S
+    min_votes: int = MIN_VOTES
+
+    bursts: list[Burst] = field(default_factory=list)
+    _open: Burst | None = None
+    _last_above_s: float | None = None
+    _pending: list[Burst] = field(default_factory=list)     # closed, awaiting their last vote window
+    _windows: list[tuple[float, str, float, str]] = field(default_factory=list)   # recent scored windows
+    _last_window_start: float = float("-inf")
+    _sustained: RunTracker | None = None
+    _last_t: float = float("-inf")
+
+    KEEP_WINDOWS_S = 6.0
+
+    def __post_init__(self):
+        self._sustained = RunTracker(policies={k: v for k, v in self.policies.items() if v.sustained},
+                                     default=self.default)
+
+    def policy_for(self, label: str) -> RunPolicy:
+        return self.policies.get(label, self.default)
+
+    # ---------------------------------------------------------------- samples
+
+    def feed_sample(self, t_s: float, mag_g: float) -> list[Event]:
+        self._last_t = t_s
+        if mag_g >= self.onset_g:
+            if self._open is None:
+                self._open = Burst(on_s=t_s, off_s=t_s)
+            else:
+                self._open.off_s = t_s
+            self._open.peak_g = max(self._open.peak_g, mag_g)
+            self._open.n_above += 1
+            self._last_above_s = t_s
+        elif self._open is not None and t_s - self._last_above_s >= self.quiet_s:
+            b, self._open = self._open, None
+            b.closed_s = t_s
+            # A lone sample just over the floor is sensor chatter or a windup,
+            # not a movement: it must neither be judged nor isolate the
+            # gesture that follows it (live, a 1 g blip 0.7 s before a double
+            # flick took that gesture's windows and fired in its place).
+            if not (b.n_above == 1 and b.peak_g < MIN_BLIP_PEAK_G):
+                self.bursts.append(b)
+                self._pending.append(b)
+        return self._judge_ready(t_s)
+
+    # ---------------------------------------------------------------- windows
+
+    def feed_window(self, start_s: float, label: str, confidence: float = 1.0,
+                    direction: str = "none") -> list[Event]:
+        out: list[Event] = []
+        sustained = label != NONE_LABEL and self.policy_for(label).sustained
+        if label != NONE_LABEL and not sustained:
+            self._windows.append((start_s, label, float(confidence), direction))
+        while self._windows and self._windows[0][0] < start_s - self.KEEP_WINDOWS_S:
+            self._windows.pop(0)
+        # The sustained tracker sees the same label stream the run tracker
+        # did (impulsive labels as `none`), so a wave still fires at min_run
+        # and a label change still breaks its run.
+        ev = self._sustained.feed(label if sustained else NONE_LABEL, start_s)
+        if ev is not None:
+            out.append(ev)
+        self._last_window_start = start_s
+        out.extend(self._judge_ready(max(self._last_t, start_s + WINDOW_S)))
+        return out
+
+    def finish(self) -> list[Event]:
+        out: list[Event] = []
+        if self._open is not None:
+            self._open.closed_s = self._last_t
+            self.bursts.append(self._open); self._pending.append(self._open); self._open = None
+        for b in list(self._pending):
+            ev = self._judge(b, self._last_t)
+            if ev is not None:
+                out.append(ev)
+        self._pending.clear()
+        tail = self._sustained.finish()
+        if tail is not None:
+            out.append(tail)
+        return out
+
+    # ---------------------------------------------------------------- votes
+
+    def _previous_off(self, b: Burst) -> float:
+        prev = [x for x in self.bursts if x is not b and x.on_s < b.on_s]
+        return prev[-1].off_s if prev else float("-inf")
+
+    def _next_on(self, b: Burst) -> float:
+        later = [x for x in self.bursts if x is not b and x.on_s > b.on_s]
+        if self._open is not None and self._open is not b:
+            later.append(self._open)
+        return min(x.on_s for x in later) if later else float("inf")
+
+    @staticmethod
+    def _core_end(b: Burst) -> float:
+        return min(b.off_s, b.on_s + CORE_S)
+
+    def vote_windows(self, b: Burst) -> list[tuple[float, str, float, str]]:
+        """
+        Windows that contain this burst's core and NO other movement: they
+        start after the previous burst ended and end before the next one
+        begins. One movement per window is what "hold it isolated" means.
+        When gestures come so fast that fewer than MIN_VOTES windows are
+        clean on both sides, the windows may run into the NEXT movement's
+        start (never back into the previous one's tail, which is what read
+        as a double): a vote with some contamination beats no vote.
+        """
+        lo, hi = self._previous_off(b), self._next_on(b)
+        mine = [w for w in self._windows
+                if lo <= w[0] <= b.on_s - MARGIN_S and w[0] + WINDOW_S >= self._core_end(b) + MARGIN_S]
+        clean = [w for w in mine if w[0] + WINDOW_S <= hi]
+        return clean if len(clean) >= self.min_votes else mine
+
+    def _judge_ready(self, now_s: float) -> list[Event]:
+        out: list[Event] = []
+        for b in list(self._pending):
+            votes_in = (self._last_window_start > b.on_s - MARGIN_S
+                        or now_s >= b.on_s - MARGIN_S + WINDOW_S + 2 * STRIDE_S)
+            if votes_in or self._decided_early(b):
+                ev = self._judge(b, now_s)
+                self._pending.remove(b)
+                if ev is not None:
+                    out.append(ev)
+        return out
+
+    def _decided_early(self, b: Burst) -> bool:
+        """
+        The vote windows still to come cannot change the outcome: the leader
+        is ahead of the runner-up by more than the number of windows left.
+        For a snap or single flick this decides ~1 s after the onset instead
+        of 2 s; a double flick's vote windows all arrive at the end anyway.
+        """
+        if b.duration_s > MAX_IMPULSIVE_S:
+            return True
+        if not math.isfinite(self._last_window_start):
+            return False
+        remaining = math.ceil(max(0.0, b.on_s - MARGIN_S - self._last_window_start) / STRIDE_S)
+        votes = self.vote_windows(b)
+        if len(votes) < self.min_votes:
+            return False
+        tally: dict[str, int] = {}
+        for _, label, _, _ in votes:
+            tally[label] = tally.get(label, 0) + 1
+        ranked = sorted(tally.values(), reverse=True)
+        runner = ranked[1] if len(ranked) > 1 else 0
+        return ranked[0] > runner + remaining
+
+    def _judge(self, b: Burst, now_s: float) -> Event | None:
+        b.judged_s = now_s
+        if b.duration_s > MAX_IMPULSIVE_S:
+            b.outcome = "too_long"
+            return None
+        b.votes = self.vote_windows(b)
+        if not b.votes:
+            b.outcome = "no_votes"
+            return None
+        tally: dict[str, list[float]] = {}
+        for _, label, conf, _ in b.votes:
+            tally.setdefault(label, []).append(conf)
+        label, confs = max(tally.items(), key=lambda kv: (len(kv[1]), sum(kv[1])))
+        if len(confs) < self.min_votes:
+            b.outcome = "no_consensus"
+            return None
+        dirs = [d for _, l, _, d in b.votes if l == label and d != NONE_LABEL]
+        direction = max(set(dirs), key=dirs.count) if dirs else NONE_LABEL
+        b.outcome = label
+        return Event(label, b.on_s, b.off_s, len(confs), at_s=b.on_s, judged_s=now_s,
+                     confidence=float(sum(confs) / len(confs)), direction=direction)
+
+
+def detect_bursts(
+    predictions: list[str],
+    starts: list[float],
+    times: "np.ndarray",
+    magnitudes: "np.ndarray",
+    policies: dict[str, RunPolicy] | None = None,
+    confidences: list[float] | None = None,
+    directions: list[str] | None = None,
+) -> list[Event]:
+    """
+    Batch burst-anchored decoding: the samples' (times, impulsive magnitudes)
+    and the windows' (start, label[, confidence, direction]) interleaved in
+    time order through one `BurstTracker`, exactly as the live engine feeds it.
+    """
+    import numpy as np
+    tracker = BurstTracker(policies=policies or {})
+    out: list[Event] = []
+    confidences = confidences if confidences is not None else [1.0] * len(predictions)
+    directions = directions if directions is not None else [NONE_LABEL] * len(predictions)
+    times = np.asarray(times, dtype="float64")
+    # A window is scored the moment its 50th sample arrives -- the sample at
+    # index start+49, not the clock time start + 2.0 s -- exactly as live.
+    due = np.searchsorted(times, np.asarray(starts, dtype="float64")) + WINDOW_SAMPLES - 1
+    wi = 0
+    for i, (t, m) in enumerate(zip(times, magnitudes)):
+        while wi < len(starts) and due[wi] <= i:
+            out.extend(tracker.feed_window(float(starts[wi]), predictions[wi], confidences[wi], directions[wi]))
+            wi += 1
+        out.extend(tracker.feed_sample(float(t), float(m)))
+    while wi < len(starts):
+        out.extend(tracker.feed_window(starts[wi], predictions[wi], confidences[wi], directions[wi]))
+        wi += 1
+    out.extend(tracker.finish())
+    return sorted(out, key=lambda e: e.centre_s)

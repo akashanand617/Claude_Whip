@@ -20,8 +20,9 @@ def test_score_cue_hit_wrong_miss():
     assert livetest.score_cue("flick_right", events, 19.0)[0] == "wrong"
     assert livetest.score_cue("snap", events, 30.0)[0] == "miss"
     assert livetest.score_cue("snap", events, 39.0)[0:2] == ("hit", 1.0)
-    # an event before the cue is not the cue's
-    assert livetest.score_cue("flick_up", [ev(9.5, "flick", "up")], 10.0)[0] == "miss"
+    # an onset just before the cue is the cue's (early starts are a fifth of the corpus); a second earlier is not
+    assert livetest.score_cue("flick_up", [ev(9.5, "flick", "up")], 10.0)[0] == "hit"
+    assert livetest.score_cue("flick_up", [ev(9.0, "flick", "up")], 10.0)[0] == "miss"
 
 
 def test_summary_counts_spurious_outside_cue_windows():

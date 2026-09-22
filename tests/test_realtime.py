@@ -111,7 +111,8 @@ def test_engine_events_are_identical_to_the_offline_pipeline():
     model = trained_stub(labels)
     engine = Engine(model, make_provenance(labels), threshold=0.30)
 
-    t, x = synthetic_counts(n_seconds=40.0, bursts=((8.0, 4000), (20.0, 7000), (30.0, 2500)))
+    # bursts above the 1 g onset (8005 counts) so the burst decoder has movements to judge
+    t, x = synthetic_counts(n_seconds=40.0, bursts=((8.0, 14000), (20.0, 20000), (30.0, 11000)))
     x = despike.hampel(x)     # pre-despiked: parity isolates window/model/tracker
 
     live_events = []
@@ -129,11 +130,24 @@ def test_engine_events_are_identical_to_the_offline_pipeline():
     batch = gm.to_model_input(np.stack(rows), ("shape", "scale"))
     with torch.no_grad():
         probs = torch.softmax(model(torch.tensor(batch, dtype=torch.float32)), 1).numpy()
-    offline = events.detect(evaluate.labels_at(probs, labels, 0.30), starts,
-                            policies=engine.tracker.policies)
+    mags = events.impulsive_magnitude(x / accel.COUNTS_PER_G)
+    offline = events.detect_bursts(evaluate.labels_at(probs, labels, 0.30), starts, t, mags,
+                                   policies=engine.tracker.policies)
 
-    assert [(e.name, round(e.t_s, 6)) for e in live_events] == \
-           [(e.label, round(e.centre_s, 6)) for e in offline]
+    # the same movements were segmented on both sides (three bursts), and judged the same way
+    tracker = events.BurstTracker(policies=engine.tracker.policies)
+    due = np.searchsorted(t, np.asarray(starts)) + 49; wi = 0
+    labels_off = evaluate.labels_at(probs, labels, 0.30)
+    for i, (tt, m) in enumerate(zip(t, mags)):
+        while wi < len(starts) and due[wi] <= i:
+            tracker.feed_window(starts[wi], labels_off[wi]); wi += 1
+        tracker.feed_sample(float(tt), float(m))
+    tracker.finish()
+    assert len(engine.tracker.bursts) == 3
+    assert [(b.on_s, b.off_s, b.outcome) for b in engine.tracker.bursts] == \
+           [(b.on_s, b.off_s, b.outcome) for b in tracker.bursts]
+    assert [(e.name, round(e.t_s, 6), e.run_length) for e in live_events] == \
+           [(e.label, round(e.centre_s, 6), e.run_length) for e in offline]
 
 
 def test_engine_ignores_non_accelerometer_payloads():

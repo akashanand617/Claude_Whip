@@ -136,8 +136,16 @@ def score(args) -> int:
         part_here = parts[order] == args.part
         with torch.no_grad():
             probs = torch.softmax(model(torch.tensor(gm.to_model_input(d["X"][order], meta["channels"], gravity=d["gravity"][order]))), 1).numpy()
-        ev = events.detect(evaluate.labels_at(probs, labels, args.threshold), starts.tolist(), policies=policies)
-        evc = events.detect(evaluate.labels_at(R.collapse_probabilities(probs, labels), cn, args.threshold), starts.tolist(), policies=policies_c)
+        # One event per movement, decided from the session's own stream --
+        # the same burst decoder the live engine runs (`events.BurstTracker`).
+        if args.decoder == "bursts":
+            times, stream = dataset.stream_g(dataset.find_capture(sid))
+            mags = events.impulsive_magnitude(stream)
+            ev = events.detect_bursts(evaluate.labels_at(probs, labels, args.threshold), starts.tolist(), times, mags, policies=policies)
+            evc = events.detect_bursts(evaluate.labels_at(R.collapse_probabilities(probs, labels), cn, args.threshold), starts.tolist(), times, mags, policies=policies_c)
+        else:   # the retired run decoder, for before/after comparisons only
+            ev = events.detect(evaluate.labels_at(probs, labels, args.threshold), starts.tolist(), policies=policies)
+            evc = events.detect(evaluate.labels_at(R.collapse_probabilities(probs, labels), cn, args.threshold), starts.tolist(), policies=policies_c)
         truth = part_marks.get(sid, [])
         if not truth and not sid.startswith("prompted_"):
             # a negative recording: count minutes and events on this part's
@@ -148,12 +156,14 @@ def score(args) -> int:
             for e in evc:
                 if round(float(e.start_s), 3) in neg_starts: fp_events[e.label] += 1
             continue
-        hx = evaluate.gesture_hits(ev, truth); ht = evaluate.gesture_hits(evc, [(t, R.collapse(n)[0]) for t, n in truth])
-        ha = evaluate.gesture_hits(evc, [(t, R.collapse(n)[0]) for t, n in truth], require_class=False)
+        # burst events are timed at the onset: allow the split's own early bound before the cue
+        early = sp.MARK_BEFORE_S if args.decoder == "bursts" else None
+        hx = evaluate.gesture_hits(ev, truth, early_s=early); ht = evaluate.gesture_hits(evc, [(t, R.collapse(n)[0]) for t, n in truth], early_s=early)
+        ha = evaluate.gesture_hits(evc, [(t, R.collapse(n)[0]) for t, n in truth], require_class=False, early_s=early)
         for (t, name), a, b, c in zip(truth, hx, ht, ha):
             p = per_class[name]; p[0] += 1; p[1] += a; p[2] += b; p[3] += c
             if not a:
-                fired = [e.label for e in ev if abs(e.centre_s - t) <= 0.75]; conf[(name, fired[0] if fired else "-")] += 1
+                fired = [e.label for e in ev if -(early or 0.75) <= e.centre_s - t <= 0.75]; conf[(name, fired[0] if fired else "-")] += 1
     n = sum(v[0] for v in per_class.values())
     print(f"{args.checkpoint} on part '{args.part}', thr {args.threshold}: exact {sum(v[1] for v in per_class.values())}/{n}  "
           f"type {sum(v[2] for v in per_class.values())}/{n}  any {sum(v[3] for v in per_class.values())}/{n}")
@@ -173,6 +183,8 @@ def main() -> int:
     parser.add_argument("--checkpoint", type=Path, default=Path("data/model.pt"))
     parser.add_argument("--part", default="val", choices=sp.PARTS)
     parser.add_argument("--threshold", type=float, default=0.4)
+    parser.add_argument("--decoder", choices=("bursts", "runs"), default="bursts",
+                        help="event decoder: one event per movement (deployed) or the retired same-label runs")
     parser.add_argument("--min-run", type=int, default=None, help="override the impulsive gestures' minimum run (default: registry, 3)")
     args = parser.parse_args()
     return {"make": make, "report": report, "score": score}[args.command](args)

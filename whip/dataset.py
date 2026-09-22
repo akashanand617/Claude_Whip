@@ -175,6 +175,32 @@ def _marks_from_notes(notes, registry: Registry, duration_override: float | None
     return points, spans
 
 
+CAPTURE_DIRS = (Path("data/sessions"), Path("data/raw"))
+
+
+def find_capture(session_id: str, dirs=CAPTURE_DIRS) -> Path:
+    """The capture file for a session id, searched where the exporter reads from."""
+    for d in dirs:
+        p = Path(d) / f"{session_id}.jsonl"
+        if p.exists():
+            return p
+    raise FileNotFoundError(f"no capture named {session_id}.jsonl under {[str(d) for d in dirs]}")
+
+
+def stream_g(capture_path: Path) -> tuple[np.ndarray, np.ndarray]:
+    """
+    (times, (3, N) stream in g) exactly as the exporter prepares it -- despiked
+    (or not, per `despike.ENABLED`) and rotated into the session's frame -- so
+    an offline burst decoder segments the very samples the windows were cut
+    from.
+    """
+    times, samples = _decode_stream(capture_path)
+    stream = despike.apply(np.array(
+        [[s.x for s in samples], [s.y for s in samples], [s.z for s in samples]], dtype=float))
+    stream = _frame_for(capture_path) @ stream
+    return np.asarray(times, dtype="float64"), stream / accel.COUNTS_PER_G
+
+
 def windows_from_session(
     capture_path: Path,
     notes_path: Path | None = None,

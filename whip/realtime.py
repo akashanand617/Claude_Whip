@@ -7,8 +7,8 @@ checkpoint's channels, forward, threshold, debounce -- because two pipelines
 that "started identical" always drift. Where a step could not be shared
 verbatim it is shared structurally:
 
-- the debouncer IS `events.RunTracker`, the same object batch `detect()` loops
-  over, so live and offline event logic cannot disagree;
+- the decoder IS `events.BurstTracker`, the same object batch `detect_bursts()`
+  loops over, so live and offline event logic cannot disagree;
 - the window maths reproduces `dataset.windows_from_session` line for line
   (mean removal per window, division by COUNTS_PER_G), and the parity test in
   tests/test_realtime.py runs a real recorded capture through both and demands
@@ -52,13 +52,17 @@ class GestureEvent:
 
     name: str
     direction: str
-    t_s: float                 # centre of the motion, engine clock
-    confidence: float          # mean winning-class probability over the run
-    run_length: int
+    t_s: float                 # onset of the motion (burst events) / centre of the run, engine clock
+    confidence: float          # mean winning-class probability over the votes
+    run_length: int            # votes (burst events) or run length (sustained)
+    latency_s: float | None = None   # decision time minus onset, measured, burst events only
+    end_s: float | None = None       # end of the motion, burst events only
 
     def as_dict(self) -> dict:
         return {"name": self.name, "direction": self.direction, "t_s": round(self.t_s, 3),
-                "confidence": round(self.confidence, 3), "run_length": self.run_length}
+                "confidence": round(self.confidence, 3), "run_length": self.run_length,
+                "latency_s": round(self.latency_s, 3) if self.latency_s is not None else None,
+                "end_s": round(self.end_s, 3) if self.end_s is not None else None}
 
 
 class Engine:
@@ -93,7 +97,11 @@ class Engine:
         # threshold and the tracker see them; the winning sub-class per window
         # is remembered so a fired event can report its direction.
         self.collapsed = registry.collapsed_names(self.labels)
-        self.tracker = events.RunTracker(policies=registry.policies(self.collapsed))
+        # One event per movement: the tracker segments the stream into bursts
+        # from the impulsive magnitude the engine computes per sample, and
+        # decides each burst from the windows that contain it and no other.
+        self.tracker = events.BurstTracker(policies=registry.policies(self.collapsed))
+        self._bursts_reported = 0
         self._despike = despike.StreamingHampel(enabled=despike.ENABLED)
         self._samples: list[np.ndarray] = []       # despiked, in counts
         self._times: list[float] = []
@@ -238,8 +246,15 @@ class Engine:
 
     def _advance(self) -> list[GestureEvent]:
         self._since_last_window += 1
+        out: list[GestureEvent] = []
+        # Impulsive magnitude of the newest sample: |a - gravity| with gravity
+        # the mean of the last GRAVITY_SAMPLES samples (offline: the same
+        # slice mean, `events.impulsive_magnitude`).
+        tail = np.stack(self._samples[-events.GRAVITY_SAMPLES:], axis=1) / accel.COUNTS_PER_G
+        mag = float(np.linalg.norm(tail[:, -1] - tail.mean(axis=1)))
+        out.extend(self._enrich(e) for e in self.tracker.feed_sample(self._times[-1], mag))
         if len(self._samples) < WINDOW_SAMPLES:
-            return []
+            return out
         if len(self._samples) > WINDOW_SAMPLES:
             self._samples.pop(0)
             self._times.pop(0)
@@ -247,9 +262,10 @@ class Engine:
         # already past the stride); thereafter every 6th sample -- which makes
         # the emitted window sequence exactly offline's [0:50], [6:56], ...
         if self._since_last_window < STRIDE_SAMPLES:
-            return []
+            return out
         self._since_last_window = 0
-        return self._classify_window()
+        out.extend(self._classify_window())
+        return out
 
     def _classify_window(self) -> list[GestureEvent]:
         window = np.stack(self._samples, axis=1)                     # (3, 50)
@@ -276,25 +292,33 @@ class Engine:
         label = name if name != "none" and probs[k] >= self.threshold else "none"
 
         start_s = self._times[0]
+        direction = "none"
         if label != "none":
             # Direction: the split sub-class if there is one, else the head
             # (only when it was actually trained), else none.
             direction = raw_dir if raw_dir != "none" else self.direction_names[dir_idx]
             self._run_meta.append((start_s, float(probs[k]), direction))
-        event = self.tracker.feed(label, start_s)
-        out = []
-        if event is not None:
-            out.append(self._enrich(event))
-        if label == "none":
+        else:
             self._run_meta = []
-        return out
+        return [self._enrich(e) for e in self.tracker.feed_window(start_s, label, float(probs[k]), direction)]
 
     def finish(self) -> list[GestureEvent]:
-        """End of stream: flush the tracker's open run."""
-        tail = self.tracker.finish()
-        return [self._enrich(tail)] if tail is not None else []
+        """End of stream: judge every burst still open or pending."""
+        return [self._enrich(e) for e in self.tracker.finish()]
+
+    def new_bursts(self) -> list[dict]:
+        """Bursts judged since the last call, for a live display (movements that became no event included)."""
+        judged = [b for b in self.tracker.bursts if b.judged_s is not None]
+        out = [b.as_dict() for b in judged[self._bursts_reported:]]
+        self._bursts_reported = len(judged)
+        return out
 
     def _enrich(self, event: events.Event) -> GestureEvent:
+        if event.at_s is not None:
+            return GestureEvent(name=event.label, direction=event.direction, t_s=event.centre_s,
+                                confidence=event.confidence, run_length=event.run_length,
+                                latency_s=event.latency_s, end_s=event.end_s)
+        # a sustained (run-based) event: confidence and direction from the run's windows
         meta = [(p, d) for s, p, d in self._run_meta
                 if event.start_s - 1e-9 <= s <= event.end_s + 1e-9]
         confidence = float(np.mean([p for p, _ in meta])) if meta else 0.0

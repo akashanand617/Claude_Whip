@@ -68,6 +68,8 @@ code { background: var(--bg); padding: 1px 6px; border-radius: 4px; }
   padding: 6px 10px; border-bottom: 1px solid var(--line);
 }
 #events li.error { color: var(--bad); }
+#events li.movement { color: var(--muted); }
+#events li.movement .gesture { font-weight: 500; }
 #events .t { color: var(--muted); font-variant-numeric: tabular-nums; }
 #events .gesture { font-weight: 600; }
 #events .conf { color: var(--muted); font-size: 13px; }
