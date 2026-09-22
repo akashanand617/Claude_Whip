@@ -114,12 +114,12 @@ def main() -> int:
     parser.add_argument(
         "--disable-logging",
         action="store_true",
-        help="turn off periodic HR/SpO2 logging just after the stream starts (kills the LEDs)",
+        help="disable periodic HR/SpO2 logging; does not guarantee LEDs off during raw streaming",
     )
     parser.add_argument(
         "--quiet-optical",
         action="store_true",
-        help="stop the PPG/SpO2 emitters after enabling the stream (kills the green/red LEDs)",
+        help="send legacy health-stop commands (observed ineffective for raw-stream LEDs)",
     )
     parser.add_argument(
         "--stationary",

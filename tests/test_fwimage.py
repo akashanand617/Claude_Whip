@@ -104,3 +104,33 @@ def test_dfu_reassembly_site_is_never_offered_as_a_rate_candidate():
     for path in (STOCK, LOW_LATENCY):
         image = fwimage.inspect(path)
         assert all(s.offset not in fwimage.DO_NOT_PATCH for s in fwimage.raw_motion_candidates(image))
+
+
+def test_optical_start_site_is_located_by_signature():
+    """
+    The raw-mode optical start is one `ldr` in the sensor enable handler. Both
+    3.12.00-based images carry it at the same payload offset (the timer patch
+    is elsewhere), and the branch that replaces it must land on the function's
+    `pop` -- not the `orrs` that would OR the raw bit into the sensor mask.
+    """
+    for path in (LOW_LATENCY, FIRMWARE / "rt02cr-25hz.bin"):
+        data = path.read_bytes()
+        site = fwimage.find_optical_start_site(data[0x50:])
+        assert site is not None
+        assert 0x50 + site.load_offset == 0xF710
+        assert 0x50 + site.return_offset == 0xF6DE
+        assert data[0xF710:0xF712] == bytes.fromhex("5148")
+        assert data[0xF6DE:0xF6E0] == bytes.fromhex("f8bd")
+        assert site.branch == bytes.fromhex("e5e7")  # b #-27 halfwords
+
+
+def test_optical_start_site_refuses_ambiguity():
+    sig = fwimage.OPTICAL_START_SIGNATURE
+    ret = fwimage.OPTICAL_RETURN_SIGNATURE
+    assert fwimage.find_optical_start_site(b"\x00" * 64) is None
+    assert fwimage.find_optical_start_site(ret + b"\x00" * 8 + sig + b"\x00" * 8 + sig) is None, "two starts"
+    assert fwimage.find_optical_start_site(b"\x00" * 8 + sig) is None, "no return sequence"
+    site = fwimage.find_optical_start_site(b"\x00" * 8 + ret + b"\x00" * 8 + sig)
+    assert site is not None
+    assert site.return_offset == 8 + len(ret) - 2
+    assert site.load_offset == 8 + len(ret) + 8 + len(sig) - 2

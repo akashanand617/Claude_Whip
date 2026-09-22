@@ -121,7 +121,7 @@ def main() -> int:
     parser.add_argument(
         "--quiet-optical",
         action="store_true",
-        help="stop the PPG/SpO2 emitters each chunk; measures the accelerometer alone",
+        help="send legacy health-stop commands each chunk; does not isolate accelerometer power",
     )
     parser.add_argument("--address", help="connect directly instead of scanning")
     parser.add_argument("--name", help="match on advertised name")

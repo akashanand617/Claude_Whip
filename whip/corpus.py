@@ -24,11 +24,12 @@ from __future__ import annotations
 import json
 import random
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 CORPUS_DIR = Path(__file__).resolve().parent.parent / "corpus"
 TAXONOMY_PATH = CORPUS_DIR / "taxonomy.json"
+AGENCY_PATH = CORPUS_DIR / "agency.json"
 GOLD_DIR = CORPUS_DIR / "gold"
 SPECS_PATH = CORPUS_DIR / "specs.jsonl"
 
@@ -54,6 +55,26 @@ class Pole:
 
 
 @dataclass(frozen=True)
+class SituationFactor:
+    """
+    A property of the task, not of the response. Situation factors exist so a
+    preference can be measured as a policy rather than a constant: the same
+    coder may want large autonomous steps on a scratch branch and small ones
+    on a migration. An axis declares which factors plausibly flip it; whether
+    they actually do is what the labeling measures.
+    """
+    key: str
+    question: str
+    levels: dict[str, dict]
+
+    def level_keys(self) -> tuple[str, ...]:
+        return tuple(self.levels)
+
+    def phrase(self, level: str) -> str:
+        return self.levels[level]["phrase"]
+
+
+@dataclass(frozen=True)
 class Dimension:
     key: str
     question: str
@@ -62,6 +83,14 @@ class Dimension:
     # answer IS longer than a terse one) -- reacting to length there is
     # reacting to the axis, so the length-leak check does not apply.
     length_constitutive: bool = False
+    # "artifact" (what one response looks like) or "agency" (how the model
+    # works across a trajectory). Sessions are planned one layer at a time:
+    # 23 axes cannot each get enough pairs in a single 40-pair sitting.
+    layer: str = "artifact"
+    # Situation factors that plausibly flip this axis. Empty is meaningful --
+    # it asserts the preference is unconditional, and the validator then does
+    # not demand items at two levels.
+    conditioners: tuple[str, ...] = ()
 
     def pole_keys(self) -> tuple[str, str]:
         return (self.poles[0].key, self.poles[1].key)
@@ -85,13 +114,36 @@ class Item:
     a: Variant
     b: Variant
     notes: str
+    layer: str = "artifact"
+    # factor -> level, e.g. {"reversibility": "irreversible"}. Empty for
+    # layer-1 items, which are not situation-conditioned.
+    situation: dict[str, str] = field(default_factory=dict)
 
     def variant(self, key: str) -> Variant:
         return self.a if key == "a" else self.b
 
 
-def load_taxonomy(path: Path = TAXONOMY_PATH) -> dict[str, Dimension]:
+def load_situation_factors(path: Path = AGENCY_PATH) -> dict[str, SituationFactor]:
+    if not Path(path).exists():
+        return {}
     raw = json.loads(Path(path).read_text())
+    return {f["key"]: SituationFactor(key=f["key"], question=f["question"],
+                                      levels=f["levels"])
+            for f in raw.get("situation_factors", [])}
+
+
+def load_taxonomy(path: Path = TAXONOMY_PATH,
+                  agency_path: Path | None = AGENCY_PATH) -> dict[str, Dimension]:
+    """Both layers in one mapping; each Dimension knows which layer it is."""
+    dims = _load_one(path)
+    if agency_path and Path(agency_path).exists():
+        dims.update(_load_one(agency_path))
+    return dims
+
+
+def _load_one(path: Path) -> dict[str, Dimension]:
+    raw = json.loads(Path(path).read_text())
+    layer = raw.get("layer", "artifact")
     dims = {}
     for d in raw["dimensions"]:
         poles = tuple(
@@ -101,7 +153,9 @@ def load_taxonomy(path: Path = TAXONOMY_PATH) -> dict[str, Dimension]:
         )
         dims[d["key"]] = Dimension(
             key=d["key"], question=d["question"], poles=poles,
-            length_constitutive=bool(d.get("length_constitutive", False)))
+            length_constitutive=bool(d.get("length_constitutive", False)),
+            layer=d.get("layer", layer),
+            conditioners=tuple(d.get("conditioners", ())))
     return dims
 
 
@@ -148,12 +202,21 @@ def _parse_gold(text: str, source: str) -> Item:
         if not body(required):
             raise ValueError(f"{source}: empty or missing section '{required}'")
 
+    situation = {}
+    if front.get("situation"):
+        # "irreversible, familiar" -- levels only; the factor each belongs to
+        # is resolved against the taxonomy in validate(), so an item never has
+        # to repeat what the schema already knows.
+        situation = {lvl.strip(): lvl.strip()
+                     for lvl in front["situation"].split(",") if lvl.strip()}
     return Item(
         id=front.get("id", ""),
         dimension=front.get("dimension", ""),
         status=front.get("status", "gold"),
         domain=front.get("domain", ""),
         sentinel=front.get("sentinel", "false").lower() == "true",
+        layer=front.get("layer", "artifact"),
+        situation=situation,
         task=body("task"),
         context=body("context"),
         a=Variant(pole=poles.get("a", ""), text=body("a")),
@@ -169,6 +232,8 @@ def _parse_spec(record: dict) -> Item:
         status=record.get("status", "spec"),
         domain=record.get("domain", ""),
         sentinel=bool(record.get("sentinel", False)),
+        layer=record.get("layer", "artifact"),
+        situation={lvl: lvl for lvl in record.get("situation", [])},
         task=record["task"],
         context=record.get("context", ""),
         a=Variant(pole=record["a_pole"], text=record["a_spec"]),
@@ -190,8 +255,11 @@ def load_items(gold_dir: Path = GOLD_DIR,
     return items
 
 
-def validate(taxonomy: dict[str, Dimension], items: list[Item]) -> list[str]:
+def validate(taxonomy: dict[str, Dimension], items: list[Item],
+             factors: dict[str, SituationFactor] | None = None) -> list[str]:
     """Every string returned is a defect. An empty list is the pass."""
+    factors = load_situation_factors() if factors is None else factors
+    level_to_factor = {lvl: f.key for f in factors.values() for lvl in f.levels}
     problems = []
     seen: set[str] = set()
     for it in items:
@@ -216,6 +284,16 @@ def validate(taxonomy: dict[str, Dimension], items: list[Item]) -> list[str]:
             problems.append(f"{where}: empty variant text")
         if not it.domain:
             problems.append(f"{where}: missing domain")
+        if it.layer != taxonomy[it.dimension].layer:
+            problems.append(f"{where}: layer {it.layer!r} but dimension is "
+                            f"{taxonomy[it.dimension].layer!r}")
+        for level in it.situation:
+            if level not in level_to_factor:
+                problems.append(f"{where}: unknown situation level {level!r}")
+        item_factors = [level_to_factor[l] for l in it.situation
+                        if l in level_to_factor]
+        if len(item_factors) != len(set(item_factors)):
+            problems.append(f"{where}: two levels of the same situation factor")
 
     # Length leak: within a dimension, if the longer response always belongs to
     # the same pole, response length alone predicts the pole and the labeler
@@ -236,6 +314,44 @@ def validate(taxonomy: dict[str, Dimension], items: list[Item]) -> list[str]:
             problems.append(
                 f"dimension {dim}: pole {longer.pop()!r} is longer in all "
                 f"{len(gold)} gold items -- length predicts the pole")
+
+    # Context statements get composed into conditional policies ("When <the
+    # situation>, <the statement>"), so a statement that opens with its own
+    # conditional clause produces "When X, when you hit Y, do Z". Keep them
+    # imperative and the composition stays readable in all three shapes.
+    for key, dim in taxonomy.items():
+        for pole in dim.poles:
+            first = pole.context_statement.split()[0] if pole.context_statement else ""
+            if first in ("When", "If"):
+                problems.append(
+                    f"dimension {key}: pole {pole.key!r} context statement opens "
+                    f"with {first!r} -- it will not compose into a conditional")
+
+    # Conditioner coverage: an axis that declares a conditioner is claiming the
+    # preference may flip with it. That claim is only testable if gold items
+    # exist at BOTH levels -- otherwise the axis silently reverts to measuring
+    # a constant, which is the failure this layer exists to avoid.
+    for key, dim in taxonomy.items():
+        gold = [it for it in by_dim.get(key, [])]
+        # Below four gold items the axis cannot measure a main effect, let
+        # alone an interaction, so demanding both levels is premature -- the
+        # same threshold the length-leak check uses, for the same reason.
+        if len(gold) < 4 or not dim.conditioners:
+            continue
+        for factor_key in dim.conditioners:
+            factor = factors.get(factor_key)
+            if factor is None:
+                problems.append(f"dimension {key}: unknown conditioner "
+                                f"{factor_key!r}")
+                continue
+            covered = {lvl for it in gold for lvl in it.situation
+                       if lvl in factor.levels}
+            missing = set(factor.levels) - covered
+            if covered and missing:
+                problems.append(
+                    f"dimension {key}: conditioner {factor_key!r} covered at "
+                    f"{sorted(covered)} but not {sorted(missing)} -- a flip "
+                    f"cannot be detected from one level")
     return problems
 
 
@@ -258,9 +374,10 @@ def label_pair(a_label: str, b_label: str) -> dict:
 
 
 def _select_pairs(items: list[Item], n_pairs: int,
-                  rng: random.Random) -> list[Item]:
+                  rng: random.Random, layer: str | None = None) -> list[Item]:
     """Round-robin across dimensions so every session covers all of them."""
-    gold = [it for it in items if it.status == "gold"]
+    gold = [it for it in items if it.status == "gold"
+            and (layer is None or it.layer == layer)]
     if n_pairs > len(gold):
         raise ValueError(f"asked for {n_pairs} pairs, only {len(gold)} gold items")
     by_dim: dict[str, list[Item]] = {}
@@ -319,7 +436,8 @@ def _order_presentations(pairs: list[Item], rng: random.Random) -> list[Item]:
 
 
 def plan_session(taxonomy: dict[str, Dimension], items: list[Item],
-                 session: int, n_pairs: int, seed: int) -> dict:
+                 session: int, n_pairs: int, seed: int,
+                 layer: str | None = None) -> dict:
     """
     Deterministic presentation schedule for one labeling session.
 
@@ -331,8 +449,8 @@ def plan_session(taxonomy: dict[str, Dimension], items: list[Item],
         raise ValueError(
             f"n_pairs must be >= {MIN_SEPARATION}; fewer pairs cannot keep "
             f"pair members {MIN_SEPARATION} slots apart")
-    rng = random.Random(f"whip-m2:{seed}:{session}")
-    pairs = _select_pairs(items, n_pairs, rng)
+    rng = random.Random(f"whip-m2:{seed}:{session}:{layer or 'all'}")
+    pairs = _select_pairs(items, n_pairs, rng, layer)
     order = _order_presentations(pairs, rng)
 
     # Which pole shows first is balanced exactly, not just in expectation: for
@@ -369,8 +487,10 @@ def plan_session(taxonomy: dict[str, Dimension], items: list[Item],
             "variant": p["variant"],
             "pole": it.variant(p["variant"]).pole,
             "dimension": it.dimension,
+            "layer": it.layer,
+            "situation": sorted(it.situation),
             "task": it.task,
             "sentinel_phase": p["sentinel_phase"],
         })
     return {"session": session, "seed": seed, "n_pairs": n_pairs,
-            "presentations": out}
+            "layer": layer, "presentations": out}

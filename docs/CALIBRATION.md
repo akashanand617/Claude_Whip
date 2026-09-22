@@ -9,6 +9,13 @@ This document is to M2 what `docs/COLLECTION.md` is to M1: decide everything
 here before running a session, because every choice is cheap now and expensive
 after four sessions of labels are in the bag.
 
+**This document covers layer 1 only** -- what a single response looks like.
+How the model *works with you* across a run (autonomy, narration, when it
+stops, whether it proves its work) is layer 2: see `docs/AGENCY.md`. Layer 2
+shares this document's presentation model, session protocol, confound
+discipline and tooling, and adds situation-conditioned items so a preference
+comes out as a policy rather than a constant.
+
 ---
 
 ## Why curated contrasts, not mined repo data
@@ -52,12 +59,32 @@ screen, answered with one gesture:
 | double flick | `approve` -- I want this behavior |
 | nothing | `none` -- no reaction either way |
 
-Labels arrive from the gesture platform as **resolved actions**, not raw
-classes: `data/app_config.json` maps `flick`->flag and `double_flick`->approve,
-and the live engine writes events plus resolved actions to
-`data/live/events_*.jsonl` -- that stream, joined to the session plan by slot
-timing, is the labeling record. A keyboard fallback must write the same record
-shape with a `source` tag.
+**The keyboard is the primary label source; the ring is secondary.** That is
+measured, not provisional: on held-out data the gesture model recalls ~58% of
+flicks (95% CI 45-69), so a presenter that waited on the ring would stall on
+four slots in ten. `python -m probe.label run` takes `f` / `a` / Enter per
+slot and appends a record immediately (crash-safe, resumable). It never shows
+the dimension or pole -- see "dimension blocking" below.
+
+The ring is joined afterwards, offline, from the gesture platform's event log
+(`python -m probe.label join`). The contract, from that platform:
+
+| Rule | Why |
+|---|---|
+| join on `wall` (epoch seconds), never `t_s` | `t_s` is the engine's stream clock; not comparable across processes |
+| use `action`, not the gesture name | `data/app_config.json` maps flick->flag, double_flick->approve; snap/wave/clap carry `action: null`. Every ambient false positive observed so far was unmapped, so filtering on action keeps them out |
+| direction is recorded, never routed on | it is available and 93-96% accurate, and mapping keys may be direction-qualified, but the label vocabulary is three states -- two gestures plus silence already cover it, so a qualifier would only add a second way for a ring label to be wrong. Stored per record so the direction *habit* per action is observable; it cannot be scored here, as the labeler is never asked for a direction |
+| window = [shown, key label + 2.0 s] | measured gesture-end-to-event latency is ~1.3 s |
+| a slot with no mapped event is `missing`, never skipped | the missed count *is* the recall number |
+
+Each label record carries `source` (`key` or `ring`) and, once joined, the
+ring's `wall`, `confidence`, and status (`ok` / `missing` / `ambiguous`), so
+**ring-vs-key agreement is computed per session** as an acceptance check --
+broken down as matched / mismatched / missed on gesture slots and silent /
+spurious on none slots, so recall and false positives stay separate numbers.
+Once the ring's recall clears ~90% it can become primary; the presenter then
+needs an explicit no-gesture-arrived path (re-prompt, then key), never a
+silent skip.
 
 Pairing exists only in analysis. The two variants of an item are shown as two
 separate ordinary presentations, never side by side, at least 4 slots apart --
@@ -195,14 +222,22 @@ reviewed for rule 3 (correctness held equal) before first use.
   enforces it; verify in the artifact).
 - **Every dimension present** -- 40 pairs must cover all 12 dimensions.
 
+`python -m probe.label score` computes all of these from the label file and
+exits 2 on a rejected session.
+
 ### Cross-session gate (the M2 exit criterion)
 
 - Per dimension: direction consistent across sessions, or declared indifferent.
   No dimension left "contested" -- a contested dimension means the items
   disagree with each other, which is an item defect to fix, not a preference.
 - Test-retest on repeated items across days ≥ 70%.
-- Output artifact: `data/calibration/preferences.json` -- per dimension, the
-  winning pole (or `indifferent`), the margin, and the sessions supporting it.
+- Output artifact: `data/calibration/preferences.json` from
+  `python -m probe.label aggregate` -- per dimension, the winning pole,
+  `indifferent`, `contested`, or `unmeasured`, with margin and per-session
+  vote counts, plus the ready-to-use `context_file` statements ordered by
+  margin. A pole wins only if it holds the majority overall *and* in every
+  session where the dimension had two or more decided pairs; a dimension a
+  later session flips is `contested` and goes back to item review.
 
 ---
 

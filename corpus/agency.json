@@ -1,0 +1,268 @@
+{
+  "version": 1,
+  "layer": "agency",
+  "note": "Layer 2: how the model works with you, not what its output looks like. Layer 1 (taxonomy.json) is scoped to a single response; these axes are properties of a trajectory and are shown as compressed action logs. Conditioners are hypotheses about which situations flip a preference -- they are measured, not assumed.",
+  "situation_factors": [
+    {
+      "key": "reversibility",
+      "question": "Can the work be undone cheaply?",
+      "levels": {
+        "reversible": {
+          "phrase": "the work is easy to undo",
+          "examples": "local edits under git, a scratch branch, a re-runnable script"
+        },
+        "irreversible": {
+          "phrase": "the action cannot be cheaply undone",
+          "examples": "a schema migration, a deploy, deleting data, anything that leaves the machine"
+        }
+      }
+    },
+    {
+      "key": "familiarity",
+      "question": "Does the coder know this code well enough to check the output at a glance?",
+      "levels": {
+        "familiar": {
+          "phrase": "the code is yours and you know it well",
+          "examples": "a module the coder wrote last week"
+        },
+        "foreign": {
+          "phrase": "the code is unfamiliar to you",
+          "examples": "a vendored dependency, a teammate's service, a language the coder rarely uses"
+        }
+      }
+    },
+    {
+      "key": "ambiguity",
+      "question": "Is there a dominant right answer, or a genuine fork?",
+      "levels": {
+        "determined": {
+          "phrase": "the right answer is clear",
+          "examples": "one obvious cause, one conventional fix"
+        },
+        "underdetermined": {
+          "phrase": "the choice is a genuine fork with no dominant answer",
+          "examples": "two designs with different trade-offs, neither clearly better"
+        }
+      }
+    },
+    {
+      "key": "mode",
+      "question": "Is this exploration or production?",
+      "levels": {
+        "exploring": {
+          "phrase": "you are prototyping or finding out whether something works",
+          "examples": "a spike, a throwaway script, checking a hypothesis"
+        },
+        "shipping": {
+          "phrase": "the work is going to production",
+          "examples": "a feature others will run, code that will be maintained"
+        }
+      }
+    },
+    {
+      "key": "size",
+      "question": "How big is the task?",
+      "levels": {
+        "small": {
+          "phrase": "the task is small and contained",
+          "examples": "one function, one file, a few minutes of work"
+        },
+        "large": {
+          "phrase": "the task spans many files or many steps",
+          "examples": "a refactor across a package, a multi-stage migration"
+        }
+      }
+    }
+  ],
+  "dimensions": [
+    {
+      "key": "step_size",
+      "question": "How much work should the model do between check-ins?",
+      "conditioners": [
+        "reversibility",
+        "familiarity"
+      ],
+      "poles": {
+        "increments": {
+          "summary": "Small steps, return often.",
+          "context_statement": "Work in small increments and come back after each one, so the user can steer before much is built."
+        },
+        "stretches": {
+          "summary": "Large steps, return when done.",
+          "context_statement": "Take the task as far as you can in one go and report when it is finished, rather than checking in along the way."
+        }
+      }
+    },
+    {
+      "key": "stop_trigger",
+      "question": "Mid-task, what should make the model stop and surface something?",
+      "conditioners": [
+        "ambiguity",
+        "reversibility"
+      ],
+      "poles": {
+        "surface_early": {
+          "summary": "Surface forks as they arise.",
+          "context_statement": "Stop and surface choices the user might have an opinion on rather than resolving them yourself."
+        },
+        "resolve_alone": {
+          "summary": "Resolve forks; surface only risk.",
+          "context_statement": "Resolve design choices yourself and keep going; stop only for actions that are costly or cannot be undone."
+        }
+      }
+    },
+    {
+      "key": "plan_exposure",
+      "question": "Should the model show a plan before acting?",
+      "conditioners": [
+        "size"
+      ],
+      "poles": {
+        "plan_first": {
+          "summary": "State the plan, then execute.",
+          "context_statement": "Lay out what you intend to do before you start, so the approach can be corrected before the work exists."
+        },
+        "execute_direct": {
+          "summary": "Do it; the plan shows in the result.",
+          "context_statement": "Start working immediately; let the finished result show the approach rather than describing it first."
+        }
+      }
+    },
+    {
+      "key": "narration",
+      "question": "Should the model report progress while working, or stay quiet until done?",
+      "conditioners": [
+        "size"
+      ],
+      "poles": {
+        "silent": {
+          "summary": "No output until there is a result.",
+          "context_statement": "Say nothing while working; produce output only when there is a result to show."
+        },
+        "running": {
+          "summary": "Progress as it happens.",
+          "context_statement": "Report what you are doing as you go, so progress is visible without being asked for."
+        }
+      }
+    },
+    {
+      "key": "reasoning_exposure",
+      "question": "Should the model show the options it rejected, or only what it chose?",
+      "conditioners": [
+        "ambiguity"
+      ],
+      "poles": {
+        "conclusion_only": {
+          "summary": "The choice, not the search.",
+          "context_statement": "Report the approach you took; do not walk through the alternatives you considered and rejected."
+        },
+        "alternatives_shown": {
+          "summary": "The choice and what it beat.",
+          "context_statement": "Name the alternatives you considered and why you chose the one you did."
+        }
+      }
+    },
+    {
+      "key": "register",
+      "question": "How should the model sound: swift and clipped, or measured and complete?",
+      "conditioners": [],
+      "poles": {
+        "curt": {
+          "summary": "Fast, clipped, fragments allowed.",
+          "context_statement": "Write fast and clipped: fragments, no preamble, no closing summary."
+        },
+        "composed": {
+          "summary": "Complete sentences, measured.",
+          "context_statement": "Write in complete, measured sentences rather than clipped fragments."
+        }
+      }
+    },
+    {
+      "key": "verification",
+      "question": "Should the model prove the work is correct, or state that it is?",
+      "conditioners": [
+        "reversibility",
+        "familiarity"
+      ],
+      "poles": {
+        "asserted": {
+          "summary": "Says it works.",
+          "context_statement": "State that the change works and move on; do not attach test output or evidence unless asked."
+        },
+        "demonstrated": {
+          "summary": "Shows it works.",
+          "context_statement": "Prove the change works by running it and showing the output, rather than asserting it."
+        }
+      }
+    },
+    {
+      "key": "provisionality",
+      "question": "Is the default output a sketch or something finished?",
+      "conditioners": [
+        "mode"
+      ],
+      "poles": {
+        "sketch": {
+          "summary": "Fast and throwaway, marked as such.",
+          "context_statement": "Produce the quickest thing that answers the question, and say plainly that it is a sketch rather than finished work."
+        },
+        "finished": {
+          "summary": "Production-ready by default.",
+          "context_statement": "Make anything you produce ready to keep: handled edges, real names, no scaffolding left behind."
+        }
+      }
+    },
+    {
+      "key": "scope_renegotiation",
+      "question": "The task turns out to be bigger than stated. Deliver what was asked, or what is actually needed?",
+      "conditioners": [
+        "size",
+        "reversibility"
+      ],
+      "poles": {
+        "deliver_asked": {
+          "summary": "Do the stated thing; report the discovery.",
+          "context_statement": "Do the part that was asked for and report anything larger you found, rather than expanding the task."
+        },
+        "deliver_needed": {
+          "summary": "Do what solves it; report the expansion.",
+          "context_statement": "Carry a task through to something that actually works even if that is more than was described, and say how far you went."
+        }
+      }
+    },
+    {
+      "key": "pushback_handling",
+      "question": "The user says the model is wrong. Should it fold or hold?",
+      "conditioners": [
+        "ambiguity"
+      ],
+      "poles": {
+        "defer": {
+          "summary": "Accept the correction and move.",
+          "context_statement": "Take a correction and act on it rather than defending your earlier reasoning."
+        },
+        "hold": {
+          "summary": "Show the evidence, then ask.",
+          "context_statement": "Say what your evidence is before changing course when the user contradicts it."
+        }
+      }
+    },
+    {
+      "key": "stuck_behavior",
+      "question": "The model hits a wall. Keep trying, or come back quickly?",
+      "conditioners": [
+        "size"
+      ],
+      "poles": {
+        "persist": {
+          "summary": "Try the alternatives first.",
+          "context_statement": "Try the other approaches yourself before reporting that something did not work."
+        },
+        "surface": {
+          "summary": "Report the wall early.",
+          "context_statement": "Come back quickly with what you tried and what happened rather than working through alternatives alone."
+        }
+      }
+    }
+  ]
+}

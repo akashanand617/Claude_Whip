@@ -41,13 +41,26 @@ def cmd_validate() -> int:
 def cmd_stats() -> int:
     taxonomy = corpus.load_taxonomy()
     items = corpus.load_items()
-    print(f"{'dimension':<14} {'gold':>4} {'spec':>4}  domains")
+    factors = corpus.load_situation_factors()
+    print(f"{'dimension':<22} {'layer':<9} {'gold':>4}  situation coverage")
     for key in taxonomy:
         dim_items = [it for it in items if it.dimension == key]
         gold = [it for it in dim_items if it.status == "gold"]
         spec = [it for it in dim_items if it.status == "spec"]
-        domains = sorted({it.domain for it in dim_items})
-        print(f"{key:<14} {len(gold):>4} {len(spec):>4}  {', '.join(domains)}")
+        dim = taxonomy[key]
+        cov = []
+        for fk in dim.conditioners:
+            f = factors.get(fk)
+            if not f:
+                continue
+            counts = {lvl: sum(1 for it in gold if lvl in it.situation)
+                      for lvl in f.levels}
+            ok = all(counts.values())
+            cov.append(f"{'' if ok else '!'}{fk}={'/'.join(str(v) for v in counts.values())}")
+        print(f"{key:<22} {dim.layer:<9} {len(gold):>4}  "
+              f"{' '.join(cov) if cov else ('unconditioned' if dim.layer == 'agency' else '')}")
+        if dim.layer == "agency" or spec:
+            continue
         for it in gold:
             ratio = len(it.a.text) / max(1, len(it.b.text))
             longer = it.a.pole if ratio > 1 else it.b.pole
@@ -57,14 +70,15 @@ def cmd_stats() -> int:
     return 0
 
 
-def cmd_plan(session: int, pairs: int, seed: int, out: str | None) -> int:
+def cmd_plan(session: int, pairs: int, seed: int, out: str | None,
+             layer: str = "artifact") -> int:
     taxonomy = corpus.load_taxonomy()
     items = corpus.load_items()
     problems = corpus.validate(taxonomy, items)
     if problems:
         print(f"corpus has {len(problems)} defect(s); run validate first")
         return 2
-    plan = corpus.plan_session(taxonomy, items, session, pairs, seed)
+    plan = corpus.plan_session(taxonomy, items, session, pairs, seed, layer)
     text = json.dumps(plan, indent=2)
     if out:
         Path(out).parent.mkdir(parents=True, exist_ok=True)
@@ -84,13 +98,18 @@ def main() -> int:
     plan.add_argument("--session", type=int, required=True)
     plan.add_argument("--pairs", type=int, default=40)
     plan.add_argument("--seed", type=int, required=True)
+    plan.add_argument("--layer", default="artifact",
+                      choices=("artifact", "agency"),
+                      help="artifact = response style, agency = working style; "
+                           "one layer per session, since 23 axes cannot each "
+                           "get enough pairs in one sitting")
     plan.add_argument("--out", default=None)
     args = parser.parse_args()
     if args.cmd == "validate":
         return cmd_validate()
     if args.cmd == "stats":
         return cmd_stats()
-    return cmd_plan(args.session, args.pairs, args.seed, args.out)
+    return cmd_plan(args.session, args.pairs, args.seed, args.out, args.layer)
 
 
 if __name__ == "__main__":

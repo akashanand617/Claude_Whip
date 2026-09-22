@@ -167,6 +167,84 @@ def inspect(path: str | Path) -> FirmwareImage:
     )
 
 
+# --- The optical front end in raw mode --------------------------------------
+#
+# `A1 04` reaches the sensor task's enable handler with bit 0x800. With no other
+# sensor bit set, that handler picks the VC30F "raw" mode (mode 7: green and red
+# emitters at full current) and starts the optical sensor. The accelerometer
+# stream never needed it -- `A1 03` frames are read from the accelerometer's
+# own interrupt-fed ring buffer -- so the emitters burn a 17 mAh cell for data
+# the low-latency image does not even send.
+#
+# The decision is one instruction. In the enable handler (sub_0f68c in the
+# 3.12.00-based images) the raw-mode arm begins with `ldr r0, [pc, #0x144]`
+# (the sensor config pointer) right after the bits == 0x40 / bits == 0x800
+# compare. Replacing that load with a branch to the function's `pop` skips the
+# optical start and leaves the sensor mask untouched, so a later `A1 05` (or
+# the hourly logging schedule, if enabled) finds the sensor exactly as at idle.
+#
+# Located by signature rather than address so it survives an upstream rebuild:
+#
+#     c8 21        movs r1, #0xc8          sample-rate word for raw mode
+#     40 2c        cmp  r4, #0x40          PPG raw bit
+#     03 d0        beq  +6
+#     01 20        movs r0, #1
+#     c0 02        lsls r0, r0, #11        -> 0x800, motion raw bit
+#     84 42        cmp  r4, r0
+#     05 d1        bne  +10
+#     51 48        ldr  r0, [pc, #0x144]   <- patched to `b <pop>`
+#
+# and the target, the tail of the same function, is the nearest preceding
+#
+#     28 88 20 43 28 80 f8 bd    ldrh r0,[r5]; orrs r0,r4; strh r0,[r5]; pop {r3-r7,pc}
+#
+# The branch goes to the `pop`, not the `orrs`, on purpose (see above).
+OPTICAL_START_SIGNATURE = bytes.fromhex("c821 402c 03d0 0120 c002 8442 05d1 5148".replace(" ", ""))
+OPTICAL_START_LOAD_OFFSET = len(OPTICAL_START_SIGNATURE) - 2  # the `ldr` halfword within the signature
+OPTICAL_RETURN_SIGNATURE = bytes.fromhex("2888 2043 2880 f8bd".replace(" ", ""))
+OPTICAL_RETURN_POP_OFFSET = len(OPTICAL_RETURN_SIGNATURE) - 2  # the `pop` halfword within it
+_OPTICAL_MAX_DISTANCE = 0x80
+
+
+@dataclass(frozen=True)
+class OpticalStartSite:
+    """The `ldr` that begins the raw-mode optical start, and the `pop` to jump to instead."""
+
+    load_offset: int   # payload offset of the halfword to replace
+    return_offset: int  # payload offset of the `pop` it should branch to
+
+    @property
+    def branch(self) -> bytes:
+        """Little-endian encoding of Thumb `b <return_offset>` placed at load_offset."""
+        halfwords = (self.return_offset - (self.load_offset + 4)) // 2
+        if not -1024 <= halfwords < 1024:
+            raise ValueError(f"branch of {halfwords} halfwords does not fit a Thumb B")
+        return (0xE000 | (halfwords & 0x7FF)).to_bytes(2, "little")
+
+
+def find_optical_start_site(payload: bytes) -> OpticalStartSite | None:
+    """
+    Locate the raw-mode optical start in the sensor enable handler, or None.
+
+    Insists on exactly one signature match and a return sequence within a short
+    distance before it; anything else means the image is not the one this was
+    written for, and guessing would patch code we have not read.
+    """
+    hits = [m.start() for m in re.finditer(re.escape(OPTICAL_START_SIGNATURE), payload)]
+    if len(hits) != 1 or hits[0] % 2:
+        return None
+    load = hits[0] + OPTICAL_START_LOAD_OFFSET
+
+    window_start = max(0, hits[0] - _OPTICAL_MAX_DISTANCE)
+    returns = [
+        window_start + m.start()
+        for m in re.finditer(re.escape(OPTICAL_RETURN_SIGNATURE), payload[window_start : hits[0]])
+    ]
+    if len(returns) != 1 or returns[0] % 2:
+        return None
+    return OpticalStartSite(load_offset=load, return_offset=returns[0] + OPTICAL_RETURN_POP_OFFSET)
+
+
 # Sites that carry the timer idiom but must never be patched. Upstream's
 # research notes record 0x007ed4 as part of incoming DFU frame reassembly:
 # lowering it can make large DFU Data frames CRC-check before every BLE write

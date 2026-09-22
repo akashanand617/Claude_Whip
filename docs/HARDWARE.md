@@ -1,5 +1,12 @@
 # Hardware
 
+**2026-09-22 firmware update:** this is a historical hardware-gate record.
+For the corrected platform identification, LED controls, sample-freshness issue,
+experimental firmware and health/gesture switching questions, read
+[FIRMWARE_RESEARCH.md](FIRMWARE_RESEARCH.md) and [LED_FIX.md](LED_FIX.md).
+The old RF03 attribution and claims that LED-off streaming is impossible are
+superseded. No optical-off candidate has been flashed.
+
 M0 gate record.
 
 **Stock firmware: FAILED at 1.00 Hz** (2026-09-02).

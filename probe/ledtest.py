@@ -1,16 +1,16 @@
 """
 Does any command turn the ring's optical emitters off?
 
-The green and red LEDs are the PPG and SpO2 emitters. `A1 04` lights them and
-nothing tried so far puts them out; only a charger tap does. Before going
-looking for an LED enable inside the firmware, establish whether a working
-off-switch exists in the protocol at all.
+Historical health-command probe. The dedicated raw stop is A1 05; it also
+stops motion. LED-off tracking is tested separately by probe.ledcheck.
+69 01 04 was previously mislabeled as HR stop: the firmware starts HR on
+that path. The corrected 69 06 04 disables HR and stops its report timer.
 
-This drives the health-sensor commands on their own, with no raw streaming, so
-nothing can be re-enabling the sensor behind our backs:
+This drives health commands without raw streaming. Background schedules and
+indicators can still affect the observed LEDs:
 
     start heart rate   69 01 01     expect the green LED to light
-    stop heart rate    69 01 04     expect it to go out
+    stop heart rate    69 06 04     expect it to go out if HR was the only owner
     stop realtime HR   6a 01 00 00
     start blood oxygen 69 03 01     expect the red LED
     stop realtime SpO2 6a 03 00 00
@@ -35,7 +35,7 @@ from whip import capture, protocol
 
 STEPS = [
     ("start heart rate", 0x69, bytes([0x01, 0x01]), "green LED should LIGHT"),
-    ("stop heart rate", 0x69, bytes([0x01, 0x04]), "green LED should GO OUT"),
+    ("stop heart rate", 0x69, bytes([0x06, 0x04]), "HR emitter should stop if no other owner"),
     ("stop realtime HR", 0x6A, bytes([0x01, 0x00, 0x00]), "if still lit, should GO OUT now"),
     ("start blood oxygen", 0x69, bytes([0x03, 0x01]), "red LED should LIGHT"),
     ("stop realtime SpO2", 0x6A, bytes([0x03, 0x00, 0x00]), "red LED should GO OUT"),
@@ -57,10 +57,10 @@ async def run(args: argparse.Namespace) -> int:
         await client.start_notify(protocol.UART_TX_CHAR_UUID, on_notify)
 
         # Make sure raw streaming is off, so only these commands are in play.
-        await client.write_gatt_char(
-            protocol.UART_RX_CHAR_UUID, protocol.DISABLE_RAW_SENSOR, response=False
-        )
-        print("raw streaming disabled. Watch the ring.\n")
+        for stop in protocol.STOP_RAW_SENSOR_PACKETS:
+            await client.write_gatt_char(protocol.UART_RX_CHAR_UUID, stop, response=False)
+            await asyncio.sleep(0.15)
+        print("raw streaming stopped (A1 05 + A1 02). Watch the ring.\n")
         await asyncio.sleep(2)
 
         for name, command, sub, expectation in STEPS:

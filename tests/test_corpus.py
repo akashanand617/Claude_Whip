@@ -27,7 +27,11 @@ def gold(items):
 
 
 def test_taxonomy_shape(taxonomy):
-    assert len(taxonomy) == 12
+    by_layer = {}
+    for d in taxonomy.values():
+        by_layer.setdefault(d.layer, []).append(d)
+    assert len(by_layer["artifact"]) == 12
+    assert len(by_layer["agency"]) == 11
     for dim in taxonomy.values():
         a, b = dim.pole_keys()
         assert a != b
@@ -40,13 +44,22 @@ def test_corpus_validates_clean(taxonomy, items):
     assert corpus.validate(taxonomy, items) == []
 
 
-def test_every_dimension_has_five_gold(taxonomy, items):
-    for key in taxonomy:
+def test_every_artifact_dimension_has_five_gold(taxonomy, items):
+    for key in (k for k, d in taxonomy.items() if d.layer == "artifact"):
         gold = [it for it in items
                 if it.dimension == key and it.status == "gold"]
         assert len(gold) >= 5, key
         domains = {it.domain for it in gold}
         assert len(domains) >= 3, f"{key}: domain leak, only {domains}"
+
+
+def test_agency_axes_declare_valid_conditioners(taxonomy):
+    factors = corpus.load_situation_factors()
+    agency = [d for d in taxonomy.values() if d.layer == "agency"]
+    assert agency
+    for dim in agency:
+        for c in dim.conditioners:
+            assert c in factors, (dim.key, c)
 
 
 def test_gold_items_are_complete(gold):
@@ -116,8 +129,8 @@ def test_label_pair_mapping():
         corpus.label_pair("meh", "none")
 
 
-def _plan(taxonomy, items, session=1, pairs=12, seed=7):
-    return corpus.plan_session(taxonomy, items, session, pairs, seed)
+def _plan(taxonomy, items, session=1, pairs=12, seed=7, layer="artifact"):
+    return corpus.plan_session(taxonomy, items, session, pairs, seed, layer)
 
 
 def test_plan_is_deterministic(taxonomy, items):
@@ -128,9 +141,11 @@ def test_plan_is_deterministic(taxonomy, items):
     assert a != different
 
 
-def test_plan_covers_every_dimension(taxonomy, items):
-    plan = _plan(taxonomy, items, pairs=12)
-    assert {p["dimension"] for p in plan["presentations"]} == set(taxonomy)
+def test_plan_covers_every_dimension_of_its_layer(taxonomy, items):
+    plan = _plan(taxonomy, items, pairs=12, layer="artifact")
+    expected = {k for k, d in taxonomy.items() if d.layer == "artifact"}
+    assert {p["dimension"] for p in plan["presentations"]} == expected
+    assert all(p["layer"] == "artifact" for p in plan["presentations"])
 
 
 def test_plan_shows_each_pair_variant_once(taxonomy, items):
@@ -183,7 +198,7 @@ def test_full_session_always_contains_the_sentinels(taxonomy, items, gold):
     # disappears from some sessions.
     sentinel_ids = {it.id for it in gold if it.sentinel}
     for seed in range(5):
-        plan = corpus.plan_session(taxonomy, items, 1, 40, seed)
+        plan = corpus.plan_session(taxonomy, items, 1, 40, seed, "artifact")
         planned = {p["item"] for p in plan["presentations"]}
         assert sentinel_ids <= planned, seed
         early = [p for p in plan["presentations"]
@@ -199,3 +214,9 @@ def test_plan_rejects_too_few_pairs(taxonomy, items):
 def test_plan_rejects_more_pairs_than_gold(taxonomy, items, gold):
     with pytest.raises(ValueError):
         corpus.plan_session(taxonomy, items, 1, len(gold) + 1, 7)
+
+
+def test_plan_rejects_more_pairs_than_that_layer_has(taxonomy, items):
+    artifact = [it for it in items if it.layer == "artifact"]
+    with pytest.raises(ValueError):
+        corpus.plan_session(taxonomy, items, 1, len(artifact) + 1, 7, "artifact")

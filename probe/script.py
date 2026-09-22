@@ -42,9 +42,23 @@ TOKENS = {
 BLOCK_GAP_S = 2.0        # a still of at least this between movements separates blocks (the script says 3 s)
 CUE_LEAD_S = 0.25        # the mark sits this far before the onset, where a cue would have been
 BRIDGE_S = 0.08          # sub-1 g dips of two samples or less are inside a stroke
-MIN_CUT_GAP_S = 0.12     # a gesture boundary must be at least this much below 1 g
 DECODER_GAP_S = events.QUIET_S   # what the live decoder needs between movements to keep them apart
-EXPECT_S = {"snap": (0.0, 0.6), "double_clap": (0.15, 1.3), "flick": (0.08, 1.4), "double_flick": (0.45, 2.0)}
+
+# What each gesture looks like as stretches above 1 g, measured over the 476
+# valid impulsive gestures in the corpus (p10..p90 of count and duration, p90
+# of the widest gap INSIDE one gesture) and widened a little. Cutting a block
+# at its widest gaps is wrong precisely because of the last column: a double
+# clap's own internal gap reaches 1.25 s, wider than a brisk pause between
+# two gestures, so the widest gap in a block is often inside a gesture rather
+# than between two.
+TEMPLATES = {
+    #                count      duration        widest internal gap
+    "snap":         ((1, 1),   (0.00, 0.12),   0.10),
+    "double_clap":  ((2, 4),   (0.20, 1.45),   1.30),
+    "flick":        ((1, 3),   (0.05, 1.15),   0.90),
+    "double_flick": ((1, 4),   (0.55, 1.65),   0.80),
+}
+MARGIN_OK = 1.0          # cost a second-best cut must exceed the best by for the block to be trusted
 
 
 def load_script(path: Path) -> list[list[tuple[str, str]]]:
@@ -105,33 +119,75 @@ def group_blocks(ons, offs, gap_s: float = BLOCK_GAP_S) -> list[list[int]]:
     return blocks
 
 
-def cut_block(ons, offs, peaks, members: list[int], n: int) -> list[dict] | None:
+def _fit_cost(label: str, ons, offs, part: list[int]) -> float:
     """
-    Split one block's stretches into exactly `n` movements at the n-1 widest
-    gaps. Fast runs leave no quiet between gestures (measured: 150 of 203
-    gaps under 0.2 s), so the live decoder's quiet rule cannot separate them;
-    the script's count can. None when the block has fewer stretches than
-    gestures, or a chosen gap is narrower than MIN_CUT_GAP_S.
+    How unlike `label` this group of stretches is: 0.0 is a textbook example.
+    Violations are measured in units of the template's own width, so the four
+    gestures are scored on one scale.
     """
-    if len(members) < n:
-        return None
-    gaps = [(ons[members[k + 1]] - offs[members[k]], k) for k in range(len(members) - 1)]
-    chosen = sorted(gaps, reverse=True)[:n - 1]
-    if chosen and min(g for g, _ in chosen) < MIN_CUT_GAP_S:
-        return None
-    margin = (min(g for g, _ in chosen) - max((g for g, _ in sorted(gaps, reverse=True)[n - 1:]), default=0.0)) if chosen else None
-    cuts = sorted(k for _, k in chosen)
-    out = []; start = 0
-    for k in cuts + [len(members) - 1]:
-        part = members[start:k + 1]
-        out.append({"on_s": float(ons[part[0]]), "off_s": float(offs[part[-1]]), "peak_g": float(peaks[part].max()),
-                    "margin_s": margin})
-        start = k + 1
-    return out
+    (n_lo, n_hi), (d_lo, d_hi), gap_hi = TEMPLATES[label]
+    n = len(part)
+    dur = float(offs[part[-1]] - ons[part[0]])
+    gaps = [float(ons[part[k + 1]] - offs[part[k]]) for k in range(n - 1)]
+    cost = max(0, n_lo - n) + max(0, n - n_hi)
+    width = max(d_hi - d_lo, 0.1)
+    cost += (max(0.0, d_lo - dur) + max(0.0, dur - d_hi)) / width
+    if gaps:
+        cost += max(0.0, max(gaps) - gap_hi) / max(gap_hi, 0.1)
+    return cost
 
 
-def align(script: list[list[tuple[str, str]]], ons, offs, peaks, blocks: list[list[int]]) -> tuple[list[dict], list[str], dict]:
-    """Marks for every block that cuts cleanly into its script count; a report line per block; tempo facts."""
+def cut_block(ons, offs, peaks, members: list[int], want: list[tuple[str, str]]) -> tuple[list[dict] | None, float]:
+    """
+    Split one block's stretches into exactly len(want) movements, IN ORDER,
+    choosing the split that best fits what each gesture is supposed to look
+    like (`TEMPLATES`). Returns (parts, margin), margin being how much worse
+    the best alternative split is -- near zero means the cut is a guess.
+
+    A fast run leaves no reliable quiet between gestures (measured: gaps
+    between gestures ran 0.2-1.5 s while a double clap's own internal gap
+    reaches 1.25 s), so the script's knowledge of WHAT each gesture is has to
+    do the separating, not the gaps alone.
+    """
+    n = len(want)
+    m = len(members)
+    if m < n:
+        return None, 0.0
+    INF = float("inf")
+    # best[g][i] = cost of assigning gestures g.. to stretches i.., with the
+    # runner-up kept so the margin is a real second-best, not a re-cut.
+    best = [[INF] * (m + 1) for _ in range(n + 1)]
+    second = [[INF] * (m + 1) for _ in range(n + 1)]
+    choice = [[0] * (m + 1) for _ in range(n + 1)]
+    best[n][m] = 0.0
+    for g in range(n - 1, -1, -1):
+        label = want[g][0]
+        for i in range(m - 1, -1, -1):
+            for take in range(1, m - i + 1):
+                if best[g + 1][i + take] == INF:
+                    continue
+                c = _fit_cost(label, ons, offs, members[i:i + take]) + best[g + 1][i + take]
+                if c < best[g][i]:
+                    second[g][i] = best[g][i]; best[g][i] = c; choice[g][i] = take
+                elif c < second[g][i]:
+                    second[g][i] = c
+    if best[0][0] == INF:
+        return None, 0.0
+    parts = []
+    i = 0
+    for g in range(n):
+        take = choice[g][i]; part = members[i:i + take]
+        parts.append({"on_s": float(ons[part[0]]), "off_s": float(offs[part[-1]]),
+                      "peak_g": float(peaks[part].max()), "n_strokes": take,
+                      "fit": round(_fit_cost(want[g][0], ons, offs, part), 2)})
+        i += take
+    margin = (second[0][0] - best[0][0]) if second[0][0] < INF else INF
+    return parts, margin
+
+
+def align(script: list[list[tuple[str, str]]], ons, offs, peaks, blocks: list[list[int]],
+          margin_ok: float = MARGIN_OK) -> tuple[list[dict], list[str], dict]:
+    """Marks for every block that fits its script confidently; a report line per block; tempo facts."""
     marks: list[dict] = []
     report: list[str] = []
     index = 0
@@ -139,28 +195,29 @@ def align(script: list[list[tuple[str, str]]], ons, offs, peaks, blocks: list[li
     for k, want in enumerate(script):
         names = " ".join(f"{l}/{d}" if d != "none" else l for l, d in want)
         members = blocks[k] if k < len(blocks) else []
-        parts = cut_block(ons, offs, peaks, members, len(want))
+        parts, margin = cut_block(ons, offs, peaks, members, want)
         if parts is None:
-            report.append(f"block {k + 1:2d}: {len(members)} stretches, cannot cut into {len(want)} movements -> SKIPPED (redo: {names})")
+            report.append(f"block {k + 1:2d}: {len(members)} stretches, fewer than the {len(want)} gestures -> SKIPPED (redo: {names})")
             continue
-        odd = []
+        worst = max(p["fit"] for p in parts)
+        if margin < margin_ok or worst > 1.0:
+            why = (f"the next-best split costs only {margin:.2f} more" if margin < margin_ok
+                   else f"one movement fits its gesture badly (cost {worst:.2f})")
+            shape = ", ".join(f"{l}:{p['n_strokes']}x{p['off_s'] - p['on_s']:.2f}s" for (l, _), p in zip(want, parts))
+            report.append(f"block {k + 1:2d}: cut is not trustworthy -- {why} -> SKIPPED (redo: {names})   [{shape}]")
+            continue
         for (label, direction), part in zip(want, parts):
-            dur = part["off_s"] - part["on_s"]; lo, hi = EXPECT_S[label]
-            if not lo <= dur <= hi:
-                odd.append(f"{label} {dur:.2f}s")
             marks.append({"index": index, "label": label, "direction": direction, "amplitude": "", "windup": "",
                           "posture": "", "tempo": "", "cue_at": round(part["on_s"] - CUE_LEAD_S, 3),
-                          "onset_s": round(part["on_s"], 3), "peak_g": round(part["peak_g"], 2), "duration_s": round(dur, 3)})
+                          "onset_s": round(part["on_s"], 3), "peak_g": round(part["peak_g"], 2),
+                          "duration_s": round(part["off_s"] - part["on_s"], 3), "strokes": part["n_strokes"]})
             index += 1
         gaps = [round(n["on_s"] - p["off_s"], 2) for p, n in zip(parts, parts[1:])]
         gaps_all += gaps
-        margin = parts[0]["margin_s"]
-        report.append(f"block {k + 1:2d}: {len(parts)} movements labelled; gaps {gaps} s; cut margin {margin:.2f} s"
-                      + (f"; odd durations: {', '.join(odd)}" if odd else ""))
+        report.append(f"block {k + 1:2d}: {len(parts)} movements labelled; gaps {gaps} s; margin {margin:.2f}, worst fit {worst:.2f}")
     if len(blocks) > len(script):
         report.append(f"{len(blocks) - len(script)} extra block(s) after the script's end, ignored")
-    tempo = {"gaps": gaps_all, "under_decoder": sum(1 for g in gaps_all if g < DECODER_GAP_S)}
-    return marks, report, tempo
+    return marks, report, {"gaps": gaps_all, "under_decoder": sum(1 for g in gaps_all if g < DECODER_GAP_S)}
 
 
 def label(args) -> int:

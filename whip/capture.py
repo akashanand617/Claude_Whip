@@ -303,36 +303,34 @@ async def stream(
             await asyncio.sleep(FLUSH_INTERVAL_S)
             written = _flush(handle, records, written)
 
-    await client.start_notify(protocol.UART_TX_CHAR_UUID, on_notify)
-
-    await client.write_gatt_char(protocol.UART_RX_CHAR_UUID, protocol.raw_sensor_packet(param), response=False)
-
-    if disable_logging:
-        # Order matters, and it is the opposite of what you would guess.
-        #
-        # `16 02 02 3c` does control the optical emitters -- sending it kept the
-        # ring dark for three minutes, the first time anything had. But sending
-        # it *before* `A1 04` leaves the sensor subsystem down and raw streaming
-        # never starts: one packet in three minutes. Sent after the stream is
-        # already running, the accelerometer keeps going and only the periodic
-        # optical logging is turned off.
-        await asyncio.sleep(0.5)
-        for packet in protocol.DISABLE_LOGGING_PACKETS:
-            await client.write_gatt_char(protocol.UART_RX_CHAR_UUID, packet, response=False)
-            await asyncio.sleep(0.4)
-
-    if quiet_optical:
-        # `A1 04` powers PPG and SpO2 as well as the accelerometer, and the
-        # low-latency firmware only suppresses their notifications -- the green
-        # and red emitters stay lit for the whole capture, producing nothing and
-        # draining a 17 mAh cell. Send the realtime stop commands *while* the
-        # stream is live; sending them after stopping it had no effect.
-        for packet in protocol.QUIET_SENSOR_PACKETS:
-            await asyncio.sleep(0.2)
-            await client.write_gatt_char(protocol.UART_RX_CHAR_UUID, packet, response=False)
-
-    flush_task = asyncio.create_task(flusher()) if handle else None
+    flush_task = None
+    raw_start_attempted = False
     try:
+        await client.start_notify(protocol.UART_TX_CHAR_UUID, on_notify)
+        # A failed or cancelled write may still have reached the ring. Start
+        # cleanup coverage before attempting it, including optional setup.
+        raw_start_attempted = True
+        await client.write_gatt_char(protocol.UART_RX_CHAR_UUID, protocol.raw_sensor_packet(param), response=False)
+
+        if disable_logging:
+            # Preserve the historical post-start ordering. These settings only
+            # disable HR/SpO2 schedules, not the raw optical sensor or every
+            # background schedule. Darkness alone does not prove fresh motion;
+            # the accelerometer can idle while notifications repeat cached XYZ.
+            await asyncio.sleep(0.5)
+            for packet in protocol.DISABLE_LOGGING_PACKETS:
+                await client.write_gatt_char(protocol.UART_RX_CHAR_UUID, packet, response=False)
+                await asyncio.sleep(0.4)
+
+        if quiet_optical:
+            # Health-command probes cannot disable raw sensor bit 0x800.
+            # The corrected HR stop clears bit 1 only. This option is not the
+            # experimental wake/hold + optical STOP sequence in probe.ledcheck.
+            for packet in protocol.QUIET_SENSOR_PACKETS:
+                await asyncio.sleep(0.2)
+                await client.write_gatt_char(protocol.UART_RX_CHAR_UUID, packet, response=False)
+
+        flush_task = asyncio.create_task(flusher()) if handle else None
         if stop is not None:
             await stop.wait()
         else:
@@ -340,17 +338,31 @@ async def stream(
     finally:
         if flush_task:
             flush_task.cancel()
+            try:
+                await flush_task
+            except asyncio.CancelledError:
+                pass
+            except Exception as exc:  # noqa: BLE001 - teardown must still stop the ring
+                logger.warning("error flushing stream: %s", exc)
+        if raw_start_attempted:
+            # `A1 05` is the stop that matches `A1 04`; `A1 02` alone left the
+            # optical sensor running and the LEDs lit until a power cycle.
+            for packet in protocol.STOP_RAW_SENSOR_PACKETS:
+                try:
+                    await client.write_gatt_char(protocol.UART_RX_CHAR_UUID, packet, response=False)
+                    await asyncio.sleep(0.15)
+                except Exception as exc:  # noqa: BLE001 - attempt every remaining cleanup step
+                    logger.warning("error sending stream stop %s: %s", packet[:2].hex(), exc)
         try:
-            await client.write_gatt_char(
-                protocol.UART_RX_CHAR_UUID, protocol.DISABLE_RAW_SENSOR, response=False
-            )
             await client.stop_notify(protocol.UART_TX_CHAR_UUID)
         except Exception as exc:  # noqa: BLE001 - we still want the data we captured
-            logger.warning("error stopping stream: %s", exc)
+            logger.warning("error stopping notifications: %s", exc)
 
         if handle:
-            _flush(handle, records, written)
-            handle.close()
+            try:
+                _flush(handle, records, written)
+            finally:
+                handle.close()
 
     return records
 

@@ -62,8 +62,8 @@ enum Units: String, CaseIterable {
 enum GestureID: String, CaseIterable, Identifiable {
     case flick_up, flick_down, flick_left, flick_right
     case double_flick_up, double_flick_down, double_flick_left, double_flick_right
-    case snap, double_snap
-    case clap, double_clap
+    case snap
+    case double_clap
     case wave
 
     var id: String { rawValue }
@@ -130,8 +130,6 @@ final class AppModel: ObservableObject {
         .double_flick_left:   .init(name: "Previous slide"),
         .double_flick_right:  .init(name: "Next slide"),
         .snap:                .init(name: "Play / pause"),
-        .double_snap:         .init(name: "Run shortcut · Lights"),
-        .clap:                .init(name: "Camera shutter"),
         .double_clap:         .init(name: "Toggle lights"),
         .wave:                .init(name: "Dismiss alert"),
     ]

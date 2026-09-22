@@ -30,11 +30,22 @@ PACKET_SIZE = 16
 CMD_BATTERY = 0x03
 CMD_RAW_SENSOR = 0xA1
 
-# Parameters to CMD_RAW_SENSOR. 0x04 and 0x02 are the only two confirmed by a
-# working implementation; everything else in the byte space is unexplored and
-# is what probe/sweep.py is for.
+# Parameters to CMD_RAW_SENSOR, read from the firmware's A1 handler
+# (sub_020bc in rt02cr-25hz.bin, see docs/HARDWARE.md "Optical front end").
+# Each parameter is a sub-command; start and stop come in matched pairs that
+# enable and disable a bit in the sensor task's mask:
+#
+#   0x01 start   PPG raw mode, sensor bit 0x40      0x02 stop -> clears 0x40
+#   0x04 start   motion raw mode, sensor bit 0x800  0x05 stop -> clears 0x800
+#   0x06 start   like 0x01                          0x08 stop -> clears 0x40
+#   0x07         like 0x01 at 1 Hz with a countdown  0x03 one-shot report
+#
+# `A1 02` after `A1 04` therefore leaves bit 0x800 set, the optical sensor keeps
+# running and its LEDs stay lit until the ring is power-cycled. That was the
+# "stuck LED" that a charger tap used to fix. `A1 05` is the real stop.
 RAW_ENABLE_ALL = 0x04
-RAW_DISABLE = 0x02
+RAW_STOP = 0x05
+RAW_DISABLE = 0x02  # stops the PPG raw modes (0x01/0x06/0x07); harmless after 0x04
 
 # Subtypes appearing in byte 1 of an 0xA1 notification.
 SUBTYPE_SPO2 = 0x01
@@ -101,31 +112,37 @@ def make_packet(command: int, sub_data: bytes | bytearray | None = None) -> byte
 
 
 def raw_sensor_packet(param: int) -> bytearray:
-    """Build a raw sensor control packet. param 0x04 starts, 0x02 stops."""
+    """Build a raw sensor control packet. param 0x04 starts motion raw mode, 0x05 stops it."""
     return make_packet(CMD_RAW_SENSOR, bytes([param]))
 
 
 ENABLE_RAW_SENSOR = raw_sensor_packet(RAW_ENABLE_ALL)
+STOP_RAW_SENSOR = raw_sensor_packet(RAW_STOP)
 DISABLE_RAW_SENSOR = raw_sensor_packet(RAW_DISABLE)
 BATTERY_PACKET = make_packet(CMD_BATTERY)
 
+# Send both, in this order, to stop streaming. `A1 05` clears the motion raw
+# bit and stops the producer timer; with no sensor bit left set the firmware
+# stops the optical sensor (register 0x7b <- 0xa5, 0x00) and the LEDs go out.
+# `A1 02` then clears the PPG raw bit in case a 0x01/0x06/0x07 mode was used.
+STOP_RAW_SENSOR_PACKETS = (STOP_RAW_SENSOR, DISABLE_RAW_SENSOR)
 
-# Stopping the raw stream does not stop the optical front end. `A1 04` powers
-# the PPG/SpO2 sensors, and the low-latency firmware only suppresses their
-# notifications -- the green LED keeps running, draining a 17 mAh cell for data
-# nobody reads. These are the realtime-sensor stop commands, from the protocol
-# notes in Nosh118/colmi-ring-tools.
+
+# Health-command probes, not a raw-stream optical-off switch. On the pinned
+# 25 Hz firmware, sub_050dc routes 69 06 04 through disable(bit 1) at 0x5294
+# and then stops the HR report timer. 69 01 04 is a START, not a stop, and
+# 69 06 02 stops only the report timer. The legacy 0x6A probes have not been
+# established as effective here. None clears the raw sensor bit 0x800.
 QUIET_SENSOR_PACKETS = (
-    make_packet(0x69, bytes([0x01, 0x04])),        # stop heart rate data
+    make_packet(0x69, bytes([0x06, 0x04])),        # disable realtime HR + its timer
     make_packet(0x6A, bytes([0x01, 0x00, 0x00])),  # stop realtime heart rate
     make_packet(0x6A, bytes([0x03, 0x00, 0x00])),  # stop realtime blood oxygen
 )
 
-# The emitters are not driven by raw streaming. They light on the ring's own
-# background health-logging schedule -- observed coming on ~90 s into a session
-# rather than when `A1 04` starts, persisting after `A1 02`, and ignoring every
-# realtime stop command above. Those commands stop *realtime* measurement; these
-# turn the periodic logging off, which is what actually schedules the emitters.
+# These disable only the HR and SpO2 schedules (bits 0 and 1 of 0x208AB1).
+# Three other schedule bits belong to 0x36, 0x38 and 0x3A. This is not a
+# blanket background-optics disable; realtime requests and indicators are
+# separate too. The minute tick's 0x208C4A gate is time-set, not HR enable.
 DISABLE_LOGGING_PACKETS = (
     make_packet(0x16, bytes([0x02, 0x02, 0x3C])),  # disable heart-rate logging
     make_packet(0x2C, bytes([0x02, 0x02])),        # disable blood-oxygen logging

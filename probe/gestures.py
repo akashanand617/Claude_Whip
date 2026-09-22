@@ -94,7 +94,9 @@ async def sweep_subdata(client, position: int, dwell: float) -> list[tuple[int, 
         await client.start_notify(protocol.UART_TX_CHAR_UUID, on_notify)
         await client.write_gatt_char(protocol.UART_RX_CHAR_UUID, packet, response=False)
         await asyncio.sleep(dwell)
-        await client.write_gatt_char(protocol.UART_RX_CHAR_UUID, protocol.DISABLE_RAW_SENSOR, response=False)
+        for stop in protocol.STOP_RAW_SENSOR_PACKETS:
+            await client.write_gatt_char(protocol.UART_RX_CHAR_UUID, stop, response=False)
+            await asyncio.sleep(0.15)
         await client.stop_notify(protocol.UART_TX_CHAR_UUID)
 
         stats = analyze.analyze(records, duration_s=dwell)

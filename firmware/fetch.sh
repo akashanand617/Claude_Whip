@@ -2,7 +2,8 @@
 # Rebuild firmware/ from public sources and verify against SHA256SUMS.
 #
 # The two downloadable images come from the vendor CDN and from upstream; the
-# two custom ones are built from the low-latency image by probe/build.py. See
+# rate variants are built by probe/build.py; the experimental optical-off
+# candidate is derived from the pinned 25 Hz image by probe/build_optical_off.py. See
 # PROVENANCE.md for what each is and why.
 set -euo pipefail
 
@@ -35,6 +36,9 @@ PY="$(cd .. && pwd)/.venv/bin/python"
 [ -x "$PY" ] || PY="$(command -v python3)"
 (cd .. && "$PY" -m probe.build --immediate 3 >/dev/null && echo "  rt02cr-33hz.bin")
 (cd .. && "$PY" -m probe.build --immediate 4 >/dev/null && echo "  rt02cr-25hz.bin")
+if [ ! -e "rt02cr-25hz-optical-off-v2-experimental.bin" ]; then
+  (cd .. && "$PY" -m probe.build_optical_off --out firmware/rt02cr-25hz-optical-off-v2-experimental.bin)
+fi
 
 echo
 if shasum -a 256 -c SHA256SUMS; then

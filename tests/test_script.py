@@ -31,17 +31,22 @@ def test_a_block_with_the_wrong_count_is_skipped_not_guessed(tmp_path):
     assert "SKIPPED" in report[0] and "redo" in report[0]
 
 
-def test_a_fast_block_is_cut_at_its_widest_gaps_to_the_script_count(tmp_path):
-    """Six gestures as fourteen stretches with no real quiet: the five widest gaps are the boundaries."""
-    p = tmp_path / "s.txt"; p.write_text("F^ S Fv S F< S\n")
+def test_the_cut_follows_the_gestures_not_the_widest_gaps(tmp_path):
+    """A double clap with a 0.9 s internal gap next to flicks 0.5 s apart: the widest gap is INSIDE a gesture."""
+    p = tmp_path / "s.txt"; p.write_text("F^ C Fv\n")
     script = sc.load_script(p)
-    # gesture k = strokes at k*0.7 + {0, 0.12, 0.24}... with 0.08 s dips inside and 0.3 s between gestures
-    ons = []
-    for k in range(6):
-        base = 5.0 + k * 0.7
-        ons += [base, base + 0.16] if k % 2 == 0 else [base, base + 0.12, base + 0.24]
-    ons = np.array(ons); offs = ons + 0.08; peaks = np.full(len(ons), 4.0)
-    marks, report, tempo = sc.align(script, ons, offs, peaks, sc.group_blocks(ons, offs))
-    assert [m["label"] for m in marks] == [l for l, _ in script[0]]
-    assert [round(m["onset_s"], 2) for m in marks] == [round(5.0 + k * 0.7, 2) for k in range(6)]
-    assert tempo["under_decoder"] == 5 and "SKIPPED" not in report[0]
+    # flick (2 strokes, 0.3 s), 0.5 s, double clap (2 claps 0.9 s apart), 0.5 s, flick (2 strokes)
+    ons = np.array([5.0, 5.30, 5.80, 6.70, 7.20, 7.50]); offs = ons + 0.04; peaks = np.full(6, 4.0)
+    parts, margin = sc.cut_block(ons, offs, peaks, list(range(6)), script[0])
+    assert [p_["n_strokes"] for p_ in parts] == [2, 2, 2]
+    assert [round(p_["on_s"], 2) for p_ in parts] == [5.0, 5.8, 7.2]
+    assert margin > sc.MARGIN_OK
+
+
+def test_an_ambiguous_block_is_skipped_rather_than_guessed(tmp_path):
+    """Six identical single strokes for three gestures: several splits fit equally, so nothing is labelled."""
+    p = tmp_path / "s.txt"; p.write_text("F^ Fv F<\n")
+    script = sc.load_script(p)
+    ons = np.array([5.0, 5.3, 5.6, 5.9, 6.2, 6.5]); offs = ons + 0.04; peaks = np.full(6, 4.0)
+    marks, report, _ = sc.align(script, ons, offs, peaks, [list(range(6))])
+    assert marks == [] and "not trustworthy" in report[0]

@@ -1,0 +1,193 @@
+{
+  "status": "UNFLASHED; hardware unvalidated; byte snapshot, not flash approval",
+  "base_sha256": "f13e63d3fdef3b10aa20fd4e0672077b66f60bb19c689ef64053840e4d35d3d9",
+  "candidate_sha256": "0d18a0fa860d58ab8f984b5f542f45dac105241f47bf1c2af41321eb0431e14c",
+  "size": 137540,
+  "payload_bytes_changed": 81,
+  "patches": [
+    {
+      "file_offset": "0x21dc",
+      "runtime_address": "0x82818c",
+      "length": 8,
+      "original_hex": "0120c0020bf05cfd",
+      "replacement_hex": "042038700af091fc"
+    },
+    {
+      "file_offset": "0x691e",
+      "runtime_address": "0x82c8ce",
+      "length": 4,
+      "original_hex": "00f090fb",
+      "replacement_hex": "08f0c9fe"
+    },
+    {
+      "file_offset": "0xcad2",
+      "runtime_address": "0x832a82",
+      "length": 4,
+      "original_hex": "a0790028",
+      "replacement_hex": "02f0ddfd"
+    },
+    {
+      "file_offset": "0xf68c",
+      "runtime_address": "0x83563c",
+      "length": 2,
+      "original_hex": "f8b5",
+      "replacement_hex": "7047"
+    },
+    {
+      "file_offset": "0xf690",
+      "runtime_address": "0x835640",
+      "length": 36,
+      "original_hex": "f4f70afb744900200870724da021288827460f40012600281ad0420617d4002f12d00842",
+      "replacement_hex": "06480078042805d105480078022801d100207047a0790028704700bfac9c2000099e2000"
+    },
+    {
+      "file_offset": "0xf6b4",
+      "runtime_address": "0x835664",
+      "length": 32,
+      "original_hex": "10d16848ff21001f86709131018009f0a9fc05f04bf86348001ffff793fc2e71",
+      "replacement_hex": "10b5f7f7c4fc054c2078042805d10020207020461030f4f735fb10bdac9c2000"
+    },
+    {
+      "file_offset": "0x1231a",
+      "runtime_address": "0x8382ca",
+      "length": 2,
+      "original_hex": "5a20",
+      "replacement_hex": "0020"
+    }
+  ],
+  "critical_site_reads": [
+    {
+      "name": "raw_start_00",
+      "file_offset": "0x21d6",
+      "runtime_address": "0x828186",
+      "length": 14
+    },
+    {
+      "name": "raw_start_0e",
+      "file_offset": "0x21e4",
+      "runtime_address": "0x828194",
+      "length": 6
+    },
+    {
+      "name": "raw_period_00",
+      "file_offset": "0x2244",
+      "runtime_address": "0x8281f4",
+      "length": 14
+    },
+    {
+      "name": "raw_period_0e",
+      "file_offset": "0x2252",
+      "runtime_address": "0x828202",
+      "length": 2
+    },
+    {
+      "name": "disconnect_hook_00",
+      "file_offset": "0x6918",
+      "runtime_address": "0x82c8c8",
+      "length": 14
+    },
+    {
+      "name": "disconnect_hook_0e",
+      "file_offset": "0x6926",
+      "runtime_address": "0x82c8d6",
+      "length": 10
+    },
+    {
+      "name": "dfu_timer_00",
+      "file_offset": "0x7ed0",
+      "runtime_address": "0x82de80",
+      "length": 14
+    },
+    {
+      "name": "dfu_timer_0e",
+      "file_offset": "0x7ede",
+      "runtime_address": "0x82de8e",
+      "length": 6
+    },
+    {
+      "name": "accel_range_00",
+      "file_offset": "0xbf04",
+      "runtime_address": "0x831eb4",
+      "length": 14
+    },
+    {
+      "name": "accel_range_0e",
+      "file_offset": "0xbf12",
+      "runtime_address": "0x831ec2",
+      "length": 2
+    },
+    {
+      "name": "idle_request_00",
+      "file_offset": "0xcad0",
+      "runtime_address": "0x832a80",
+      "length": 14
+    },
+    {
+      "name": "idle_request_0e",
+      "file_offset": "0xcade",
+      "runtime_address": "0x832a8e",
+      "length": 6
+    },
+    {
+      "name": "optical_enable_idle_guard_00",
+      "file_offset": "0xf68a",
+      "runtime_address": "0x83563a",
+      "length": 14
+    },
+    {
+      "name": "optical_enable_idle_guard_0e",
+      "file_offset": "0xf698",
+      "runtime_address": "0x835648",
+      "length": 14
+    },
+    {
+      "name": "optical_enable_idle_guard_1c",
+      "file_offset": "0xf6a6",
+      "runtime_address": "0x835656",
+      "length": 14
+    },
+    {
+      "name": "optical_enable_idle_guard_2a",
+      "file_offset": "0xf6b4",
+      "runtime_address": "0x835664",
+      "length": 14
+    },
+    {
+      "name": "optical_enable_idle_guard_38",
+      "file_offset": "0xf6c2",
+      "runtime_address": "0x835672",
+      "length": 14
+    },
+    {
+      "name": "optical_enable_idle_guard_46",
+      "file_offset": "0xf6d0",
+      "runtime_address": "0x835680",
+      "length": 10
+    },
+    {
+      "name": "optical_control_00",
+      "file_offset": "0x122fe",
+      "runtime_address": "0x8382ae",
+      "length": 14
+    },
+    {
+      "name": "optical_control_0e",
+      "file_offset": "0x1230c",
+      "runtime_address": "0x8382bc",
+      "length": 14
+    },
+    {
+      "name": "optical_control_1c",
+      "file_offset": "0x1231a",
+      "runtime_address": "0x8382ca",
+      "length": 14
+    },
+    {
+      "name": "optical_control_2a",
+      "file_offset": "0x12328",
+      "runtime_address": "0x8382d8",
+      "length": 6
+    }
+  ],
+  "container_problems": []
+}

@@ -75,11 +75,16 @@ def main() -> int:
         type=lambda v: int(v, 0),
         help="file offset of a 4-byte bl to replace with two NOPs; repeatable",
     )
+    parser.add_argument(
+        "--no-optical",
+        action="store_true",
+        help="keep the optical sensor (and its LEDs) off in raw mode; see fwimage.OPTICAL_START_SIGNATURE",
+    )
     parser.add_argument("--out", type=Path, help="output path (default names itself after the rate)")
     args = parser.parse_args()
 
-    if args.immediate is None and not args.nop:
-        raise SystemExit("give --immediate, --nop, or both")
+    if args.immediate is None and not args.nop and not args.no_optical:
+        raise SystemExit("give --immediate, --nop, --no-optical, or a combination")
     if args.immediate is not None and not 1 <= args.immediate <= 255:
         raise SystemExit("immediate must fit in a byte (1-255)")
 
@@ -106,6 +111,25 @@ def main() -> int:
         print(f"  timer site      {file_offset:#08x}  #{site.immediate} -> #{args.immediate}  ({rate_hz:.2f} Hz)")
         edits[file_offset] = args.immediate
 
+    if args.no_optical:
+        site = fwimage.find_optical_start_site(data[image.payload_offset :])
+        if site is None:
+            raise SystemExit(
+                "the raw-mode optical start was not found by signature; the base image is not "
+                "the one this patch was written for. Nothing patched."
+            )
+        file_offset = image.payload_offset + site.load_offset
+        branch = site.branch
+        original = data[file_offset : file_offset + 2]
+        if original != fwimage.OPTICAL_START_SIGNATURE[-2:]:
+            raise SystemExit(f"{file_offset:#x} holds {original.hex()}, not the expected ldr; refusing")
+        print(
+            f"  no-optical      {file_offset:#08x}  {original.hex()} -> {branch.hex()}  "
+            f"(b {image.payload_offset + site.return_offset:#x}: skip the optical start, mask untouched)"
+        )
+        edits[file_offset] = branch[0]
+        edits[file_offset + 1] = branch[1]
+
     for offset in args.nop:
         original = data[offset : offset + 4]
         # A Thumb bl is a 32-bit pair; the second halfword has bits 15-14 set.
@@ -125,6 +149,9 @@ def main() -> int:
     elif args.nop:
         tag = "-".join(f"{o:x}" for o in args.nop)
         out = args.base.parent / f"rt02cr-nop{tag}.bin"
+    elif args.no_optical:
+        stem = args.base.stem if rate_hz is None else f"rt02cr-{rate_hz:.0f}hz"
+        out = args.base.parent / f"{stem}-noled.bin"
     else:
         out = args.base.parent / f"rt02cr-{rate_hz:.0f}hz.bin"
     out.write_bytes(patched)
@@ -132,7 +159,7 @@ def main() -> int:
     changed = sum(1 for a, b in zip(data, patched) if a != b)
     print(f"\n  wrote           {out}  ({len(patched)} bytes)")
     print(f"  sha256          {hashlib.sha256(patched).hexdigest()}")
-    print(f"  changed         {changed} bytes (1 timer + 32 sha + body sum)")
+    print(f"  changed         {changed} bytes (code edits + 32 sha + body sum)")
     print(f"  container       consistent")
 
 

@@ -4,8 +4,14 @@ The code in this repository is under the repository licence. **These `.bin` file
 are not.** No claim is made that vendor firmware bytes are open source; they are
 kept for interoperability, repair and research, with hashes in `SHA256SUMS`.
 
-Every image here is reproducible from a public source. Run `./fetch.sh` to
-rebuild the directory from scratch and verify the hashes.
+Every current image listed in `SHA256SUMS` is reproducible from a public source.
+Run `./fetch.sh` to rebuild those images and verify their hashes. Superseded
+experimental artifacts are recorded separately below and are not rebuilt.
+
+Detailed reverse-engineering and mode-switching handoff:
+[FIRMWARE_RESEARCH.md](../docs/FIRMWARE_RESEARCH.md). The
+[2026-09-22 evidence archive](research/2026-09-22/README.md) preserves completed
+reviews, mapping tools, hardware captures and exact experimental patch bytes.
 
 ---
 
@@ -66,6 +72,40 @@ refreshes the payload SHA-256, clears the Realtek `not_ready` bit and recomputes
 the outer body sum, without which the image transfers but does not boot.
 
 `rt02cr-25hz.bin` is the one that passes the M0 gate and is currently flashed.
+
+### `rt02cr-25hz-optical-off-v2-experimental.bin` — unflashed research candidate
+
+Built locally on 2026-09-22 from the exact hash-pinned 25 Hz image:
+
+```sh
+python -m probe.build_optical_off --out firmware/rt02cr-25hz-optical-off-v2-experimental.bin
+```
+
+137,540 bytes · `0d18a0fa860d58ab8f984b5f542f45dac105241f47bf1c2af41321eb0431e14c`
+
+The builder refuses existing output files and unknown bases. It changes 81
+payload bytes plus derived container checksums: optical sensor-enable returns
+without starting optics, ordinary VC30F RUN becomes STOP, raw start explicitly
+wakes the accelerometer, and its idle request is deferred only during connected
+raw mode 4. Stop or disconnect releases that hold. V2 additionally clears raw
+mode 4 and stops/deletes its producer timer on disconnect, releasing the
+mode-4 deep-sleep veto. Reconnect requires a new `A1 04`. Rate, range and DFU are
+unchanged. Optical health measurements and optical indicators are disabled
+globally, not only during streaming.
+
+This is **not hardware validated or the default flash target**. Pinning its hash
+does not certify safety. Boot behavior, LED darkness, fresh motion, start/stop,
+disconnect/reconnect and battery drain still require tests on this candidate.
+The successful one-minute optical-off command trial ran on the original 25 Hz
+firmware, not on this image. See [the investigation record](../docs/LED_FIX.md).
+
+The preserved, superseded `rt02cr-25hz-optical-off-experimental.bin` has hash
+`f862e5bb1b65ff43d6133524d20fd82bcbc072bd8a1245a9927367993a213f27` (47 payload
+bytes changed). It lacks disconnect timer/mode cleanup. It is no longer in the
+current build/hash manifest; the current builder does not reproduce it, and the
+candidate identity validator rejects it. Neither version has been flashed.
+Fable's separate one-halfword candidate (`3c57b73e…`) is also superseded; its
+verification results must not be represented as verification of either image here.
 
 ### Prior art, not redistributed here
 

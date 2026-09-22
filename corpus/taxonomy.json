@@ -97,11 +97,11 @@
       "poles": {
         "ask-first": {
           "summary": "Ask one targeted question before proceeding.",
-          "context_statement": "When a request is ambiguous in a way that changes the work, ask a targeted question before doing it."
+          "context_statement": "Ask a targeted question before starting when a request is ambiguous in a way that changes the work."
         },
         "act-first": {
           "summary": "Proceed with a stated, reversible assumption.",
-          "context_statement": "When a request is ambiguous, pick the most likely reading, state the assumption, and proceed; do not block on questions."
+          "context_statement": "Pick the most likely reading of an ambiguous request, state the assumption, and proceed; do not block on questions."
         }
       },
       "length_constitutive": false
@@ -116,7 +116,7 @@
         },
         "collateral": {
           "summary": "Bring tests and docs along by default.",
-          "context_statement": "When implementing a change, also add the matching test and documentation update without being asked."
+          "context_statement": "Add the matching test and documentation update alongside any change, without being asked."
         }
       },
       "length_constitutive": true

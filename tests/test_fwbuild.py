@@ -108,3 +108,21 @@ def test_refresh_clears_not_ready():
 
     assert fwbuild.read_fields(bytes(data)).not_ready
     assert not fwbuild.read_fields(fwbuild.refresh(bytes(data))).not_ready
+
+
+def test_no_optical_patch_is_one_halfword_and_stays_consistent():
+    base = FIRMWARE / "rt02cr-25hz.bin"
+    data = base.read_bytes()
+    site = fwimage.find_optical_start_site(data[0x50:])
+    offset = 0x50 + site.load_offset
+    patched = fwbuild.patch(data, {offset: site.branch[0], offset + 1: site.branch[1]})
+
+    assert fwbuild.verify(patched) == []
+    differing = {i for i, (a, b) in enumerate(zip(data, patched)) if a != b}
+    expected = {offset, offset + 1}
+    expected |= set(range(fwbuild.SHA256_OFFSET, fwbuild.SHA256_OFFSET + fwbuild.SHA256_LEN))
+    expected |= set(range(fwbuild.BODY_SUM_OFFSET, fwbuild.BODY_SUM_OFFSET + 4))
+    assert differing <= expected
+    assert patched[offset : offset + 2] == bytes.fromhex("e5e7")
+    # The 25 Hz timer is untouched.
+    assert patched[0x2248] == data[0x2248] == 0x04

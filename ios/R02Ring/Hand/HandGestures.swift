@@ -39,8 +39,6 @@ enum HandGesture {
         case .double_flick_up, .double_flick_down, .double_flick_left, .double_flick_right:
             return 2.8
         case .snap:        return 2.4
-        case .double_snap: return 3.0
-        case .clap:        return 1.9
         case .double_clap: return 2.6
         case .wave:        return 1.8
         }
@@ -58,8 +56,6 @@ enum HandGesture {
         case .double_flick_left:   return flick(.left, double: true, p)
         case .double_flick_right:  return flick(.right, double: true, p)
         case .snap:                return snap(double: false, p)
-        case .double_snap:         return snap(double: true, p)
-        case .clap:                return clap(double: false, p)
         case .double_clap:         return clap(double: true, p)
         case .wave:                return wave(p)
         }
@@ -140,6 +136,9 @@ enum HandGesture {
 
     /// Three moves: a slow squeeze building tension against the thumb, a ~35ms release
     /// where the middle whips past it into the palm, then a long eased settle back.
+    ///
+    /// Only `double: false` is reachable — `double_snap` was retired from the model's
+    /// vocabulary. The parameter stays so restoring the class is a one-line change.
     private static func snap(double dbl: Bool, _ p: Double) -> HandFrame {
         let beats: [Double] = dbl ? [0.2, 0.55] : [0.34]
         var u = 0.0, sp = 0.0, pre = 0.0, kick = 0.0
@@ -188,6 +187,9 @@ enum HandGesture {
 
     /// Palms stacked; the far hand is the mirror hand (z reflected), scissored open and
     /// closing on the beat about the palm centre so the two stay linked.
+    ///
+    /// Only `double: true` is reachable — single `clap` was retired from the model's
+    /// vocabulary. The parameter stays so restoring the class is a one-line change.
     private static func clap(double dbl: Bool, _ p: Double) -> HandFrame {
         let beats: [Double] = dbl ? [0.14, 0.46] : [0.26]
         var c = 0.0, sp = 0.0
