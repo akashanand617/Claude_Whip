@@ -189,11 +189,20 @@ def resolve(plan: Plan, sessions_dir: Path, session_spans: dict[str, tuple[float
 
 
 def part_of_window(plan: Plan, sid: str, start_s: float) -> str | None:
-    """Which part a window belongs to, or None when it straddles a boundary (dropped)."""
-    for iv in plan.intervals.get(sid, ()):
-        if start_s >= iv.start and start_s + WINDOW_S <= iv.end:
-            return iv.part
-    return None
+    """
+    Which part a window belongs to, or None when it straddles a boundary
+    between DIFFERENT parts (dropped). A window that overlaps two intervals
+    of the same part is not a leak and keeps it: with cues ~3 s apart the
+    wholly-inside rule stripped a gesture's later windows whenever its
+    neighbour was in the same part, leaving 2-3 covering windows and runs
+    that could never reach min_run -- 4 of 18 val "misses" on 2026-09-21
+    were exactly that, with p(true) = 1.00.
+    """
+    end = start_s + WINDOW_S
+    parts = {iv.part for iv in plan.intervals.get(sid, ()) if iv.start < end and iv.end > start_s}
+    if not parts:
+        return None
+    return parts.pop() if len(parts) == 1 else None
 
 
 def part_of_mark(plan: Plan, sid: str, cue_at: float) -> str | None:
