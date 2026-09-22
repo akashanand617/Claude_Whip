@@ -200,6 +200,14 @@ def test_event_log_writes_consumable_jsonl(tmp_path):
 
 # ---------------------------------------------------------------- ring frame
 
+def _payload(x: int, y: int, z: int) -> bytes:
+    """A raw A1/03 packet encoded exactly as `accel.decode` reads it (signed16 big-endian; x at 6:8, y at 2:4, z at 4:6)."""
+    from whip import protocol
+    p = bytearray(16); p[0] = protocol.CMD_RAW_SENSOR; p[1] = protocol.SUBTYPE_ACCEL
+    p[2:4] = int(y).to_bytes(2, "big", signed=True); p[4:6] = int(z).to_bytes(2, "big", signed=True); p[6:8] = int(x).to_bytes(2, "big", signed=True)
+    return bytes(p)
+
+
 def _pose(along_sign, n=50, still=True, seed=0):
     """A fingers-at-the-floor pose in counts: gravity along the finger axis, sign given."""
     from whip.model import FINGER_AXIS
@@ -226,8 +234,9 @@ def test_a_frame_makes_the_engine_see_a_flipped_stream_as_canonical():
     t, x = synthetic_counts()
     flip = np.diag([1.0, -1.0, -1.0])
     seen = {}
+    net = gm.GestureNet(n_classes=len(labels), n_channels=4)      # ONE network for both runs
     for name, stream, frame in (("canon", x, "identity"), ("flipped", flip @ x, "flip_axis0")):
-        eng = Engine(gm.GestureNet(n_classes=len(labels), n_channels=4), prov, threshold=0.5)
+        eng = Engine(net, prov, threshold=0.5)
         eng.auto_frame = False; eng.set_frame(frame)
         probs = []
         orig = eng._classify_window
@@ -235,7 +244,7 @@ def test_a_frame_makes_the_engine_see_a_flipped_stream_as_canonical():
             out = orig(); probs.append(eng._last_probs.copy()); return out
         eng._classify_window = spy
         for i in range(stream.shape[1]):
-            eng.feed(t[i], make_accel_payload(x=int(stream[0, i]), y=int(stream[1, i]), z=int(stream[2, i])))
+            eng.feed(t[i], _payload(int(stream[0, i]), int(stream[1, i]), int(stream[2, i])))
         seen[name] = np.array(probs)
     assert seen["canon"].shape == seen["flipped"].shape
     assert np.allclose(seen["canon"], seen["flipped"], atol=1e-5)
@@ -248,7 +257,7 @@ def test_auto_frame_switches_when_the_fingers_point_at_the_floor():
     eng = Engine(gm.GestureNet(n_classes=len(labels), n_channels=4), prov)
     pose = _pose(-1, n=60)
     for i in range(60):
-        eng.feed(i / 25.0, make_accel_payload(x=int(pose[i, 0]), y=int(pose[i, 1]), z=int(pose[i, 2])))
+        eng.feed(i / 25.0, _payload(int(pose[i, 0]), int(pose[i, 1]), int(pose[i, 2])))
     assert eng.frame_name == "flip_axis0" and eng.frame_changes and eng.frame_changes[0][1] == "flip_axis0"
     # calibrate() with an explicit canonical pose puts it back
     assert eng.calibrate(_pose(+1), t_s=9.0) == "identity" and eng.frame_name == "identity"
