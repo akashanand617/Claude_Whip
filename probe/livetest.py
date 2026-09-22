@@ -127,6 +127,13 @@ def build_schedule(args, registry) -> list[session.Prompt]:
 
 # ------------------------------------------------------------------ the run
 
+def accel_xyz(payload: bytes):
+    if len(payload) < 8 or payload[0] != protocol.CMD_RAW_SENSOR or payload[1] != protocol.SUBTYPE_ACCEL:
+        return None
+    from whip import accel
+    s = accel.decode(payload); return (s.x, s.y, s.z)
+
+
 async def run(args: argparse.Namespace) -> int:
     from probe.collect import check_ring, wait_for_data
 
@@ -179,6 +186,16 @@ async def run(args: argparse.Namespace) -> int:
         await wait_for_data(rec)
         t0_holder["t0"] = rec.notes["stream_t0"]
         rng = random.Random(args.seed)
+        # Calibration pose: the ring may be worn either way round; two seconds
+        # with the fingers pointing at the floor tells the engine which.
+        print("\n  ---- CALIBRATE: let your arm hang, fingers pointing at the floor, hold still (3 s) ----", flush=True)
+        await asyncio.sleep(3.0)
+        recent = [accel_xyz(p) for _, p in list(rec.records)[-60:]]
+        recent = [r for r in recent if r is not None]
+        got = engine.calibrate(recent, stream_clock())
+        print(f"       frame: {got or 'pose not held -- keeping ' + engine.frame_name}"
+              + ("  (ring is on the other way round; corrected)" if got == "flip_axis0" else ""), flush=True)
+        fh.write(json.dumps({"kind": "frame", "t_s": round(stream_clock(), 3), "frame": engine.frame_name, "from_pose": got}) + "\n"); fh.flush()
         if args.free:
             end = stream_clock() + args.minutes * 60
             while stream_clock() < end and not stop.is_set():
@@ -220,6 +237,11 @@ async def run(args: argparse.Namespace) -> int:
             stop.set(); cuer.cancel()
             if not args.free:
                 notes.write(SESSIONS_DIR / f"{session_id}.notes.json")
+            if engine.frame_name != "identity":
+                from whip import audit
+                audit.set_frame(sink, engine.frame_name, evidence="live calibration pose / auto-frame")
+            for t_c, name in engine.frame_changes:
+                fh.write(json.dumps({"kind": "frame_change", "t_s": round(t_c, 3), "frame": name}) + "\n")
             await consumer
             for ev in engine.finish():
                 log.write(ev, config.action_for(ev))

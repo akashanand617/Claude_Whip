@@ -50,6 +50,7 @@ async def run(args: argparse.Namespace) -> int:
                 t, payload = queue.popleft()
                 drained = True
                 packets += 1
+                before = engine.frame_name
                 for event in engine.feed(t, payload):
                     action = config.action_for(event)
                     log.write(event, action)
@@ -57,6 +58,8 @@ async def run(args: argparse.Namespace) -> int:
                     print(f"  [{event.t_s:8.2f}s] {event.name:<13} "
                           f"dir={event.direction:<6} conf={event.confidence:.2f}{tag}",
                           flush=True)
+                if engine.frame_name != before:
+                    print(f"  [{t:8.2f}s] ring frame -> {engine.frame_name} (fingers-down pose seen)", flush=True)
             if not drained:
                 await asyncio.sleep(0.05)
             if packets and packets % 1500 == 0:
@@ -68,7 +71,7 @@ async def run(args: argparse.Namespace) -> int:
         battery = await capture.read_battery(client)
         print(f"connected   {info.name}  fw {info.firmware}"
               + (f"  battery {battery[0]}%" if battery else ""))
-        print("streaming -- perform gestures; Ctrl-C to stop\n")
+        print("streaming -- let the arm hang (fingers at the floor) for 2 s once so the ring frame is known; then gestures; Ctrl-C to stop\n")
 
         consumer = asyncio.create_task(consume())
         try:

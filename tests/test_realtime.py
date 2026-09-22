@@ -6,6 +6,7 @@ torch = pytest.importorskip("torch")
 from whip import accel, despike, evaluate, events
 from whip import model as gm
 from whip.realtime import Engine, EventLog, GestureEvent, RouterConfig
+from probe.simulate import make_accel_payload
 
 
 def make_provenance(labels=("none", "flick", "double_flick", "wave")):
@@ -195,3 +196,59 @@ def test_event_log_writes_consumable_jsonl(tmp_path):
     assert lines[0]["action"] == "flag" and lines[0]["direction"] == "up"
     assert lines[1]["action"] is None
     assert all("wall" in l for l in lines)
+
+
+# ---------------------------------------------------------------- ring frame
+
+def _pose(along_sign, n=50, still=True, seed=0):
+    """A fingers-at-the-floor pose in counts: gravity along the finger axis, sign given."""
+    from whip.model import FINGER_AXIS
+    rng = np.random.default_rng(seed)
+    g = np.zeros(3); g[FINGER_AXIS] = along_sign * 8005.0
+    noise = rng.normal(0, 40 if still else 3000, (n, 3))
+    return g[None, :] + noise
+
+
+def test_frame_from_pose_reads_the_finger_sign_and_refuses_a_bad_pose():
+    from whip.realtime import Engine
+    assert Engine.frame_from_pose(_pose(+1)) == "identity"
+    assert Engine.frame_from_pose(_pose(-1)) == "flip_axis0"
+    assert Engine.frame_from_pose(_pose(-1, still=False)) is None        # moving
+    sideways = _pose(+1); sideways[:, :] = np.roll(sideways, 1, axis=1)   # gravity on another axis
+    assert Engine.frame_from_pose(sideways) is None
+
+
+def test_a_frame_makes_the_engine_see_a_flipped_stream_as_canonical():
+    """Feeding samples worn back to front, with the matching frame, must give the same windows as the canonical stream."""
+    from whip.realtime import Engine
+    labels = ["none", "flick", "double_flick", "wave"]
+    prov = {"labels": labels, "channels": ["shape", "scale"], "direction_names": ["none", "up", "down", "left", "right"], "direction_trained": False}
+    t, x = synthetic_counts()
+    flip = np.diag([1.0, -1.0, -1.0])
+    seen = {}
+    for name, stream, frame in (("canon", x, "identity"), ("flipped", flip @ x, "flip_axis0")):
+        eng = Engine(gm.GestureNet(n_classes=len(labels), n_channels=4), prov, threshold=0.5)
+        eng.auto_frame = False; eng.set_frame(frame)
+        probs = []
+        orig = eng._classify_window
+        def spy(orig=orig, eng=eng, probs=probs):
+            out = orig(); probs.append(eng._last_probs.copy()); return out
+        eng._classify_window = spy
+        for i in range(stream.shape[1]):
+            eng.feed(t[i], make_accel_payload(x=int(stream[0, i]), y=int(stream[1, i]), z=int(stream[2, i])))
+        seen[name] = np.array(probs)
+    assert seen["canon"].shape == seen["flipped"].shape
+    assert np.allclose(seen["canon"], seen["flipped"], atol=1e-5)
+
+
+def test_auto_frame_switches_when_the_fingers_point_at_the_floor():
+    from whip.realtime import Engine
+    labels = ["none", "flick", "double_flick", "wave"]
+    prov = {"labels": labels, "channels": ["shape", "scale"], "direction_trained": False}
+    eng = Engine(gm.GestureNet(n_classes=len(labels), n_channels=4), prov)
+    pose = _pose(-1, n=60)
+    for i in range(60):
+        eng.feed(i / 25.0, make_accel_payload(x=int(pose[i, 0]), y=int(pose[i, 1]), z=int(pose[i, 2])))
+    assert eng.frame_name == "flip_axis0" and eng.frame_changes and eng.frame_changes[0][1] == "flip_axis0"
+    # calibrate() with an explicit canonical pose puts it back
+    assert eng.calibrate(_pose(+1), t_s=9.0) == "identity" and eng.frame_name == "identity"

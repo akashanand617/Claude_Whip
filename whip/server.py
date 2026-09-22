@@ -246,6 +246,7 @@ class RingManager:
                         "type": "live",
                         "samples": list(recent),
                         "probabilities": engine.last_probabilities,
+                        "frame": engine.frame_name,
                     })
                     recent.clear()
 

@@ -104,6 +104,72 @@ class Engine:
         # and direction aggregated over its windows, not just the last one.
         self._run_meta: list[tuple[float, float, str]] = []
         self._last_probs: np.ndarray | None = None
+        # Ring frame. The model is trained in the canonical wearing (sensor
+        # below the finger, finger axis pointing the known way). Worn back to
+        # front, every flick failed live (2/20; 17/20 on the same bytes once
+        # the frame was corrected). The frame is a proper rotation applied to
+        # every decoded sample; it is set from a calibration pose, or found
+        # automatically: with the fingers pointing at the floor, gravity lies
+        # along the finger axis and its SIGN says which way the ring is on
+        # (canonical: positive, 98-99% of hanging-arm windows in two ambient
+        # hours). `auto_frame` watches for that pose in the live stream.
+        self.frame = np.eye(3)
+        self.frame_name = "identity"
+        self.auto_frame = True
+        self._pose: list[np.ndarray] = []          # recent raw samples, for auto-frame
+        self.frame_changes: list[tuple[float, str]] = []
+
+    # ------------------------------------------------------------------ frame
+
+    FLIPS = {"identity": np.diag([1.0, 1.0, 1.0]), "flip_axis0": np.diag([1.0, -1.0, -1.0]),
+             "flip_axis1": np.diag([-1.0, 1.0, -1.0]), "flip_axis2": np.diag([-1.0, -1.0, 1.0])}
+    POSE_SAMPLES = 50            # 2 s of stillness with the fingers down
+    POSE_MIN_ALONG = 0.90        # |g . finger| / |g| for "fingers pointing at the floor"
+    POSE_MAX_MOTION_G = 0.25     # peak deviation from the mean, in g, for "still"
+
+    def set_frame(self, name: str, t_s: float = 0.0) -> None:
+        if name not in self.FLIPS:
+            raise ValueError(f"unknown frame {name!r}; one of {sorted(self.FLIPS)}")
+        if name != self.frame_name:
+            self.frame_changes.append((t_s, name))
+        self.frame, self.frame_name = self.FLIPS[name], name
+
+    @staticmethod
+    def frame_from_pose(raw_samples) -> str | None:
+        """
+        Which frame puts a fingers-at-the-floor pose into the canonical
+        wearing: `raw_samples` (N, 3) in counts or g, the ring held still with
+        the fingers pointing down. None when the pose is not that (not
+        still, or gravity not along the finger).
+        """
+        from whip.model import FINGER_AXIS
+        x = np.asarray(raw_samples, dtype="float64")
+        if len(x) < 10:
+            return None
+        g = x.mean(axis=0); n = np.linalg.norm(g)
+        if n < 1e-6:
+            return None
+        along = g[FINGER_AXIS] / n
+        motion = np.linalg.norm(x - g, axis=1).max() / n
+        if abs(along) < Engine.POSE_MIN_ALONG or motion > Engine.POSE_MAX_MOTION_G:
+            return None
+        return "identity" if along > 0 else "flip_axis0"
+
+    def calibrate(self, raw_samples, t_s: float = 0.0) -> str | None:
+        """Set the frame from a fingers-down pose; returns the frame name, or None if the pose was not held."""
+        name = self.frame_from_pose(raw_samples)
+        if name is not None:
+            self.set_frame(name, t_s)
+        return name
+
+    def _watch_pose(self, xyz: np.ndarray, t_s: float) -> None:
+        self._pose.append(xyz)
+        if len(self._pose) > self.POSE_SAMPLES:
+            self._pose.pop(0)
+        if len(self._pose) == self.POSE_SAMPLES:
+            name = self.frame_from_pose(self._pose)
+            if name is not None and name != self.frame_name:
+                self.set_frame(name, t_s)
 
     @classmethod
     def from_checkpoint(cls, path: Path, threshold: float = DEFAULT_THRESHOLD,
@@ -121,13 +187,17 @@ class Engine:
                 or payload[1] != protocol.SUBTYPE_ACCEL:
             return []
         sample = accel.decode(payload)
+        raw = np.array((sample.x, sample.y, sample.z), dtype="float64")
+        if self.auto_frame:
+            self._watch_pose(raw, t_s)
+        xyz = self.frame @ raw
         # The despiker lags by half a window, so an emitted sample is not THIS
         # notification -- it is one from ~120 ms ago. Timestamps queue up on the
         # way in and pair with samples on the way out, or every window start
         # (and therefore every event time) would be 120 ms late against offline.
         self._pending_times.append(t_s)
         out: list[GestureEvent] = []
-        for filtered in self._despike.push((sample.x, sample.y, sample.z)):
+        for filtered in self._despike.push(xyz):
             self._times.append(self._pending_times.pop(0))
             self._samples.append(filtered)
             out.extend(self._advance())
