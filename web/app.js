@@ -247,6 +247,14 @@ async function loadModel() {
 
 /* ---------------------------------------------------------------- socket */
 function connectSocket() {
+  let lastFrame = null;
+  function renderFrame(frame) {
+    if (!frame || frame === lastFrame) return;
+    lastFrame = frame;
+    const el = $("frame-line");
+    if (frame === "identity") el.textContent = "ring frame: canonical wearing (detected from the fingers-down pose)";
+    else el.textContent = `ring frame: ${frame} -- ring is on the other way round; corrected automatically`;
+  }
   const ws = new WebSocket(`ws://${location.host}/ws`);
   ws.onmessage = (raw) => {
     const msg = JSON.parse(raw.data);
@@ -255,6 +263,7 @@ function connectSocket() {
       trace = trace.concat(msg.samples).slice(-400);
       drawWave();
       renderProbs(msg.probabilities || {});
+      renderFrame(msg.frame);
     } else if (msg.type === "event") renderEvent(msg);
     else if (msg.type === "flash") renderFlash(msg);
     else if (msg.type === "error") alertBox(msg.message);
