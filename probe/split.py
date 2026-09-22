@@ -113,27 +113,36 @@ def score(args) -> int:
     d = np.load(args.windows, allow_pickle=True); plan = _load_plan(d); spans = _spans(d)
     labels = [str(s) for s in d["labels"]]; cn = R.collapsed_names(labels)
     model, meta = gm.load(args.checkpoint); model.eval()
+    policies = R.policies(labels); policies_c = R.policies(cn)
+    if args.min_run is not None:
+        from whip.events import RunPolicy
+        policies = {k: (RunPolicy(args.min_run, v.max_run, v.refractory_s) if v.max_run is not None else v) for k, v in policies.items()}
+        policies_c = {k: (RunPolicy(args.min_run, v.max_run, v.refractory_s) if v.max_run is not None else v) for k, v in policies_c.items()}
     part_marks = marks_in_part(plan, args.part, spans)
     parts = np.array([sp.part_of_window(plan, s, float(t)) or "" for s, t in zip(d["session"], d["start_s"])])
     per_class = defaultdict(lambda: [0, 0, 0, 0]); conf = Counter(); fp_minutes = 0.0; fp_events = Counter()
     for sid in sorted(spans):
-        sel = (d["session"] == sid) & (parts == args.part)
-        if not sel.any():
+        in_part = (d["session"] == sid) & (parts == args.part)
+        if not in_part.any():
             continue
+        # Run the model over the WHOLE session in time order, as deployment
+        # does, and count only what belongs to this part: a gesture's later
+        # windows can sit in a dropped boundary zone next to a gesture of
+        # another part, and scoring on the part's windows alone cut those
+        # runs short (p(true) = 1.00, run 2, no event). Nothing here trains
+        # on a val/test gesture's windows -- they were dropped, not moved.
+        sel = d["session"] == sid
         order = np.where(sel)[0][np.argsort(d["start_s"][sel])]; starts = d["start_s"][order]
+        part_here = parts[order] == args.part
         with torch.no_grad():
             probs = torch.softmax(model(torch.tensor(gm.to_model_input(d["X"][order], meta["channels"], gravity=d["gravity"][order]))), 1).numpy()
-        ev = events.detect(evaluate.labels_at(probs, labels, args.threshold), starts.tolist(), policies=R.policies(labels))
-        evc = events.detect(evaluate.labels_at(R.collapse_probabilities(probs, labels), cn, args.threshold), starts.tolist(), policies=R.policies(cn))
+        ev = events.detect(evaluate.labels_at(probs, labels, args.threshold), starts.tolist(), policies=policies)
+        evc = events.detect(evaluate.labels_at(R.collapse_probabilities(probs, labels), cn, args.threshold), starts.tolist(), policies=policies_c)
         truth = part_marks.get(sid, [])
         if not truth and not sid.startswith("prompted_"):
-            # a negative recording: the part's chunks are scattered through
-            # the session, so runs are counted per chunk (RunTracker breaks
-            # at every hole) and minutes are the part's windows x stride.
-            # Windows that carry a span label (the old "keep clapping" block
-            # exports as `clap`) are not negatives: an event there is a hit,
-            # not a false positive, and they are left out of the count.
-            neg = np.where(d["y"][order] == 0)[0]
+            # a negative recording: count minutes and events on this part's
+            # none-windows only (span-labelled windows are not negatives)
+            neg = np.where(part_here & (d["y"][order] == 0))[0]
             fp_minutes += len(neg) * events.STRIDE_S / 60
             neg_starts = set(np.round(starts[neg], 3).tolist())
             for e in evc:
@@ -164,6 +173,7 @@ def main() -> int:
     parser.add_argument("--checkpoint", type=Path, default=Path("data/model.pt"))
     parser.add_argument("--part", default="val", choices=sp.PARTS)
     parser.add_argument("--threshold", type=float, default=0.4)
+    parser.add_argument("--min-run", type=int, default=None, help="override the impulsive gestures' minimum run (default: registry, 3)")
     args = parser.parse_args()
     return {"make": make, "report": report, "score": score}[args.command](args)
 
