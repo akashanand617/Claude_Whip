@@ -77,7 +77,7 @@ venv/
 *.egg-info/
 
 # Whip data: captures, labels, datasets
-data/
+data/*
 
 # Xcode (ios/): personal IDE state; contents.xcworkspacedata stays tracked
 xcuserdata/
@@ -85,3 +85,7 @@ xcuserdata/
 **/xcshareddata/xcschemes/*.xcscheme.orig
 DerivedData/
 *.xcworkspace/xcuserdata/
+
+# the deployed checkpoint and the split plan are tracked; everything else under data/ is not
+!data/model.pt
+!data/split.json

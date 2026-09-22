@@ -15,12 +15,12 @@ preferences written into a context file as context fills.
 | Milestone | State |
 |---|---|
 | M0 hardware gate | **PASSED** on `#4`: 25.00 Hz, 0.24% loss, 10 min worn |
-| M1 gesture classifier | **general gesture platform**: registry vocabulary, live engine, web console |
+| M1 gesture classifier | **COMPLETE (2026-09-21)**: 11 classes (flick x4, double_flick x4, snap, double_clap, wave), room-frame direction, held-out test 95/96 both seeds, 0 ambient events; live engine + web console; next: real-time use |
 | M2 calibration corpus | **two layers.** Layer 1 (artifact style) finalized: 60 items, 5 per dimension. Layer 2 (agency / working style, `docs/AGENCY.md`): 11 axes, 28 items, situation-conditioned; `step_size` at a full 2x2, the rest paired exemplars. 88 items total, validated. Planner is layer-scoped |
 | M3 labeling session | **tooling built, keypress-primary**: `python -m probe.label run / join / score / aggregate` (`whip/labeling.py`). Ring joined offline from `data/live/events_*.jsonl` as a secondary source. Blocked only on the rule-3 read-through of `corpus/gold/`, then four sessions on different days |
-| M4 reward model | **architected** (`docs/PIPELINE.md`): factored RM = pole classifiers (trained on the corpus's own variant labels, held out by item) x preference weights from `preferences.json`; Bradley-Terry as the baseline it must not lose to |
-| M5 LoRA adapter | **architected**: DPO on calibration pairs, KTO on singles as ablation, optional GRPO against the factored RM on a broader prompt pool; KL + correctness-canary guards; self-describing adapter metadata |
-| M6 three-arm eval | **architected**: base / mechanical context file / adapter, swept across neutral context fill; adherence via pole classifier + human blind spot-check + correctness canary. Built first, before M4/M5 |
+| M4 reward model | **built and tested** (`whip/reward.py`): factored reward, situation-aware direction, judge validation + trust gate. Blocked only on a judge backend |
+| M5 LoRA adapter | **datasets built** (`reward.dpo_examples` / `kto_examples` / `split_by_item`); training blocked on a GPU and real labels |
+| M6 three-arm eval | **harness built and tested** (`whip/arms.py`): mechanical context file, fill sweep, adherence with bootstrap CIs, per-dimension slopes. `python -m probe.pipeline dryrun` runs the whole chain on fixtures |
 
 **M2–M6 need no ring.** They are the path to the research question. The ring only
 ever replaces a keypress in the labeling UI. Do not let hardware work block them.
@@ -316,7 +316,8 @@ sequence in this exact image. One question could replace days of work.
 
 The CNN is a **general gesture classifier**; the Whip app consumes only the
 gestures it maps to actions. One vocabulary, declared in `whip/registry.py`:
-flick, double_flick, snap, double_snap (impulsive), wave, clap (sustained).
+flick, double_flick, snap, double_snap, double_clap (impulsive), wave, clap
+(sustained).
 Classes materialise from data -- the exporter emits only classes with windows
 and prints the declared-but-absent ones. Legacy names on disk (`flag`,
 `approve`, `waving`, `snapping`, `clapping`) map in via aliases.
@@ -340,13 +341,26 @@ loop over the incremental `RunTracker`; the realtime engine feeds the same
 tracker, so live and offline are one implementation.
 
 **Direction: what it physically is, measured** (`probe/directions.py`). In the
-ring's frame, `down`, `left` and `right` all rotate about ONE shared axis
-(2-11 degrees apart in every session) and `up` is the opposite sense
-(119-153 degrees away). What separates the palm-down pair from the
-hand-vertical pair is POSTURE: the gravity vector during the gesture differs
-by 42-57 degrees between the pairs and 7-19 within them. Every direction is a
-repeatable motion -- unsigned axis consistency 0.88-1.00 in all three
-prompted sessions.
+ring's frame ALL FOUR directions rotate about one shared axis (unsigned axis
+angles 4-17 degrees in every session). An earlier sentence here said `up` was
+"the opposite sense, 119-153 degrees away" from the other three; that came
+from the gravity-track sense estimator, which re-measured is a coin flip for
+every direction but `down` (same-sense agreement 31-69%), so it cannot assign
+sense at all and that claim is withdrawn. Sense measured on the full-band
+shape channels instead (signed area swept in the plane perpendicular to the
+finger) IS consistent: `down` and `right` share one sign (90-100%), `left`
+the other (87-98%), and `up` shares `left`'s sign but weakly (66-80% in the
+training sessions, 47% -- a coin flip -- in the reference session). So the
+same-sense pairs are up/left and down/right, exactly the pairs the models
+confuse. What separates the palm-down pair from the hand-vertical pair is
+POSTURE: the gravity vector during the gesture differs by 47-58 degrees
+between the pairs and 3-15 within them. Between days each posture cluster
+moves 23-55 degrees, the same order as the pair separation, yet the pair
+assignment survives -- nearest s1+s2 centroid put 100% of the reference
+session's up/down windows in the palm-down pair and 91%/79% of left/right in
+the hand-vertical pair. Every direction is a repeatable motion -- unsigned
+axis consistency 0.88-1.00 in all three prompted sessions -- and `up` is the
+least stereotyped: soft, broader, and its waveform changes most between days.
 
 Two earlier claims in this file were wrong and are withdrawn: the ring did not
 sit "60 degrees rotated" between sessions (rest gravity in the finger-
@@ -369,8 +383,311 @@ recall points when trained on 264 gestures). `invariant` channels (|a|,
 along-finger, perpendicular magnitude) are exactly spin-invariant and exist for
 gesture TYPE; with posture they scored worse for direction (81%), as expected.
 
-**Training recipe.** Default channels `shape,scale,saturation`, direction
-head off, flicks direction-split. Isolated one factor at a time on session 2
+**The physically right direction feature is gravity-referenced, not the
+ring frame** (`gref` channel group, 2026-09-15). Up/left and down/right are
+the same wrist motion at a different forearm roll, so in the ring frame the
+waveforms are identical and only gravity's position differs. Resolving the
+impulsive acceleration ALONG gravity and PERPENDICULAR to it turns that into
+a relation between a and g measured in one frame -- invariant to how the
+ring sits and to which way its axes point (test: rotating window and gravity
+together leaves it unchanged). Hand-computed, no training: the fraction of
+impulsive energy along g is 0.49-0.69 for up/down and 0.10-0.16 for
+left/right in all three sessions, and ONE fixed cut separates the pairs for
+95% of 296 gestures across three days. Within a pair, left/right is the
+rotation sense (swept area sign, 88-100% consistent); up/down sense is the
+weak link (down 94-100%, up 66-80%, and 47% in the reference session).
+Trained (`shape,scale,saturation,gref`, sessions 1+2, reference held out,
+2 seeds): every up gesture right (8/8 both seeds, vs 5-6/8 without), recall
+93.8% both seeds (CI 84-100), and ambient false positives LOWER than the
+plain channels at every threshold (0.03-0.13/min at thr 0.4 vs 0.27-0.30;
+0.00-0.03 at 0.9 vs 0.07) -- the opposite of `posture`, which raised them.
+The remaining misses are the same two uneven doubles read as singles and
+one or two soft (1.8-1.9 g) double_flick_right read as left. ONE reference
+session and 30 ambient minutes: not yet the default, re-measure on the next
+session before promoting it.
+
+**Every cued gesture is audited from its own stream and gets a verdict**
+(`python -m probe.audit <session> --write`; `notebooks/data_quality.ipynb`
+has the full analysis, 2026-09-15). valid / suspect (kept, listed) /
+invalid (dropped: `dataset` treats every window touching it as ambiguous,
+`probe.rollout` does not score it). **The double flick is DEFINED as a
+range**: two strokes 0.20-0.50 s apart, second peak 0.5-2.0x the first
+(corpus p5-p95 0.22-0.46 s and 0.70-1.66, with margin). A "double" with a
+pause is a different gesture, not a tempo. The two doubles every held-out
+model missed are exactly that (spacing 0.51 and 0.68 s), and the audit finds
+them from the stream alone, before any model. Direction is checked against
+gravity: one fixed cut on the impulsive-energy-along-g fraction puts 96.3%
+of 296 gestures in the cued vertical/horizontal pair, no training.
+
+The corpus, audited: 296 gestures -- 255 valid, 29 suspect, 12 invalid
+(86.1% clean). Invalid: 5 doubles with a pause, 3 with a stroke ratio
+outside range, 3 doubles with one stroke, 1 with no motion (session 1 #190,
+0.7 g). Suspect is uncertain rather than wrong (a single whose recoil is 70%
+of its stroke, a soft cue done hard, motion just across the pair cut).
+**Only valid trains and scores** (`audit.EXCLUDED_VERDICTS`, decided
+2026-09-15): uncertain data is dropped and made up next session, not trained
+on -- including a correct gesture whose prompt word was not followed. A
+shape review of all 29 suspect gestures added two hard rules: peak under
+1.5 g is `WEAK` and onset after 0.6 s is `LATE_ONSET` (both invalid; every
+gesture they catch was a smear or a non-response). The make-up list is 44
+gestures (`probe.audit` prints it per session as "to re-record";
+`scripts/rerun.sh` runs audit -> export -> train -> rollout, and with
+`--notebook` the experiments and `notebooks/data_quality.ipynb` too). Stroke COUNT is never a hard check: at 25 Hz a recoil and a
+weak second tap are the same size, and 27 of 100 singles would otherwise be
+flagged. Synthesising slow/unequal doubles from pairs of singles was tried
+and is net zero: it recovers the two misses and loses the same number of
+recoil-heavy singles, with more ambient false positives.
+
+Protocol facts from the audit: the amplitude prompt is followed (soft
+2.3-3.8 g vs hard 4.7-5.7 g medians); the "brisk/deliberate" tempo prompt
+changed NOTHING in any session (stroke spacing medians 0.29-0.39 s for every
+word) and should be dropped; a fifth of gestures start before the cue
+(predictable schedule); nothing starts after 1.0 s.
+
+What the exclusion costs, measured (`shape,scale,saturation,gref`, sessions
+1+2, reference held out, 2 seeds, scored on the 21 valid reference
+gestures): trained on valid only, 19-20/21 exact class and 21/21 type at
+thr 0.4-0.6, ambient false positives 0.20-0.27/min at 0.4 and 0.00-0.03 at
+0.9. Trained on everything: the same 19-20/21 and 21/21, ambient 0.07/min
+at 0.4. Recall is a tie; the suspect boundary cases were buying
+low-threshold false-positive margin, which the next session's clean
+examples have to replace. Both remaining misses are one soft (1.9 g)
+double_flick_right read as double_flick_left: right type, wrong sense.
+Learning curve over 57-231 valid training gestures: gesture TYPE is 20-21/21
+from 115 on; exact class is 19-20/21 at every size, so more of the SAME two
+days is not the lever -- new days are. Days matter more than
+gestures (posture and the up waveform moved more between days than within
+one), so the ask is sessions: 4-5 training days of 64 audited gestures, a
+never-trained demonstration set of >= 100 gestures on >= 2 further days
+(observed 97% on 100 bounds recall above 91%; on 28 it bounds nothing above
+84%), 3 days x 3 spans per sustained class plus snap/double_snap sets, and
+180+ ambient minutes across >= 2 days.
+
+**The ring can go on either way round, and the model must not care**
+(2026-09-15 evening). The fill session and the second ambient hour were
+recorded with the ring turned around: the along-finger gravity component
+was positive in 93-97% of 2 s chunks, negative in 0-47% of every earlier
+session. The deployed model scored 0/44 exact on that session; rotating
+the recorded frame a half-turn about the ring's perpendicular axis gave
+37/44. The audit cannot see this (its measures are frame-invariant) --
+`probe.checkup`/the collector should report the along-finger gravity sign
+so a flipped ring is noticed at recording time. Fix in the model, not the
+protocol: `probe.train --frame-aug flips` (default) rotates each training
+batch by a random proper half-turn of the frame, window and gravity
+together, so every channel group sees one consistent frame and rotation
+sense survives. Held out, as recorded, 2 seeds: 37-38/44 exact (21/22 of
+the valid ones, every hit with the right direction), ambient 0.00-0.03/min
+at thr 0.4; without flips 0-3/44. The same session also shows the posture
+protocol drifting: down, left and right were done in ONE hand posture
+(rest gravity 2 degrees apart) and only up differed, so 18 of 44 gestures
+fail the vertical/horizontal pair check -- that is the wearer, not the
+ring, and it is why the pair check stays a flag rather than a hard rule.
+
+**"Left" and "right" are wrist motions, not room directions** (posture x
+direction matrix, `probe.collect --matrix`, 2026-09-16: 12 hard single
+flicks, every hand orientation but palm-down, all audit-valid). The
+vertical/horizontal pair from gravity held in EVERY posture (up/down 0.45-
+0.74 along g, left/right 0.02-0.21) and the model called up and down right
+in all three postures. Left/right were right with the palm facing right
+(the posture every training session used for them), one of two right with
+the palm facing left, and BOTH SWAPPED with the palm up. That is what the
+training data taught: "left" is the wrist motion that moves a
+palm-right hand left. Room-left needs the palm's facing, and the frame
+flips that make the model orientation-proof deliberately erase which way
+the ring is on -- so room-left versus room-right is not recoverable from
+the ring alone once the palm may face up or down. The decision is a
+definition: either the horizontal gestures are wrist-relative (toward the
+thumb / toward the little finger; the ring senses that unambiguously in any
+posture) or they require the hand-vertical posture. **Decided the same day: room frame.** Every direction is the
+direction the hand moved in the room, in any posture. That needs the one
+bit the flips erased -- which way the finger axis points -- so: the `room`
+channel group (along gravity, lateral = gravity x finger, forward; signed),
+`--frame-aug spin` (full spin about the finger, no front-to-back flip), and
+a **wear rule: the ring goes on the same way round every time.** A session
+worn back to front is not thrown away: `<session>.frame.json`
+(`audit.set_frame`) names the half-turn and the exporter rotates the stream
+into the canonical frame. Which way a session was worn is measured, not
+eyeballed -- the static along-finger gravity sign is posture-confounded
+(the 22-gesture fill read 65% positive and was the right way round) -- by
+scoring it under the four rotations with a room model trained on
+known-canonical sessions: last night's 44-gesture session 19/22 flipped vs
+12/22 as recorded, so it and the ambient hour from the same wearing are
+corrected; every session since is canonical. Matrix session held out, room
+model: 8/12, and the palm-up left/right that the wrist-frame model swapped
+are both right. The corpus has no horizontal flicks outside the
+hand-vertical posture; `probe.collect --matrix --reps 3` (and with
+`--gestures flick,double_flick`) is the recording that fills that.
+
+**The finger is ring axis 1, not axis 0 -- measured, and it mattered.**
+The flick's ROTATION axis is axis 0, which was read as "axis 0 runs along
+the finger". A wrist flick rotates about the palm normal, not about the
+finger. Resting gravity in three known palm orientations (`--matrix`)
+settles it: palm up puts gravity on axis 0 (palm normal), palm left/right
+on -/+ axis 2 (thumb-pinky line), so the finger is axis 1
+(`model.FINGER_AXIS`). With the wrong axis, gravity x finger was
+near-degenerate in every palm-down window and the room channel carried
+nothing. With the right one the hand-computed rule -- sign of the first
+stroke along gravity (up/down) or along gravity x finger (left/right) --
+gives the cued direction in all 12 matrix cells and 25-39 vs 1-8 per
+training session, no model. The same rule reads which way round the ring
+was worn (`audit.hand_rule`, canonical = sensor-below: left negative);
+every session's frame file comes from it, `probe.audit --auto-frame`
+writes it for new sessions. Room model, matrix held out: **11/12** (palm
+right 4/4, palm left 4/4, palm up 3/4 with one no-fire) from a model that
+never saw a horizontal flick outside the hand-vertical posture.
+
+**Full matrix, 48 flicks in four palm orientations, held out** (2026-09-16,
+`prompted_20260916_040358`, 41 valid; one skipped cue, six up/down done
+sideways enough to fail the pair check): room models trained on nothing
+from that posture set, thr 0.4, seed 0 39/41 and seed 1 34/41; at thr 0.9
+34 and 29. Every miss but one is a NO-FIRE, not a wrong direction --
+direction was right in 79 of the 80 calls that fired, in all four
+orientations. The no-fires cluster in palm-up, which no training data
+covered. The room frame delivers direction as derived; firing confidence
+in an unseen posture is the data-limited part, and that session now trains.
+
+**A snap is a glitch-shaped event, and the despiker was eating it**
+(2026-09-16, `prompted_20260916_044426`: 37 each of snap, double_snap,
+clap, double_clap in blocks, then one 60 s wave). At the ring a finger snap
+is a 1-2 sample shock at 5-7 g -- the width of the BLE glitches the Hampel
+filter exists to remove -- and it removed them: median snap peak 5.8 g raw,
+1.1 g filtered, 24 of 37 audited as no motion. Both filters now replace
+only an ISOLATED outlier (both neighbours within the centre's threshold).
+Kept: snap 73% above 1.5 g, double_snap 86%, claps all. Cost: ambient
+windows above 3 g rise ~40% (68 -> 94/hour, 225 -> 359/hour); they are real
+desk shocks and are the natural hard negatives for a snap class. A clap is
+wider (3-4 samples, with recoil) and never had the problem. After the
+change the session audits 95 valid: snap 28, double_snap 13, clap 34,
+double_clap 20 (doubles lose to the ratio/one-stroke rules when the
+despiker still takes a one-sample second spike), plus 242 wave windows.
+Single snap remains the marginal class: 1-2 samples at 25 Hz is the same
+signature as a desk tap, and ambient wear has ~100 of those an hour.
+
+**One fixed split BY GESTURE, decided 2026-09-16; leave-one-out and the
+by-session split are both retired.** Sessions are lopsided in size, one
+session holds whole classes, and the deployed model trains on every day
+anyway -- so every valid cued gesture is dealt to train / val / test at
+random, stratified by class, seed fixed in `data/split.json` (65/15/20;
+`probe.split make` writes `data/split/{train,val,test,trainval}.npz`). A
+gesture's windows go with it; consecutive gestures' intervals meet midway
+between cues and any window straddling a boundary is dropped (the 88%
+overlap leak, closed by construction; ~16% of windows). The non-gesture
+timeline of every recording, ambient hours included, is dealt in 20 s
+chunks the same way, so the false-positive rate is measured on pieces of
+every negative recording. Val chooses threshold and seed; test is scored
+once per model and never tuned on; the deployed checkpoint trains on
+train + val. Earlier by-session numbers (77/97 on a 3-session hold-out;
+adding the snap/clap session cost the posture fold 40 -> 24 of 41) are
+superseded and kept only as the record of why.
+
+**First scores under the gesture split** (train-only models, 2 seeds; val
+69 gestures, test 90; ambient = the val/test chunks of every negative
+recording, ~19 and ~26 min):
+
+| thr | val exact | val ambient /h | test exact | test type | test ambient /h |
+|---|---|---|---|---|---|
+| 0.4 | 63, 62 / 69 | 6.3, 15.9 | 85, 84 / 90 | 86, 84 | 7.0, 4.6 |
+| 0.7 | 62, 61 / 69 | 0.0, 3.2 | 81, 83 / 90 | 82, 83 | 4.7, 0.0 |
+| 0.9 | 62, 60 / 69 | 3.3, 6.4 | 78, 78 / 90 | 79, 78 | 2.3, 2.3 |
+
+Threshold 0.7 is the operating point chosen on val. On test at 0.4, seed
+0: every single flick 40/40, doubles 28/30, snap 5/6, clap 7/7,
+double_clap 4/4, double_snap 1/3; every miss but one is a no-fire, the
+one direction error is double_flick_right -> left. The gesture interval
+must hold every window that carries the label (cue-1.4 .. cue+2.85); the
+first bounds kept 3 of 10 and scored 4/69.
+
+**Left/right is a ~95% physical rule, not a proof, and the model beats it**
+(2026-09-16). Every hand-computable estimator of a horizontal flick's
+lateral sign was scored on all 186 valid left/right flicks and doubles in
+the room frame: velocity extremum over the first 0.6 s 94.6%, first five
+samples 89.2%, first-lobe integral 52.7%, sign at peak 55.4%, largest lobe
+66.7%. So the first-stroke sign that the derivation rests on is right for
+about 19 in 20 gestures; the rest begin with a windup or a recoil-first
+pattern and the sign of the initial lateral acceleration is the wrong way
+round. The CNN, which sees the whole window, confused left and right 3
+times in 236 held-out scores (98.7%). The frame makes the pair (vertical
+vs horizontal) exact and makes the sign LEARNABLE in any posture; it does
+not make it foolproof, and nothing about a 25 Hz accelerometer on one
+finger can. What would close the last percent is not a rule but more
+horizontal flicks recorded across postures (the matrix sessions).
+
+**Scores on the raw stream, gesture split, thr 0.7 chosen on val** (train-
+only models, 2 seeds; val 78 gestures, test 103; ambient = val/test chunks
+of every negative recording, ~19 and ~25 min): val exact 69 and 72 of 78,
+test exact 94 and 92 of 103 (91%, 89%), type 97 and 94; **ambient 0 events
+in every part for both seeds at thr 0.4-0.9**. Test misses: 5-6 no-fires
+(double_flick_down 2, flick_right 1-2, clap 1-2), and the shock classes
+mixing among themselves (double_snap <-> double_clap, clap -> snap); zero
+left/right confusions on test, one flick_up -> left on val. Against the
+filtered stream the same split gave 81-83/103 and 0-5 ambient events/h.
+Corpus after the raw re-audit: snap 43, double_snap 40, clap 37,
+double_clap 29, flicks 37-57 per class; 17 short of level.
+
+**Ablations on the gesture split, 2026-09-20** (`notebooks/experiments/
+ablate.py`, test exact of 103, threshold 0.7 chosen on val, ambient 0
+events in every run): baseline 94, 92, 93 (3 seeds). Shock-class data
+curve: a third of the snap/clap gestures 86, 80; two thirds 92, 91; all
+92-94 -- still rising, the shock classes are data-limited. 120 epochs 94,
+96. Adding the raw gravity-swing channel 97, 94, 93. Both together 90, 96,
+95 -- no better than either alone; seed spread (+/-3) is as big as any
+single change. Balancing classes by subsetting the flicks to 19 each:
+92, 94 -- a tie, imbalance is not the problem. Without the room channels
+gesture TYPE is best of all (98, 99) but direction falls (91, 89): the
+room frame buys direction at a small cost in firing confidence. Event
+policy: a 2-window minimum run would add 2-3 shock-class hits and zero
+ambient events; the no-fires mostly have a correct-class run of 0-2
+windows. Window-level confusion inside the shock group is small (snap 95-
+98% itself, double_snap 73-83% with 10% to double_clap and snap, clap
+66-84% with up to 19% none, double_clap 89%). Conclusion: recall is at
+89-94% with the remaining loss in the shock classes; the levers that
+showed are more shock-class data (the curve has not flattened) and
+possibly min_run 2; channels and epochs are within noise.
+
+**Shock classes levelled to 47-66 (2026-09-21), and the double clap got its
+own definition.** A double clap at the ring is one clap landing squarely
+(5-7 g) and one glancing (1.5-2.5 g), 0.2-0.45 s apart, either order;
+the flick ranges rejected 16 of 21. `GestureSpec` now carries
+double_gap_s / double_ratio / stroke_ratio_floor per gesture. After the
+fill: snap 50, double_snap 50, clap 47, double_clap 66. Test (115
+gestures, 2 seeds, thr 0.7): exact 108 and 107 (94%, 93%), type 108,
+ambient 0; snap 10/10 and 9/10, double_snap 9/10, clap 7/9, double_clap
+12/13 and 13/13. Val 74 and 72 of 89, weaker on clap (3/7 both seeds:
+no-fires) and double_snap (5/8). Every remaining miss but one is a
+no-fire; the one confusion is double_clap -> double_snap.
+
+**Root causes of the val misses, traced gesture by gesture (2026-09-21).**
+Two were the SCORER, not the model: (1) the split's wholly-inside rule
+stripped a gesture's later windows when its neighbour was in the same
+part (fixed: same-part straddlers are kept); (2) scoring on a part's
+windows alone cut runs at boundary zones (fixed: the whole session
+stream is run, only the part's gestures are counted). Same checkpoints,
+val 74/72 -> 78/75 of 89, test 108/107 -> 110/110 of 115 (95.7%),
+ambient 0. What remains, per gesture: (a) four soft shock gestures at
+1.5-2.2 g called `none` by both seeds -- at the WEAK floor, marginal by
+construction; (b) five hard shock gestures read as the other family
+(clap -> snap, double_clap -> double_snap at p 1.0, double_snap -> clap):
+a 5-fold random forest on 12 hand features separates the snap family
+from the clap family at only 89.7% (width 2 vs 3 samples is the main
+cue), so part of that confusion is the sensor, not the model; (c) two or
+three mid-run confidence dips to 0.5-0.6 at thr 0.7, which thr 0.5
+recovers (val 80/76, test 111/115) with ambient still 0; min_run 2
+changes nothing. Ambient was never the val problem.
+
+**Vocabulary settled 2026-09-21: snap and double_clap.** The sensor cannot
+tell a snap from a clap (both a 2-3 sample shock; hand features 89.7%),
+so the kept pair differs by COUNT, never by width alone. `double_snap`
+and single `clap` are retired in the registry; their recordings stay and
+export as unlabelled negatives. Live threshold 0.5. Retrained on the
+11-class vocabulary (2 seeds, thr 0.5): **test 95/96 both seeds, every
+flick class 100%, snap 10/10, double_clap 12/13, ambient 0**; val 69 and
+68 of 74, the misses being two soft flick_ups and two or three double
+claps called `none`, and one double_flick_up read as flick_up.
+
+**Training recipe.** Default channels `shape,scale,saturation,room`,
+direction head off, flicks direction-split, frame spin on (no flips),
+despike OFF, threshold 0.5, wear rule: sensor below the finger, same way
+round; the audit checks. Isolated one factor at a time on session 2
 (2 seeds): 3-class old recipe 63.3%; 6-class costs ~5 (58.6%); saturation
 buys it back (65.6%); direction head at 0.3 drops it to 55.5%. On the fresh
 reference session (32 gestures, trained on sessions 1+2, 2 seeds), all of
@@ -381,10 +698,18 @@ low-threshold ambient false positives in every arm (unsplit+posture worst:
 Session 2 is the hard session -- 76.6% recall even trained on session 1 + the
 reference -- recorded at 1 a.m. at a ~50-degree different hand pitch.
 
-**What "satisfactory" currently means, honestly.** Recall ~90% is on ONE
-cleanly performed 32-gesture session (95% CI 75-100). The false-positive side
-is bounded, not demonstrated: zero ambient events in 30 held-out minutes at
-threshold 0.9 bounds the rate at 6/hour; <1/hour needs 190+ minutes.
+**What "satisfactory" currently means, honestly.** Recall: 19-20 of 21
+valid gestures on ONE held-out session (both misses one soft
+double_flick_right read as left). False positives, MEASURED for the first
+time on two held-out ambient hours (2026-09-15, 119 min, a model trained on
+no ambient hour): hour 1 (1 a.m., vigorous) 8/h at thr 0.4, 4/h at 0.9,
+3/h at 0.95; hour 2 (evening) 4.1/h at 0.4, 1/h at 0.9 and 0.95. The
+deployed checkpoint (trained on hour 1, hour 2 held out): 4.1/h at 0.4,
+1/h at 0.8-0.9 (a `clap`, unmapped), 0 at 0.95; zero mapped flag/approve
+events in 59 min at thr 0.9, which bounds that rate at 3/h. The rollout's
+calibrated threshold on hour 2 is 0.93. So at the deployed operating point
+the ambient rate is about 1/h all-classes and bounded at 3/h for mapped
+actions -- not yet demonstrated below 1/h, which needs the third hour.
 
 **Realtime engine** (`whip/realtime.py`): decode -> `StreamingHampel` (fixed
 120 ms lag; same maths as batch, running MAD floor because a stream has no
@@ -515,6 +840,12 @@ recommendation in this project for "one hour of ambient" was insufficient, and
 **Count false positives per segment, never on a concatenated stream.**
 `events.detect` has no notion of time, so joining sessions end to end lets the
 tail of one and the head of the next form a run that never happened.
+The same artifact appears INSIDE a session once the audit removes a
+gesture's windows: the two same-class gestures either side of the hole fused
+into one 12-window run centred on the hole, and both scored as misses
+(2026-09-15, four "misses" that were all called correctly window by window).
+`RunTracker` now ends a run at any step longer than two strides
+(`MAX_RUN_STEP_S`), live and offline alike.
 
 **A model cannot reject what it has never seen.** The claim that the
 loud-deliberate versus loud-incidental distinction was absent from the data
@@ -696,15 +1027,20 @@ whip/       protocol.py  packets, commands, UUIDs
             dfu.py       DFU framing, pure and hardware-free
             corpus.py    M2 corpus: both layers, situations, validation, session plans
             labeling.py  M3 labels: records, ring join by wall/action, scoring, preferences.json
+            reward.py    M4 factored reward, judge validation, M5 datasets
+            arms.py      M6 three arms, fill sweep, adherence, slopes
+            persona.py   synthetic labeler + arm simulator (fixtures only)
 probe/      scan stream sweep drain report simulate find quiet
             firmware flash build ledsweep ledtest gestures subdata
             calibrate    M2: validate / stats / plan
             label        M3: run / join / score / aggregate
+            pipeline     M4-M6: dryrun / contextfile / judgecheck
 corpus/     taxonomy.json  layer 1: 12 artifact-style dimensions
             agency.json    layer 2: 11 working-style axes + 5 situation factors
             gold/          contrast items, both layers
 docs/       CALIBRATION.md  M2/M3 design and confounds
             AGENCY.md       layer 2: trajectories, situations, conditional policies
+            PIPELINE.md     M4-M6 components, gates, falsifiers, sample budgets
             PIPELINE.md     M4-M6 architecture, gates, falsifiers
 firmware/   archived images + SHA256SUMS
               rt02cr-stock-3.12.02.bin   vendor stock, the recovery path
@@ -828,17 +1164,49 @@ the data it is scored on.
      `indifferent` (> 60% indifferent pairs), `contested` (a later session
      flips it -- back to item review), or `unmeasured`; plus the ordered
      `context_file` statements the M6 context arm uses verbatim.
-- **The ring is secondary in M3 by measurement, not caution.** Held-out
-  recall is ~58% (95% CI 45-69) at threshold 0.4, latency ~1.3 s gesture-end
-  to event, ambient false positives ~8-12/h but every one so far unmapped
-  (wave/snap, `action: null`) -- zero spurious flag/approve in 30 min, which
-  bounds it only at ~6/h. Direction transfers at 93-96% to a fresh session
-  once two sessions are in training (2026-09-15, `probe/directions.py`), but
-  it is not yet routed anywhere. The ring becomes primary when recall clears
-  ~90% on more than one held-out session; the presenter then needs an
-  explicit no-gesture-arrived path, never a silent skip.
-- **M4-M6 are architected, not built.** `docs/PIPELINE.md` has the design,
-  gates, and falsifiers. The decisions that matter:
+- **The ring is secondary in M3 by measurement, not caution.** Latency ~1.3 s
+  gesture-end to event. Recall reached ~90% once two sessions were in
+  training, but on one fresh 32-gesture session (95% CI 75-100); ambient false
+  positives are bounded only at ~6/h by 30 min of wear, and every one observed
+  was unmapped (wave/snap, `action: null`), so a spurious flag/approve has not
+  been seen but also not bounded below the 1/h bar. Both numbers need a wider
+  sample before the ring leads; the presenter would then also need an explicit
+  no-gesture-arrived path, never a silent skip.
+- **Direction is recorded but deliberately not routed on.** It transfers at
+  93-96% to a fresh session once two sessions are in training (2026-09-15,
+  `probe/directions.py`) -- the earlier "clean permutation between sessions"
+  was a one-session-training artifact, not a rotated ring -- and
+  `data/app_config.json` supports `flick:up`-style keys. M3 still joins on
+  `action` alone: the label vocabulary is three states, which two gestures
+  plus silence already cover, so a direction qualifier would add a second way
+  for a ring label to be wrong on a path the keyboard already handles at 100%.
+  It is stored on every joined record and reported as a per-action habit,
+  because a coder who flags down and approves up without being asked is the
+  only evidence that would justify routing on it later. M3 cannot score
+  direction accuracy -- the labeler is never asked for a direction, so there
+  is no ground truth.
+- **M4-M6 harnesses are built and exercised on fixtures; only the model-facing
+  parts are blocked.** `python -m probe.pipeline dryrun` plants a known
+  preference (including conditionals) and runs sessions -> labels ->
+  preferences.json -> context file -> reward -> three-arm sweep, failing unless
+  the plant comes back, the base arm is flat, and context degrades faster than
+  weights. It proves the chain wires together and the metrics have the power to
+  see an effect of the hypothesised shape -- it is **not** a result about
+  weights versus context, since the arms are simulated by a function written to
+  contain the effect. Same standing as `probe/simulate.py`.
+- **Two eval faults surfaced from the dry run, before any real data existed** --
+  the argument for building the harness first:
+  - **The base arm's slope was not flat** at low sampling. Unnoticed, that
+    drift would have read as context-independent degradation and contaminated
+    both other arms. Now a precondition the dry run asserts.
+  - **The per-dimension conditional prediction needs ~160 samples per dimension
+    per fill level** (measured over 12 seeds: at ~48 it inverts on 1 seed in
+    12; at 160 it holds 12/12, and more buys nothing). The pooled arm
+    comparison is stable well below that, so the headline number and its most
+    interesting breakdown have different sample budgets -- and the breakdown
+    sets the real cost of the sweep.
+- **M4-M6 design, gates and falsifiers:** `docs/PIPELINE.md`. The decisions
+  that matter:
   - **M4's direction term is a function of the prompt**, not a constant:
     `s_d(prompt)`, because a conditional preference cannot be scored by a
     fixed sign. That needs a second classifier over *prompts* -- which level
