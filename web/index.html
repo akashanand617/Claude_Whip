@@ -31,8 +31,20 @@
       <button id="btn-stream" disabled>Start tracking</button>
       <span id="model-line" class="muted"></span>
     </div>
-    <div class="row">
-      <span id="frame-line" class="muted">ring frame: unknown -- tracking starts with a 3 s calibration pose (arm hanging, fingers at the floor); events are shown only after it</span>
+    <div id="cal" class="card cal idle">
+      <div class="cal-head">
+        <span id="cal-title">Calibration</span>
+        <button id="btn-recal" class="small" hidden title="The ring changed hands or was re-worn: hold events until a fresh pose">Recalibrate</button>
+      </div>
+      <p id="cal-msg" class="cal-msg">Every tracking session starts with a 3&thinsp;s pose so the console learns which way round the ring is on. No event is shown until the pose is accepted.</p>
+      <div id="cal-progress" class="cal-progress" hidden><div id="cal-fill"></div></div>
+      <ul id="cal-checks" class="cal-checks" hidden>
+        <li id="chk-still"><span class="mark"></span> <span class="label">hold still</span> <span class="detail muted"></span></li>
+        <li id="chk-down"><span class="mark"></span> <span class="label">fingers pointing straight at the floor</span> <span class="detail muted"></span></li>
+        <li id="chk-hold"><span class="mark"></span> <span class="label">keep it for 3&thinsp;s</span> <span class="detail muted"></span></li>
+      </ul>
+      <p id="cal-result" class="cal-result" hidden></p>
+      <p id="cal-hint" class="muted">How: let the arm hang at your side, relax the hand so the fingers point at the floor, and do not move. Then bring the hand back up slowly, so the lift is not read as a flick up.</p>
     </div>
     <canvas id="wave" height="160"></canvas>
     <div id="probs"></div>

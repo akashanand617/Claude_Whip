@@ -247,38 +247,128 @@ async function loadModel() {
 
 /* ---------------------------------------------------------------- socket */
 function connectSocket() {
-  let lastFrame = null;
-  function renderFrame(frame) {
-    if (!frame || frame === lastFrame) return;
-    lastFrame = frame;
-    const el = $("frame-line");
-    if (frame === "identity") el.textContent = "ring frame: canonical wearing (detected from the fingers-down pose)";
-    else el.textContent = `ring frame: ${frame} -- ring is on the other way round; corrected automatically`;
-  }
   const ws = new WebSocket(`ws://${location.host}/ws`);
   ws.onmessage = (raw) => {
     const msg = JSON.parse(raw.data);
-    if (msg.type === "state") renderState(msg);
+    if (msg.type === "state") { renderState(msg); renderCalibrationFromStatus(msg); }
     else if (msg.type === "live") {
       trace = trace.concat(msg.samples).slice(-400);
       drawWave();
       renderProbs(msg.probabilities || {});
-      renderFrame(msg.frame);
-    } else if (msg.type === "calibration") {
-      const el = $("frame-line");
-      el.textContent = msg.message;
-      el.className = msg.status === "ok" ? "ok" : "warn";
-      if (msg.status === "ok") lastFrame = msg.frame;
-    } else if (msg.type === "event") renderEvent(msg);
+      noteEngineFrame(msg.frame);
+    } else if (msg.type === "calibration") renderCalibration(msg);
+    else if (msg.type === "event") renderEvent(msg);
     else if (msg.type === "flash") renderFlash(msg);
     else if (msg.type === "error") alertBox(msg.message);
   };
   ws.onclose = () => setTimeout(connectSocket, 1500);
 }
 
+/* ---------------------------------------------------------- calibration */
+/* The gate every tracking session passes through, and the one place the
+   wearer is told WHY a pose is not being accepted: moving, or fingers not at
+   the floor (with the angle), or simply not held long enough yet. */
+let calFrame = null;
+
+function setCheck(id, state, detail) {
+  const li = $(id);
+  li.className = state;
+  li.querySelector(".detail").textContent = detail || "";
+}
+
+function wearingText(frame, wearing) {
+  return wearing === "canonical"
+    ? "ring worn the trained way (sensor below the finger)"
+    : `ring worn the other way round — corrected automatically (${frame})`;
+}
+
+function renderCalibration(msg) {
+  const card = $("cal");
+  const status = msg.status;
+  card.className = "card cal " + (status === "ok" ? "ok" : status === "retry" ? "retry" : "hold");
+  $("cal-progress").hidden = false;
+  $("cal-checks").hidden = false;
+  $("cal-result").hidden = status !== "ok";
+  $("btn-recal").hidden = status !== "ok";
+  $("events").classList.toggle("held", status !== "ok");
+  const frac = Math.max(0, Math.min(1, (msg.held_s || 0) / (msg.hold_s || 3)));
+  $("cal-fill").style.width = `${(frac * 100).toFixed(0)}%`;
+  const left = Math.max(0, (msg.hold_s || 3) - (msg.held_s || 0));
+
+  if (status === "ok") {
+    calFrame = msg.frame;
+    $("cal-title").textContent = "Calibrated";
+    $("cal-msg").textContent = "Pose accepted — tracking is live. Bring the hand back up slowly.";
+    setCheck("chk-still", "pass", `${msg.motion} g of motion`);
+    setCheck("chk-down", "pass", `${msg.off_deg}° off vertical`);
+    setCheck("chk-hold", "pass", "held for 3 s");
+    $("cal-result").innerHTML = `${wearingText(msg.frame, msg.wearing)}`
+      + ` <span class="frame">— events are held again if you press Recalibrate (ring changed hands or was re-worn)</span>`;
+    return;
+  }
+  $("cal-title").textContent = msg.restarted ? "Recalibrating" : "Calibrating";
+  if (status === "collecting") {
+    $("cal-msg").textContent = "Let the arm hang, fingers at the floor, hold still…";
+    setCheck("chk-still", "wait", "reading");
+    setCheck("chk-down", "wait", "reading");
+    setCheck("chk-hold", "wait", "");
+  } else if (status === "retry") {
+    if (msg.reason === "moving") {
+      $("cal-msg").textContent = `Hold still — the hand is moving (${msg.motion} g). The 3 s restarts once it is still.`;
+      setCheck("chk-still", "fail", `${msg.motion} g, needs under 0.25 g`);
+      setCheck("chk-down", msg.off_deg <= 25 ? "pass" : "fail", `${msg.off_deg}° off vertical`);
+    } else {
+      $("cal-msg").textContent = `Point the fingers straight at the floor — they are ${msg.off_deg}° off vertical. Let the wrist go limp.`;
+      setCheck("chk-still", "pass", `${msg.motion} g`);
+      setCheck("chk-down", "fail", `${msg.off_deg}° off vertical, needs under 26°`);
+    }
+    setCheck("chk-hold", "wait", "restarts when both pass");
+  } else {  // hold
+    $("cal-msg").textContent = `Good — keep it there, ${left.toFixed(1)} s to go.`;
+    setCheck("chk-still", "pass", `${msg.motion} g`);
+    setCheck("chk-down", "pass", `${msg.off_deg}° off vertical`);
+    setCheck("chk-hold", "wait", `${(msg.held_s || 0).toFixed(1)} / ${msg.hold_s} s`);
+  }
+}
+
+function renderCalibrationFromStatus(status) {
+  // A page opened mid-session, or the state changing: show what is known.
+  const card = $("cal");
+  if (status.state !== "streaming") {
+    card.className = "card cal idle";
+    $("cal-title").textContent = "Calibration";
+    $("cal-msg").textContent = "Every tracking session starts with a 3 s pose so the console learns which way round the ring is on. No event is shown until the pose is accepted.";
+    ["cal-progress", "cal-checks", "cal-result", "btn-recal"].forEach((id) => { $(id).hidden = true; });
+    $("events").classList.remove("held");
+    calFrame = null;
+    return;
+  }
+  if (status.calibrated && status.calibration) {
+    renderCalibration({ status: "ok", held_s: 3, hold_s: 3, ...status.calibration });
+  } else if (!status.calibrated) {
+    renderCalibration({ status: "collecting", held_s: 0, hold_s: 3 });
+  }
+}
+
+function noteEngineFrame(frame) {
+  // The engine also watches for the pose on its own; if it changes the frame
+  // outside a calibration, say so rather than silently tracking in a new frame.
+  if (!frame || calFrame === null || frame === calFrame) return;
+  calFrame = frame;
+  $("cal-result").innerHTML = `frame changed mid-session to <code>${frame}</code> — a fingers-down pose was seen.`
+    + ` <span class="frame">If the ring changed hands, press Recalibrate to be sure.</span>`;
+}
+
+$("btn-recal").addEventListener("click", async () => {
+  try { renderCalibrationFromStatus(await api("POST", "/api/calibrate")); }
+  catch (e) { alertBox(e.message); }
+});
+
 /* ---------------------------------------------------------------- boot */
 (async function boot() {
   connectSocket();
-  renderState(await api("GET", "/api/status"));
+  const status = await api("GET", "/api/status");
+  renderState(status);
+  renderCalibrationFromStatus(status);
   await Promise.all([loadTargets(), loadSettings(), loadModel()]);
 })().catch((e) => alertBox(e.message));

@@ -44,7 +44,7 @@ from whip.flashing import (
     preflight,
 )
 from whip import fwimage
-from whip.realtime import DEFAULT_CONFIG_PATH, Engine, EventLog, RouterConfig
+from whip.realtime import DEFAULT_CONFIG_PATH, Engine, EventLog, PoseCalibrator, RouterConfig
 
 logger = logging.getLogger(__name__)
 
@@ -83,6 +83,13 @@ class RingManager:
         self.engine: Engine | None = None
         self.config = RouterConfig.load()
         self._event_log: EventLog | None = None
+        # The fingers-down gate for the current tracking session. `calibration`
+        # is the last accepted pose (frame, wearing, when) and rides along in
+        # status() so a page opened mid-session shows it; `calibrated` is False
+        # while events are being held back for a pose.
+        self._calibrator: PoseCalibrator | None = None
+        self.calibrated = False
+        self.calibration: dict | None = None
 
     # ------------------------------------------------------------ broadcast
 
@@ -116,7 +123,26 @@ class RingManager:
             "mode": detect_mode(self.info.firmware) if self.info else "unknown",
             "checkpoint": str(self.checkpoint),
             "threshold": self.config.threshold,
+            "calibrated": self.calibrated,
+            "calibration": self.calibration,
         }
+
+    async def recalibrate(self) -> dict:
+        """
+        Hold events until a fresh fingers-down pose: for a ring that changed
+        hands mid-session (2026-09-21: a second wearer's whole segment ran
+        under the first wearer's frame, because tracking calibrates once).
+        """
+        async with self._lock:
+            if self.state != "streaming" or self._calibrator is None:
+                raise web.HTTPConflict(text="recalibration needs a tracking session in progress")
+            self._calibrator.reset()
+            self.calibrated = False
+            self.calibration = None
+            await self.broadcast({"type": "calibration", "status": "collecting", "held_s": 0.0,
+                                  "hold_s": self._calibrator.hold_s, "reason": None, "off_deg": None,
+                                  "motion": None, "frame": None, "wearing": None, "restarted": True})
+            return self.status()
 
     def model_info(self) -> dict:
         if not self.checkpoint.exists():
@@ -217,6 +243,8 @@ class RingManager:
                 logger.warning("stream task ended with: %s", exc)
         self._stream_task = None
         self._stop_stream = None
+        self._calibrator = None
+        self.calibrated = False
 
     async def _stream_loop(self) -> None:
         """BLE stream + engine drain + UI push, until stopped."""
@@ -226,47 +254,53 @@ class RingManager:
 
         async def consume() -> None:
             last_push = 0.0
-            # Tracking starts with the fingers-down pose: 3 s of stillness with
-            # the arm hanging tells the engine which way round the ring is.
-            # No event is scored, logged or shown until the pose has been
-            # held; samples still flow so the waveform is visible.
-            pose: list[tuple[float, float, float]] = []
-            pose_started = None
-            last_hint = 0.0
+            # Tracking starts with the fingers-down pose: 3 s of an accepted
+            # pose (still, fingers at the floor) tells the engine which way
+            # round the ring is. No event is scored, logged or shown until
+            # then; samples still flow so the waveform is visible. The gate
+            # reports progress and WHY a pose is not accepted, and can be
+            # reset mid-session when the ring changes hands.
+            calibrator = PoseCalibrator(hold_s=CALIBRATION_S)
+            self._calibrator = calibrator
             self.calibrated = False
+            self.calibration = None
+            last_cal: dict | None = None
+            last_cal_push = 0.0
             while not stop.is_set():
                 drained = False
                 while self._queue:
                     t, payload = self._queue.popleft()
                     drained = True
+                    cal = None
                     if len(payload) >= 8 and payload[0] == protocol.CMD_RAW_SENSOR \
                             and payload[1] == protocol.SUBTYPE_ACCEL:
                         from whip import accel
                         s = accel.decode(payload)
                         recent.append((round(t, 3), s.x, s.y, s.z))
                         if not self.calibrated:
-                            pose.append((s.x, s.y, s.z)); pose = pose[-Engine.POSE_SAMPLES:]
-                            pose_started = t if pose_started is None else pose_started
+                            cal = calibrator.feed(t, (s.x, s.y, s.z))
                     if not self.calibrated:
-                        if pose_started is not None and t - pose_started >= CALIBRATION_S and len(pose) >= Engine.POSE_SAMPLES:
-                            frame = Engine.frame_from_pose(pose)
-                            if frame is not None:
-                                engine.set_frame(frame, t)
-                                self.calibrated = True
-                                from whip import audit
-                                if getattr(self, "_raw_sink", None) is not None:
-                                    audit.set_frame(self._raw_sink, frame, evidence="console calibration pose")
-                                await self.broadcast({"type": "calibration", "status": "ok", "frame": frame,
-                                                      "message": "frame set -- tracking is live; bring the hand back slowly"})
-                            elif t - last_hint >= 1.0:
-                                last_hint = t
-                                await self.broadcast({"type": "calibration", "status": "retry",
-                                                      "message": "pose not held: arm hanging, fingers at the floor, still for 3 s"})
-                        elif t - last_hint >= 1.0:
-                            last_hint = t
-                            left = max(0.0, CALIBRATION_S - (t - (pose_started or t)))
-                            await self.broadcast({"type": "calibration", "status": "hold", "seconds_left": round(left, 1),
-                                                  "message": f"calibrating: let your arm hang, fingers at the floor, hold still ({left:.0f} s)"})
+                        if cal is None:
+                            continue
+                        if cal["status"] == "ok":
+                            frame = cal["frame"]
+                            engine.set_frame(frame, t)
+                            self.calibrated = True
+                            self.calibration = {"frame": frame, "wearing": cal["wearing"], "along": cal["along"],
+                                                "off_deg": cal["off_deg"], "motion": cal["motion"],
+                                                "t_s": round(t, 2), "wall": time.time()}
+                            from whip import audit
+                            if getattr(self, "_raw_sink", None) is not None:
+                                audit.set_frame(self._raw_sink, frame,
+                                                evidence=f"console calibration pose at {t:.1f} s")
+                            await self.broadcast({**cal, **self.calibration})
+                        else:
+                            # Push on every change of status/reason, else at 4 Hz for the progress bar.
+                            changed = last_cal is None or (cal["status"], cal["reason"]) != (last_cal["status"], last_cal["reason"])
+                            if changed or t - last_cal_push >= 0.25:
+                                last_cal_push = t
+                                await self.broadcast(cal)
+                            last_cal = cal
                         continue
                     for event in engine.feed(t, payload):
                         action = config.action_for(event)
@@ -410,6 +444,9 @@ def build_app(manager: RingManager) -> web.Application:
     async def stream_stop(_request: web.Request) -> web.Response:
         return web.json_response(await manager.stop_streaming())
 
+    async def recalibrate(_request: web.Request) -> web.Response:
+        return web.json_response(await manager.recalibrate())
+
     async def flash_validate(request: web.Request) -> web.Response:
         body = await request.json()
         return web.json_response(manager.validate_target(body.get("target", "")))
@@ -456,6 +493,7 @@ def build_app(manager: RingManager) -> web.Application:
     app.router.add_post("/api/disconnect", disconnect)
     app.router.add_post("/api/stream/start", stream_start)
     app.router.add_post("/api/stream/stop", stream_stop)
+    app.router.add_post("/api/calibrate", recalibrate)
     app.router.add_post("/api/flash/validate", flash_validate)
     app.router.add_post("/api/flash", flash)
     app.router.add_get("/api/config", get_config)

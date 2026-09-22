@@ -261,3 +261,50 @@ def test_auto_frame_switches_when_the_fingers_point_at_the_floor():
     assert eng.frame_name == "flip_axis0" and eng.frame_changes and eng.frame_changes[0][1] == "flip_axis0"
     # calibrate() with an explicit canonical pose puts it back
     assert eng.calibrate(_pose(+1), t_s=9.0) == "identity" and eng.frame_name == "identity"
+
+
+def test_pose_calibrator_accrues_only_while_the_pose_is_accepted():
+    """The gate every tracking session passes through: progress restarts when the pose breaks, with the reason."""
+    from whip.realtime import PoseCalibrator
+    from whip.model import FINGER_AXIS
+    rng = np.random.default_rng(1)
+    cal = PoseCalibrator(hold_s=3.0)
+    down = np.zeros(3); down[FINGER_AXIS] = -8005.0
+    statuses = []
+    t = 0.0
+    for _ in range(80):                                   # 3.2 s of a still fingers-down pose
+        r = cal.feed(t, down + rng.normal(0, 40, 3)); statuses.append(r["status"]); t += 0.04
+    assert statuses[0] == "collecting" and "hold" in statuses and statuses[-1] == "ok"
+    assert r["frame"] == "flip_axis0" and r["wearing"] == "reversed" and r["off_deg"] < 2
+    assert cal.feed(t, down)["status"] == "ok"            # sticky once accepted
+
+    cal.reset()
+    tilted = np.array([5000.0, 0.0, 5000.0]); tilted[FINGER_AXIS] = -5000.0
+    t = 0.0
+    for _ in range(60):
+        r = cal.feed(t, tilted + rng.normal(0, 40, 3)); t += 0.04
+    assert r["status"] == "retry" and r["reason"] == "not_down" and 40 < r["off_deg"] < 60 and r["held_s"] == 0
+
+    cal.reset(); t = 0.0
+    for _ in range(60):
+        r = cal.feed(t, -down + rng.normal(0, 3000, 3)); t += 0.04
+    assert r["status"] == "retry" and r["reason"] == "moving" and r["motion"] > 0.25
+
+    # a good pose that breaks after 2.5 s restarts from zero, it does not carry the credit
+    cal.reset(); t = 0.0
+    for _ in range(62):
+        r = cal.feed(t, -down + rng.normal(0, 40, 3)); t += 0.04
+    assert r["status"] == "hold" and r["held_s"] >= 2.4
+    for _ in range(10):
+        r = cal.feed(t, -down + rng.normal(0, 3000, 3)); t += 0.04
+    assert r["status"] == "retry" and r["held_s"] == 0
+    for _ in range(80):
+        r = cal.feed(t, -down + rng.normal(0, 40, 3)); t += 0.04
+    assert r["status"] == "ok" and r["frame"] == "identity" and r["wearing"] == "canonical"
+
+
+def test_pose_check_explains_a_refused_pose():
+    chk = Engine.pose_check(_pose(-1))
+    assert chk["frame"] == "flip_axis0" and chk["still"] and chk["down"]
+    chk = Engine.pose_check(_pose(-1, still=False))
+    assert chk["frame"] is None and not chk["still"] and chk["motion"] > Engine.POSE_MAX_MOTION_G

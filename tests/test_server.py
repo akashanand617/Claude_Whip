@@ -174,3 +174,28 @@ def test_the_frontend_is_served(tmp_path):
             got = await client.get(asset)
             assert got.status == 200
     run(check(tmp_path))
+
+
+def test_recalibrate_needs_a_tracking_session(tmp_path):
+    @with_client
+    async def check(client, manager, _tmp):
+        res = await client.post("/api/calibrate")
+        assert res.status == 409
+        body = await (await client.get("/api/status")).json()
+        assert body["calibrated"] is False and body["calibration"] is None
+    run(check(tmp_path))
+
+
+def test_recalibrate_holds_events_until_a_fresh_pose(tmp_path):
+    @with_client
+    async def check(client, manager, _tmp):
+        manager.state = "streaming"
+        manager._calibrator = realtime.PoseCalibrator()
+        manager._calibrator.feed(0.0, (0, 8005, 0))
+        manager.calibrated = True
+        manager.calibration = {"frame": "identity", "wearing": "canonical"}
+        res = await client.post("/api/calibrate")
+        body = await res.json()
+        assert res.status == 200 and body["calibrated"] is False and body["calibration"] is None
+        assert manager._calibrator._buf == [] and not manager._calibrator.done
+    run(check(tmp_path))

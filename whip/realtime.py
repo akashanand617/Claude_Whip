@@ -135,6 +135,37 @@ class Engine:
         self.frame, self.frame_name = self.FLIPS[name], name
 
     @staticmethod
+    def pose_check(raw_samples) -> dict:
+        """
+        Judge a candidate fingers-at-the-floor pose: `raw_samples` (N, 3) in
+        counts or g. Returns the two numbers the pose is judged on and the
+        verdict, so a UI can say WHY a pose is not being accepted:
+
+          along     gravity component along the finger axis, unit (sign = wearing)
+          off_deg   angle between the finger and the vertical, degrees
+          motion    peak deviation from the mean, in g
+          still     motion within POSE_MAX_MOTION_G
+          down      |along| at least POSE_MIN_ALONG
+          frame     the frame name when still and down, else None
+        """
+        from whip.model import FINGER_AXIS
+        x = np.asarray(raw_samples, dtype="float64")
+        out = {"along": 0.0, "off_deg": 90.0, "motion": 0.0, "still": False, "down": False, "frame": None,
+               "samples": int(len(x))}
+        if len(x) < 10:
+            return out
+        g = x.mean(axis=0); n = np.linalg.norm(g)
+        if n < 1e-6:
+            return out
+        along = float(g[FINGER_AXIS] / n)
+        motion = float(np.linalg.norm(x - g, axis=1).max() / n)
+        out.update(along=along, off_deg=float(np.degrees(np.arccos(min(1.0, abs(along))))), motion=motion,
+                   still=motion <= Engine.POSE_MAX_MOTION_G, down=abs(along) >= Engine.POSE_MIN_ALONG)
+        if out["still"] and out["down"]:
+            out["frame"] = "identity" if along > 0 else "flip_axis0"
+        return out
+
+    @staticmethod
     def frame_from_pose(raw_samples) -> str | None:
         """
         Which frame puts a fingers-at-the-floor pose into the canonical
@@ -142,18 +173,7 @@ class Engine:
         the fingers pointing down. None when the pose is not that (not
         still, or gravity not along the finger).
         """
-        from whip.model import FINGER_AXIS
-        x = np.asarray(raw_samples, dtype="float64")
-        if len(x) < 10:
-            return None
-        g = x.mean(axis=0); n = np.linalg.norm(g)
-        if n < 1e-6:
-            return None
-        along = g[FINGER_AXIS] / n
-        motion = np.linalg.norm(x - g, axis=1).max() / n
-        if abs(along) < Engine.POSE_MIN_ALONG or motion > Engine.POSE_MAX_MOTION_G:
-            return None
-        return "identity" if along > 0 else "flip_axis0"
+        return Engine.pose_check(raw_samples)["frame"]
 
     def calibrate(self, raw_samples, t_s: float = 0.0) -> str | None:
         """Set the frame from a fingers-down pose; returns the frame name, or None if the pose was not held."""
@@ -290,6 +310,81 @@ class Engine:
         if self._last_probs is None:
             return {}
         return {name: float(p) for name, p in zip(self.collapsed, self._last_probs)}
+
+
+# ------------------------------------------------------------- calibration
+
+class PoseCalibrator:
+    """
+    The fingers-at-the-floor gate, one sample at a time, with progress and a
+    reason. The console runs one at the start of every tracking session and
+    again whenever the ring changes hands (`reset`).
+
+    The pose is judged on a rolling 2 s buffer (`Engine.POSE_SAMPLES`): still,
+    and gravity along the finger. Progress only accrues while the buffer is
+    good and restarts from zero when it stops being good -- so "held for 3 s"
+    means three seconds of an accepted pose, not three seconds since the
+    button. Every `feed` returns a status dict:
+
+      status    "collecting" | "hold" | "retry" | "ok"
+      held_s    seconds of accepted pose so far (0 when retrying)
+      hold_s    what is required
+      reason    "moving" | "not_down" | None (why the pose is not accepted)
+      off_deg   how far the finger is from vertical (guidance for not_down)
+      motion    peak motion in g (guidance for moving)
+      frame     set on "ok": the frame name the pose implies
+      wearing   set on "ok": "canonical" | "reversed"
+
+    Live-console lesson (2026-09-21): the one-line countdown said "hold
+    still" whether the wearer was moving or simply had the fingers 40
+    degrees off vertical, and a second wearer never got a pose at all
+    because tracking only calibrated once. The reason and the reset exist
+    for those two cases.
+    """
+
+    HOLD_S = 3.0
+
+    def __init__(self, hold_s: float = HOLD_S):
+        self.hold_s = float(hold_s)
+        self.reset()
+
+    def reset(self) -> None:
+        self._buf: list[np.ndarray] = []
+        self._good_since: float | None = None
+        self._buffer_s = Engine.POSE_SAMPLES * events.STRIDE_S / 6.0   # 50 samples at 25 Hz = 2 s
+        self.result: dict | None = None
+        self.done = False
+
+    def feed(self, t_s: float, xyz) -> dict:
+        if self.done and self.result is not None:
+            return self.result
+        self._buf.append(np.asarray(xyz, dtype="float64"))
+        if len(self._buf) > Engine.POSE_SAMPLES:
+            self._buf.pop(0)
+        base = {"type": "calibration", "hold_s": self.hold_s, "held_s": 0.0, "reason": None,
+                "off_deg": None, "motion": None, "frame": None, "wearing": None}
+        if len(self._buf) < Engine.POSE_SAMPLES:
+            base["status"] = "collecting"
+            base["held_s"] = round(len(self._buf) / Engine.POSE_SAMPLES * min(self._buffer_s, self.hold_s), 2)
+            return base
+        chk = Engine.pose_check(self._buf)
+        base.update(off_deg=round(chk["off_deg"], 1), motion=round(chk["motion"], 2))
+        if chk["frame"] is None:
+            self._good_since = None
+            base["status"] = "retry"
+            base["reason"] = "moving" if not chk["still"] else "not_down"
+            return base
+        if self._good_since is None:
+            self._good_since = t_s
+        held = min(self.hold_s, self._buffer_s + (t_s - self._good_since))
+        base["held_s"] = round(held, 2)
+        if held + 1e-9 < self.hold_s:
+            base["status"] = "hold"
+            return base
+        base.update(status="ok", frame=chk["frame"], along=round(chk["along"], 3),
+                    wearing="canonical" if chk["frame"] == "identity" else "reversed")
+        self.result, self.done = base, True
+        return base
 
 
 # ---------------------------------------------------------------- the app layer

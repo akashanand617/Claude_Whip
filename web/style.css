@@ -91,5 +91,26 @@ th { color: var(--muted); font-weight: 500; font-size: 13px; }
 
 footer { padding: 14px 22px; border-top: 1px solid var(--line); margin-top: 24px; }
 
-#frame-line.warn { color: #b8860b; font-weight: 600; }
-#frame-line.ok { color: #2e8b57; font-weight: 600; }
+/* calibration card: the gate every tracking session and hand-off passes through */
+.cal { border-left: 4px solid var(--line); }
+.cal.hold { border-left-color: #e0c052; }
+.cal.retry { border-left-color: var(--bad); }
+.cal.ok { border-left-color: var(--good); }
+.cal-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+#cal-title { font-weight: 600; }
+.cal-msg { margin: 6px 0; font-size: 16px; }
+.cal.retry .cal-msg { color: #f0a0a0; }
+.cal.ok .cal-msg { color: #9ad89a; }
+.cal-progress { height: 10px; background: var(--bg); border-radius: 5px; overflow: hidden; margin: 8px 0; }
+#cal-fill { height: 100%; width: 0; background: #e0c052; transition: width 0.2s linear; }
+.cal.ok #cal-fill { background: var(--good); }
+.cal-checks { list-style: none; padding: 0; margin: 6px 0; }
+.cal-checks li { display: flex; gap: 8px; align-items: baseline; padding: 2px 0; }
+.cal-checks .mark { width: 18px; display: inline-block; text-align: center; }
+.cal-checks li.pass .mark::before { content: "✓"; color: var(--good); }
+.cal-checks li.fail .mark::before { content: "✗"; color: var(--bad); }
+.cal-checks li.wait .mark::before { content: "·"; color: var(--muted); }
+.cal-checks li.fail .label { color: #f0a0a0; font-weight: 600; }
+.cal-result { margin: 6px 0; font-weight: 600; }
+.cal-result .frame { color: var(--muted); font-weight: 400; font-size: 13px; }
+#events.held { opacity: 0.4; }
