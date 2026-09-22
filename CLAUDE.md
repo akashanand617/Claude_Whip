@@ -684,10 +684,37 @@ flick class 100%, snap 10/10, double_clap 12/13, ambient 0**; val 69 and
 68 of 74, the misses being two soft flick_ups and two or three double
 claps called `none`, and one double_flick_up read as flick_up.
 
+**Live, on the ring (2026-09-21, `probe.livetest`).** First run 2/20: the
+ring was on the other way round; the saved bytes replayed offline gave the
+same 2/20, and 17/20 with the half-turn frame applied -- engine parity is
+exact (501 windows, max probability difference 0.0000), the wearing was
+the whole gap. The engine now finds its frame from a fingers-at-the-floor
+pose (gravity along the finger; canonical sign positive in 98-99% of
+hanging-arm ambient windows), automatically or from a 3 s calibration at
+start. Second run, calibrated: **18/20, every flick and snap, both
+directions and types right, latency 0.55-0.8 s after the cue**; the two
+misses were soft double claps (3.7 and 4.6 g, four small strokes /
+a late first stroke). Two "double_flick then flick" tails on the same
+gesture -> `events.DEAD_TIME_S` 0.5 s. Lifting the arm from the hanging
+pose read as flick_up once: the calibration pose should end with the hand
+brought back slowly.
+
+**The snap/clap sessions were recorded turned around, and nothing could
+tell** (2026-09-21). A double-clap-only live test scored 0/3 with the
+calibrated frame; replayed under identity it scored 2/3, and the 18/20
+session's flicks did the opposite. The hand rule needs left/right flicks,
+the fingers-down pose is rare in recordings, and the blocked snap/clap
+sessions had neither -- so their frame was assumed identity while they
+were in fact flip_axis0 relative to the flick sessions. Frame files set,
+retrained: test 96-97/102, ambient 0, and both live sessions replay at
+20/20 and 3/3. Lesson: **every recording session must carry a frame
+witness** -- either a few left/right flicks or the 3 s fingers-down pose
+at the start -- and `probe.collect` should cue the pose itself.
+
 **Training recipe.** Default channels `shape,scale,saturation,room`,
 direction head off, flicks direction-split, frame spin on (no flips),
 despike OFF, threshold 0.5, wear rule: sensor below the finger, same way
-round; the audit checks. Isolated one factor at a time on session 2
+round; the audit and the live engine both check. Isolated one factor at a time on session 2
 (2 seeds): 3-class old recipe 63.3%; 6-class costs ~5 (58.6%); saturation
 buys it back (65.6%); direction head at 0.3 drops it to 55.5%. On the fresh
 reference session (32 gestures, trained on sessions 1+2, 2 seeds), all of

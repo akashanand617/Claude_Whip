@@ -110,6 +110,45 @@ def check_ring(info, expected_name: str | None, allow_stock: bool) -> None:
                         "25 Hz. Flash the gesture firmware (python -m probe.serve), or pass --allow-stock.")
 
 
+POSE_S = 3.0
+
+
+async def frame_witness(rec, sink: Path) -> str | None:
+    """
+    Cue the fingers-at-the-floor pose and record which way round the ring is.
+
+    Three snap/clap sessions were recorded turned around relative to the
+    flick sessions and nothing in them could show it (no left/right flicks,
+    no hanging arm), so the model trained on two frames at once. Every
+    session now opens with a 3 s pose whose gravity sign fixes the frame;
+    the verdict is written as the session's frame file so the exporter
+    rotates it into the canonical wearing. Returns the frame name, or None
+    if the pose was not held (the session then carries no witness and the
+    audit will say so).
+    """
+    from whip import audit
+    from whip.realtime import Engine
+
+    print(f"\n  ---- FRAME: let your arm hang, fingers pointing at the floor, hold still ({POSE_S:.0f} s) ----", flush=True)
+    await asyncio.sleep(POSE_S)
+    recent = []
+    for _, p in list(rec.records)[-int(POSE_S * 25 * 0.8):]:
+        if len(p) >= 8 and p[0] == protocol.CMD_RAW_SENSOR and p[1] == protocol.SUBTYPE_ACCEL:
+            s_ = accel_decode(p); recent.append((s_.x, s_.y, s_.z))
+    name = Engine.frame_from_pose(recent)
+    if name is None:
+        print("       pose not held -- no frame witness for this session (the audit will flag it); carry on", flush=True)
+        return None
+    audit.set_frame(sink, name, evidence=f"fingers-down pose at session start ({len(recent)} samples)")
+    print(f"       frame: {name}" + ("  (ring is on the other way round; the exporter will correct it)" if name != "identity" else "  (canonical wearing)"), flush=True)
+    return name
+
+
+def accel_decode(payload: bytes):
+    from whip import accel
+    return accel.decode(payload)
+
+
 async def wait_for_data(rec, seconds: float = DATA_WAIT_S, min_packets: int = DATA_MIN_PACKETS) -> None:
     """Block until the capture has accelerometer packets, or abort the session."""
     deadline = time.perf_counter() + seconds
@@ -136,6 +175,8 @@ async def run_prompts(rec: capture.Capture, notes: session.SessionNotes,
     windup leak in another form. In use, gestures emerge from ongoing activity.
     """
     await wait_for_data(rec)
+    await frame_witness(rec, rec.sink)
+    rec._witnessed = True
     await asyncio.sleep(1.5)
     print()
     for i, prompt in enumerate(schedule):
@@ -231,6 +272,7 @@ async def run(args: argparse.Namespace) -> int:
         if not schedule and not motions:
             print(f"mode        {args.kind}: no prompts, everything unmarked is `none`")
 
+        rec.sink = sink
         tasks = []
         if schedule or motions:
             async def cue_everything():
@@ -271,6 +313,7 @@ async def run(args: argparse.Namespace) -> int:
 async def _tick(duration: float, rec=None) -> None:
     if rec is not None:
         await wait_for_data(rec)
+        await frame_witness(rec, rec.sink)
     start = time.perf_counter()
     while True:
         await asyncio.sleep(30.0)
@@ -299,6 +342,8 @@ async def run_cues(notes: session.SessionNotes, motions: list[str], seconds: flo
     """
     if rec is not None:
         await wait_for_data(rec)
+        if not getattr(rec, "_witnessed", False):
+            await frame_witness(rec, rec.sink)
     await asyncio.sleep(2.0)
     print()
     clock = lambda: time.perf_counter() - (rec.notes["stream_t0"] if rec is not None else 0.0)
