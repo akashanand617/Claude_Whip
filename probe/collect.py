@@ -51,6 +51,9 @@ def schedule_for(args) -> list[session.Prompt]:
         from whip import audit
 
         short = audit.corpus_shortfall(DATA_DIR, target=args.target)
+        if args.classes:
+            wanted = {c.strip() for c in args.classes.split(",") if c.strip()}
+            short = {k: n for k, n in short.items() if k in wanted or k.rsplit("_", 1)[0] in wanted}
         if not short:
             raise SystemExit("nothing to fill: no class is below the median (or below --target); "
                              f"audit files are read from {DATA_DIR} (run `python -m probe.audit --all --write` first)")
@@ -335,6 +338,9 @@ def main() -> int:
     parser.add_argument("--fill", action="store_true",
                         help="cue exactly what brings every class up to the median class's valid count "
                              "(or to --target), interleaved; needs probe.audit --all --write")
+    parser.add_argument("--classes", default=None,
+                        help="with --fill: only these classes (e.g. snap,double_snap,clap,double_clap; a gesture "
+                             "name covers all its directions)")
     parser.add_argument("--target", type=int, default=None,
                         help="with --fill: valid gestures per class to aim for (default: the largest class)")
     parser.add_argument("--cues", help="comma-separated motions to cycle through, e.g. 'wave,snap,wobble'")
