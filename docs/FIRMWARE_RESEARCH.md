@@ -2,12 +2,243 @@
 
 Saved 2026-09-22 at the user's request, after the completed Fable workflow and
 the LED-off experiments. This is the consolidated technical record for the
-ring, not a declaration that the experimental firmware is safe or deployed.
+ring. It now also records the first controlled V2 deployment and native-stream
+validation; that is evidence for this exact ring/image, not a general safety claim.
+
+Later unified-build work: [UNIFIED_STOCK_MOTION.md](UNIFIED_STOCK_MOTION.md)
+records stock-only FIFO/Health mappings, selected ARM execution proofs and a
+separate Gesture sample-copy component. No unified OTA image exists yet; the
+construction gate remains closed. Do not transplant the V2 offsets below into
+the stock-based unified effort.
+
+Latest off-ring [integrated retirement](UNIFIED_RETIRED_SWITCH.md) exercises the
+compiled coordinator and original Health sample path together with known-root
+retirement across nine phases, in the pinned 21-object layout. Physical/RTOS/
+steps/sleep remain fixtures. [Discovery](UNIFIED_DISCOVERY.md) adds an unattached
+20-byte C/Swift identity format and a separate **22-object/132-function** link:
+**9256/9520 append bytes, 264 left**, plus **1894 unowned moved bytes**.
+**63 guarded supplemental tests pass**, **253 content hashes** independently
+checked; simulator app build passes. Neither conditional ELF is installable.
+The [stack archive review](UNIFIED_STACK_EVIDENCE.md) verifies three later
+captures but does not establish SP-depth history, headroom or memory ownership.
+No Codex ring access or construction/admission gate change.
+
+Preceding [combined retirement](UNIFIED_STOCK_RETIREMENT.md): its 21
+objects/130 functions link conditionally, moving **1894 bytes into
+unowned regions**, with **9132/9520 append bytes** and 388 left before missing
+hooks. An exact-ELF-pinned 16-edit plan tests known-root retirement and selected
+stock Health/DFU paths together in emulator memory; no installable image exists.
+The standalone ELF has no stubs and production rejects it. **55 guarded
+supplemental tests pass**, with **277 content hashes** independently checked.
+
+Latest [raw-ingress checkpoint](UNIFIED_LEGACY_GATE.md): **3251 guarded tests,
+zero skips**, all **371 hashes checked**, both main ELFs unchanged. Four unlinked
+candidates plus all components attempt **11108/9520 bytes**, 1588 over, no full
+ELF. **A1/BF/CE/CD** retirement needs app identity/discovery migration before attachment.
+The [raw retirement audit](UNIFIED_RAW_RETIREMENT.md) preserves shared Health
+readers and identifies only conditional code space. Claude separately completed
+268 RAM diagnostic reads with disconnect; its archive and 39 RAM tests were
+rechecked off-ring. Installed V2 has **264 free data-heap bytes, 104 minimum**;
+the unchanged gap is not owned storage. No Codex device access or release gate
+change. See [resource handoff](UNIFIED_RESOURCE_BUDGET.md).
+The later [ROM resume review](UNIFIED_ROM_RESUME_EVIDENCE.md) replays three
+additional archives but leaves context-restoration, boot-once and RAM ownership
+unproved; equal gap digests across separated observations do not prove DLPS
+retention or absence of writers. Codex stayed entirely off-ring.
+
+Preceding [coordinator checkpoint](UNIFIED_COORDINATOR.md): **3143 guarded tests,
+zero skips**, all **365 source/artifact/report hashes checked** in
+`firmware/unified/build-20260924-coordinator-v1/`. Actual C now joins checked
+STOP, original-token retirement and atomic current-settings Health commit;
+physical and scheduler receipts remain fixtures. Coordinator/commit/service are
+unlinked candidates: all current real code together exceeds the fixed region by
+**1524 bytes**, no complete ELF. Existing components occupy 9500/9520 bytes;
+final linker/ELF bounds are qualified without more capacity. RAM ownership,
+hardware attachment, physical continuity and recovery remain unresolved. Codex
+performed no device access; Claude Code separately owns user-requested live tests.
+
+Preceding [parallel layout-candidate checkpoint](UNIFIED_RESOURCE_BUDGET.md):
+**3060 guarded tests, zero skips**, all **357 source/artifact/report hashes
+checked** in `firmware/unified/build-20260924-layout-candidates-v1/`. Both main
+ELFs remain unchanged. The new 240-byte service database and Health commit are
+separate unlinked candidates. An explicitly unowned scattered-placement trial
+includes Health commit but is production-rejected; adding the service fails
+the unchanged bound with no ELF. Claude's separate RAM audit passes 15 tests,
+not an ownership/retention proof. No stock file, ring or production gate changed.
+
+Preceding implementation: [lossless queue compaction](UNIFIED_RESOURCE_BUDGET.md)
+and [checked-health cancellation](UNIFIED_HEALTH_CANCELLATION.md) pass
+**3004 guarded tests, zero skips**, all **265 source/artifact/report hashes checked**
+in `firmware/unified/build-20260924-parallel-integration-v1/`. Exact source ages
+keep the receipt at 288 bytes; the proven eight-bucket bound reduces temporary
+delivery 208→64 and observed nested stack 388→244. Prior/new ARM behavior agrees
+in synthetic tests; both main ELFs reproduce, with no physical gate opened.
+The separately archived [Health commit guard](UNIFIED_HEALTH_COMMIT.md) closes
+the software settings check-to-commit gap; its 196 text bytes do not fit with
+all existing components, so neither main ELF includes it. Revision ownership
+and physical resume remain unproved. The
+[integrated switch/readiness checkpoint](UNIFIED_READINESS.md) joins actual C
+and stock paths in one ARM state, with physical boundaries explicitly simulated.
+It now includes the original stock notification wrapper, but not ROM radio/
+buffer-lifetime proof. Complete code/RAM budgeting, rather than the 52-byte component margin, leads
+the next implementation batch. The preceding
+[heap-free sample I/O](UNIFIED_OPTICAL_IO.md) executes two fixed sample-reader
+call replacements in emulator memory, without allocating and with checked
+bus/release results. The old wrapper alone does not install these edits; other
+stock I/O defects remain. No stock file or physical gate changed. The preceding
+[optical work implementation](UNIFIED_OPTICAL_WORK.md) adds actual C for original-
+ticket in-flight reads and software-buffer retirement only after fully evidenced
+pause. It executes the original stock reader/clear, changes both ARM ELFs and
+shares repeated checked code without removing safety checks or capacity. No
+stock hooks or physical gate were enabled. Measurement provenance, current-
+settings fresh-job resume and physical continuity remain unproved. The preceding
+[optical read evidence](UNIFIED_OPTICAL_ACQUISITION.md) rules out top-level zero
+and parsed/read flags as measured provenance: failed or cached-only reads can
+produce them. This continuation changes neither ARM ELF. The preceding unattached
+[HR commit guard](UNIFIED_HR_RESULT_COMMIT.md) adds 80 bytes and protects exactly
+four positive-HR-result stores against an ordinary-interrupt pause race. Its
+original-ticket/provenance inputs remain caller obligations; no stock hook or
+production inventory was enabled. That guard implementation changed both ARM ELFs.
+Earlier
+[optical-event/commit witnesses](UNIFIED_OPTICAL_DISPATCH.md) trace a separate
+untagged hub path that can restore result state after STOP under synthetic
+cached-ready/algorithm fixtures. Original work identity and actual commit
+serialization remain required; no installed guard or physical observation.
+The off-ring
+[status audit](UNIFIED_STATUS_NOTIFICATIONS.md) proves `0x73` is shared by
+multiple event subtypes and adds redacted subtype/checksum logging; every
+foreign packet remains terminal. The failed packet's cause remains unknown.
+The separately requested [create-hook code retry](UNIFIED_CREATE_HOOK_READ.md)
+completed all 359 transactions, repeated code/header equality, final checks
+and verified disconnect. Exact archive replay passes; no sensor/flash command.
+The earlier `0x73` abort remains separately archived. Further access needs fresh
+exclusive-idle coordination. Captured hook/comparator paths now execute off-ring,
+with empty-handle creation failure reaching unread `0x111a6`; this is not a
+safe-return or physical resume proof. The reference SDK initializer
+writes a different create hook; its body must not substitute for the ring's.
+Those diagnostic-only continuations changed neither ARM ELF; all construction
+gates remain closed. The separate
+[support-code/state diagnostic](UNIFIED_SUPPORT_READ.md) completed on a separate
+retry: 284 matching transactions, repeated values/postchecks and verified
+disconnect. The earlier discovery failure is retained separately. The observed
+create hook is nonzero (`0x205c01`); its target was later captured and selected
+paths executed under synthetic pool/list/critical boundaries. Arithmetic and
+context helpers now execute off-ring without those former mocks, not a complete
+live creation/resume proof. Actual-address components
+occupy 9468 bytes, leaving 52 configured bytes; the dispatcher, frame and timer
+barrier total 796 bytes, not approved RAM. Queue compaction saves 192 bytes
+without reducing its 32-sample capacity, output semantics or protections.
+The [current-controls read](UNIFIED_STOCK_SETTINGS.md) adds 48 linked bytes and
+reads exact stock settings without changing them. Real stock scheduling and
+shared working-state writes are now witnessed; complete serialized fresh-job
+resume is still unimplemented. Indicator retirement remains emulator-only.
+The [timer-resume code read](UNIFIED_TIMER_RESUME_READ.md) subsequently completed
+after fresh coordination: 180 matching transactions, 452 new bytes read twice,
+passing postchecks and verified disconnect. Standalone archive replay passes;
+the new execution build includes that evidence and 79 captured-code cases.
+Native create consumes an allocation before a zero-period assertion; conditional
+conversion tests do not prove the ring's tick rate. Captured native kernel tests show
+old callbacks/IDs survive rearm and can run immediately on stale commands. That
+rearm continuation left both ARM ELFs unchanged; no rearm API was added.
+Captured ROM execution
+exposed a null-queue assertion, now guarded in the unattached C fence. Compiled
+C/captured-ROM/callback integration passes, with queue kernel/scheduling still
+explicit substitutes. Invalid timer handles can reach a deliberate null write;
+STOP acceptance does not prove ownership or shutdown. Full health fences remain
+unestablished. RAM-layout and boot-error helpers are now executed, not complete
+allocation/recovery proof. No ring access occurred in this implementation turn.
+The extended cancellation primitive validates twelve mapped timer slots before
+actual ROM STOP, preserves handles/state and propagates each failure. A later
+timer barrier can still finish after a failed STOP; it is not a blanket success
+receipt. Caller serialization, complete producer coverage and actual current-
+settings resume remain unproved. Activity/wear have non-optical obligations;
+the expanded slot table does not approve pausing all twelve in production.
+The [boot comparison](UNIFIED_BOOT_REFERENCE.md) completed 182 transactions,
+matching a non-secret 52-byte prefix and 528-byte checker. A subsequent 6076-byte
+ROM plan aborted on unrelated UART traffic after 188 replies, with no repeated
+new window or successful capture. No automatic retry, sensor command or flash.
+A separate freshly coordinated passive check completed 60 seconds with zero
+notifications/zero UART commands and verified disconnect. The interruption's
+cause remains unknown. A later explicitly requested/freshly coordinated retry
+completed 974 CD01 transactions, all 6076 fixed ROM bytes matching twice, passing
+postchecks and verified disconnect. Archive: `firmware/research/2026-09-23/rom-integration/`.
+This supplies code for offline review, not physical integration/recovery proof.
+Installed V2 and all production gates are unchanged. Older counts are historical.
+
+Earlier diagnostics: the [fixed ROM reads](UNIFIED_ROM_DIAGNOSTIC.md) completed
+114/142/144 matching transactions with prerequisites and verified disconnect.
+No sensor or flash command was sent. Captured hook slots were zero twice,
+selecting the captured default routines in that idle snapshot. Those call the
+then-unread timer-command API; callback drain remains unproved. That older offline
+build passes **1276 tests, zero skips**, with all 132 hashes checked in
+`firmware/unified/build-20260923-rom-internals-v1/`. No unified
+image exists. A specifically reviewed daily-ring test may be considered, but
+diagnostics do not automatically authorize flashing or waive physical gates.
+
+Previous offline result: the [memory continuation](UNIFIED_RESOURCE_BUDGET.md)
+passes **986 guarded tests, zero skips**, with all 120 hashes checked in
+`firmware/unified/build-20260923-memory-v1/`. Duplicate sample-delivery scratch
+was removed; its two nested ARM local frames total 440 rather than 600 bytes.
+The dispatcher still needs 1016 bytes versus 1024 nominal aligned RAM bytes,
+not approved space. Only the daily-use ring is available. No ring/phone access,
+unified image, new allocation or flash authorization resulted from this work.
+Earlier continuation results below describe their historical input snapshots.
+
+First coordinated follow-up: [UNIFIED_WORKFLOW.md](UNIFIED_WORKFLOW.md) records
+the integrated Health-default runtime, artificial-address linked ARM tests,
+stock boot-overlay/health/command audits and guarded build workflow. **234
+offline tests and 206 existing firmware/protocol regressions pass.** This is not
+an installable image or evidence of new physical health acquisition; no ring
+access or flash occurred in that workflow.
+
+The [second follow-up](UNIFIED_WORKFLOW_2.md) adds source/lifecycle integration
+and 512 guarded tests. Its separately coordinated idle read matched V2's sampled
+code and collected repeated bank/RAM configuration. Bank0 is configured as
+288 KiB and OTA temporary space as 144 KiB; bank1 is absent. These declarations
+do not prove physical capacity, free placement or recovery. No flash or sensor
+command was sent. Actual acquisition and installed-stock bindings remain open.
+
+The [third follow-up](UNIFIED_WORKFLOW_3.md) completed the separately coordinated
+80-byte bank0 descriptor read twice and archived the exact 91-transaction session.
+APP and OTA staging each declare 144 KiB, agreeing with the OEM upload limit;
+9520 bytes beyond stock are configured margin, not approved expansion. The
+then-current guarded build passed **748 tests with zero skips**, plus 194 separate
+existing regressions. New actual-code witnesses cover OEM bounds/failures,
+FIFO completion/overflow, app decoder parity and optical lifecycle hazards.
+A heap-free STOP-write helper is implemented but unattached. Physical geometry,
+recovery/RAM ownership, acquisition timing, complete callback fencing and real
+health continuity remain unproved. No unified image was built or flashed.
+
+The later [offline codec continuation](UNIFIED_WIRE_CODEC.md) implements matching
+C/Swift control and motion frames for a distinct future GATT service. The latest
+guarded build passes **793 tests**, and the full iOS simulator suite passes
+**58 tests**, both with zero skips. All 105 source/artifact/report hashes were
+rechecked. No service/dispatcher/live transport is attached, and no ring or
+physical phone was accessed in this continuation. Physical gates remain open;
+the output is not an installable unified image.
+
+The [dispatcher integration](UNIFIED_DISPATCH.md) then connected commands to the
+portable guarded adapter, with completion-aware replies and strict ownership,
+replay, timeout and send-failure handling. Latest guarded build: **874 passed,
+zero skips**, all 114 hashes checked. Nine component objects total 8066 `.text`
+bytes before actual hooks and support code; this is not a fit/placement proof.
+No hardware or simulator was accessed in this continuation, and no service or
+actual stock-linked dispatcher is installed. Physical gates remain unchanged.
+
+The [stock transport continuation](UNIFIED_STOCK_TRANSPORT.md) adds an unattached
+ARM registration/send shim tested through the original wrappers. Executed
+witnesses demonstrate unsafe legacy queue wrap, latched wake failures and missing
+connection-generation binding; default-size SDK callback enums also misinterpret
+the stock cause field. All five declared service slots are used. Latest build:
+**936 tests, zero skips**, all 120 hashes checked; ten components total 8242
+`.text` bytes, not final fit approval. No service, image or hardware change.
 
 ## 1. Current state and the user's intended direction
 
-- The ring still runs the original custom **25 Hz** image,
-  `firmware/rt02cr-25hz.bin`. **No optical-off candidate has been flashed.**
+- The ring now runs the **V2 optical-off 25 Hz** image,
+  `firmware/rt02cr-25hz-optical-off-v2-experimental.bin` (SHA-256
+  `0d18a0fa…e14c`). It was flashed on 2026-09-22 after a pinned-hash dry run;
+  all 135 DATA acknowledgements and CHECK passed.
 - On that unchanged firmware, a temporary command sequence produced fresh,
   motion-responsive 25 Hz acceleration while the user saw the LEDs stay dark.
   This passed a one-minute trial and a separate two-minute repeat. It is not a
@@ -17,16 +248,18 @@ ring, not a declaration that the experimental firmware is safe or deployed.
   The user observed flashing then stopping. This short, unmatched run does not
   establish LED savings or full-charge runtime. See [BATTERY_TESTS.md](BATTERY_TESTS.md)
   and the two separately archived battery logs (first interrupted, repeat complete).
-- A globally optical-disabled **v2 experimental image** has been built,
-  hash-pinned, statically reviewed, unit-tested and dry-run through DFU framing.
-  Its real boot, sampling, disconnect, charging and battery behavior are untested.
+- Post-flash fixed-site reads classified the installed code as
+  `optical_off_candidate`. A native `A1 04` run (no temporary CE/3B workaround)
+  delivered 699 distinct samples in 28.0 s at 24.997 Hz with fresh motion, then
+  stopped cleanly and returned to idle. Visual LED darkness is still awaiting
+  the wearer's explicit confirmation; charging and full battery runtime remain untested.
 - That candidate intentionally disables optical health measurements **even
   outside gesture tracking**, and disables optical indicators too. Stopping
   gesture tracking would not restore those functions on this image.
 - After this trade-off was clarified, the user asked to preserve the complete
   research and then explore **stock firmware for health tracking, switching
   back to a dedicated gesture image for gestures**. This is the likely direction,
-  not an instruction to flash now and not a completed mode-switching feature.
+  and the iOS app now contains an explicit, confirmation-gated mode switch.
 - A single image with a reversible health/gesture mode has **not** been built.
   It would require a different optical-ownership design and its own validation.
 - Do not let hardware work block the preference-research milestones, which can
@@ -186,10 +419,10 @@ Keep these unchanged in the optical-off work:
 | `rt02cr-stock-3.12.02.bin` | `b58fd30355d9c88ff7a8331c83e4c3d2808fa0463d8f03f27f4d7191a5b750b0` | Vendor health/recovery image, 138,016 bytes |
 | `rt02cr-low-latency.bin` | `2ea1bb08826891604fb714a3820c859d77f52f8d22f1d9a870db10cd5fbffe34` | Upstream 50 Hz image |
 | `rt02cr-33hz.bin` | `a3b160f8fc366fa1cb3b6d0048559c0ab2a4c1ecbcd5397e2bb08fdd8290b67a` | Earlier rate experiment |
-| `rt02cr-25hz.bin` | `f13e63d3fdef3b10aa20fd4e0672077b66f60bb19c689ef64053840e4d35d3d9` | Current ring image; strict patch base, 137,540 bytes |
+| `rt02cr-25hz.bin` | `f13e63d3fdef3b10aa20fd4e0672077b66f60bb19c689ef64053840e4d35d3d9` | Strict V2 patch base, 137,540 bytes; no longer installed |
 | Fable's `rt02cr-25hz-noled.bin` | `3c57b73e11357a9be1b2b7051ff78d99381b4aaec5cff0ed38568d78d7801e9f` | Superseded one-halfword experiment; not flashed |
 | `rt02cr-25hz-optical-off-experimental.bin` | `f862e5bb1b65ff43d6133524d20fd82bcbc072bd8a1245a9927367993a213f27` | Preserved v1; superseded; not flashed |
-| `rt02cr-25hz-optical-off-v2-experimental.bin` | `0d18a0fa860d58ab8f984b5f542f45dac105241f47bf1c2af41321eb0431e14c` | Current research candidate; not flashed |
+| `rt02cr-25hz-optical-off-v2-experimental.bin` | `0d18a0fa860d58ab8f984b5f542f45dac105241f47bf1c2af41321eb0431e14c` | Installed 2026-09-22; identity and native 25 Hz stream/stop/idle checks passed; visual darkness pending |
 
 The current top-level `firmware/SHA256SUMS` pins v2, not v1. The old v1 binary
 is retained as history; the current builder does not reproduce it. Fable's
@@ -380,6 +613,13 @@ of absence of all firmware failures.
 
 ### The five schedules, not one master health switch
 
+For the **stock-based unified build**, use the separately executed
+[current-settings map](UNIFIED_STOCK_SETTINGS.md): enable byte `0x208aad`, HR
+interval `0x208aac`, operating mode `0x208c44`, time-set gate `0x208c46`.
+Do not transplant the 25 Hz/V2-family RAM constants from the historical research
+below into the pinned stock application. The settings reader is unattached and
+does not establish physical resume or steps/sleep continuity.
+
 The minute tick `0x1202`, called from `0x1316`, is gated by the time-set flag
 at RAM `0x208C4A`. Schedule enables are bits 0–4 at RAM `0x208AB1`:
 
@@ -483,6 +723,33 @@ artifacts, not proven explanations of every historical spike or packet gap.
 
 Changing the range to ±8 g would alter counts/g, thresholds and recorded-data
 comparability. It has not been done and is independent of the LED fix.
+
+### Frozen stretches in the archived captures (audit 2026-09-22)
+
+`python -m probe.freshness` scans every archived raw capture for runs of
+byte-identical consecutive `A1 03` frames; `analyze.StreamStats` carries the
+same numbers (`frozen_runs`, `frozen_s`, `longest_frozen_s`,
+`distinct_fraction`) and `probe.report` prints them next to rate and loss. A
+run at least `analyze.FROZEN_RUN_S` (1 s) long is the cached sample, not
+stillness: a worn ring's noise toggles the low bits every few frames.
+
+| Capture | Frames | Length | Frozen | Longest run | Runs >= 1 s |
+|---|---|---|---|---|---|
+| `negative_20260915_224235` (ambient hour) | 88,690 | 59 min | **39.3%** | 84 s | 114 |
+| `negative_20260915_021616` (ambient hour) | 90,001 | 60 min | **28.4%** | 59 s | 149 |
+| `gate_imm4_20260906_210533` (10 min gate) | 15,000 | 10 min | 1.1% | 6.9 s | 1 |
+| `prompted_*` gesture sessions | -- | -- | 0-2.2% (one 8.5 s clip at 52%) | <= 4.5 s | 0-2 |
+| `console_*` live sessions | -- | -- | 0-8.4% | <= 13 s | 0-4 |
+| desk captures from the flashing days (`postflash_*`, `restore_check`, `nolog_after`) | -- | 30-120 s | 75-100% | whole capture | 1 |
+| `battery_1790075332801725000` (10 min, wake/hold + optical STOP) | 15,130 | 10 min | 0.0% | 0.05 s | 0 |
+
+Consequence: a frozen stretch cannot hold a gesture or produce a false
+positive, so the ambient false-positive rates recorded in `CLAUDE.md` for
+those two hours are bounded on 61-72% of the wear time they claim, and the
+learning-curve and ambient-threshold numbers derived from them inherit that.
+Prompted and live sessions are essentially clean, because the wearer moved.
+Re-measure the ambient rate on captures that pass the freshness check (or on
+captures taken under the wake/hold sequence, which held 0.0% over 10 minutes).
 
 ## 10. Temporary host workaround that passed on hardware
 
@@ -708,8 +975,9 @@ V1 is deliberately unknown/rejected. This samples all reviewed changes and
 neighbors; it is **not a full-image hash readback**. Flash-address readability
 passed on the original 25 Hz ring during the 2026-09-22 battery-test preflight:
 all 22 reads / 244 bytes matched `original25Hz` in
-`data/batterycheck/battery_1790075215600058000.jsonl`. This is not post-flash
-validation of the candidate, which remains unflashed. A failed diagnostic is a
+`data/batterycheck/battery_1790075215600058000.jsonl`. After the flash, all 22
+reads matched V2 in `data/ledcheck/firmware_validation_1790114476907550000.jsonl`.
+A failed diagnostic is a
 blocker to trusting this identification method, not permission to guess from
 the version string or LED behavior alone.
 

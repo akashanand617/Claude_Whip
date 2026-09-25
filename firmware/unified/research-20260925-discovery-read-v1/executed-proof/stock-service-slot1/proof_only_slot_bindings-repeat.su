@@ -1,0 +1,4 @@
+<stdin>:6:wr_init	0	static
+<stdin>:7:proof_read_callback_fixture	0	static
+<stdin>:8:proof_write_callback_fixture	0	static
+<stdin>:9:proof_cccd_callback_fixture	0	static

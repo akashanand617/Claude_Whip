@@ -54,6 +54,19 @@ MATCH_TOLERANCE_S = 0.75
 NONE_LABEL = "none"
 
 
+def dominant_direction(directions: list[str]) -> str:
+    """Most non-none votes wins; ties use the earliest contributing vote.
+
+    Match the Swift decoder without depending on Python's randomized set order.
+    Confidence breaks gesture-label ties, not direction ties.
+    """
+    counts: dict[str, int] = {}
+    for direction in directions:
+        if direction != NONE_LABEL:
+            counts[direction] = counts.get(direction, 0) + 1
+    return max(counts, key=counts.get, default=NONE_LABEL)
+
+
 @dataclass(frozen=True)
 class RunPolicy:
     """How a run of same-class windows becomes (or fails to become) an event."""
@@ -594,7 +607,7 @@ class BurstTracker:
             b.outcome = "no_consensus"
             return None
         dirs = [d for _, l, _, d in b.votes if l == label and d != NONE_LABEL]
-        direction = max(set(dirs), key=dirs.count) if dirs else NONE_LABEL
+        direction = dominant_direction(dirs)
         b.outcome = label
         return Event(label, b.on_s, b.off_s, len(confs), at_s=b.on_s, judged_s=now_s,
                      confidence=float(sum(confs) / len(confs)), direction=direction)

@@ -9,6 +9,7 @@ enum RingConnectionState: Equatable {
     case connecting
     case discoveringServices
     case ready
+    case recoveryReady
     case disconnected(String)
 
     var label: String {
@@ -20,6 +21,7 @@ enum RingConnectionState: Equatable {
         case .connecting: return "Connecting…"
         case .discoveringServices: return "Finishing setup…"
         case .ready: return "Connected"
+        case .recoveryReady: return "Connected · firmware recovery only"
         case let .disconnected(message): return message
         }
     }
@@ -42,6 +44,7 @@ final class RingManager: NSObject, ObservableObject {
 
     var onReady: (() -> Void)?
     var onDisconnect: (() -> Void)?
+    var onRawMotion: ((Data, TimeInterval) -> Void)?
 
     private var central: CBCentralManager!
     private var peripheral: CBPeripheral?
@@ -57,10 +60,15 @@ final class RingManager: NSObject, ObservableObject {
     private var hasBegun = false
     private var pendingCharacteristicDiscoveries = 0
     private var lastUARTWriteAt = Date.distantPast
+    // Legacy replies have no request IDs. After a timeout, do not allow another
+    // request to consume a delayed reply; reconnect is the correlation boundary.
+    private var uartNeedsReconnect = false
     private let minimumUARTCommandSpacing: TimeInterval = 0.35
 
     private let savedRingKey = "pairedColmiR02Identifier"
     private let restoreIDKey = "colmiCentralRestoreIdentifier"
+    private let discoveryFilterVersionKey = "colmiDiscoveryFilterVersion"
+    private let recoveryTraceKey = "ringConnectionRecoveryTrace"
 
     private struct PendingUART {
         let id: UUID
@@ -90,9 +98,33 @@ final class RingManager: NSObject, ObservableObject {
     }
     private var pendingBigData: PendingBigData?
 
+    private struct PendingDFUReply {
+        let id: UUID
+        let command: UInt8
+        let continuation: CheckedContinuation<Data, Error>
+        let timeout: Task<Void, Never>
+    }
+    private var pendingDFUReply: PendingDFUReply?
+
+    private struct PendingCharacteristicWrite {
+        let id: UUID
+        let continuation: CheckedContinuation<Void, Error>
+    }
+    private var pendingCharacteristicWrite: PendingCharacteristicWrite?
+
     override init() {
         super.init()
         let defaults = UserDefaults.standard
+        // Builds before filter v1 labeled every nameless BLE advertiser as an
+        // R02 and could persist a non-ring identifier. Invalidate that legacy
+        // selection once; health history is keyed separately and is preserved.
+        if defaults.integer(forKey: discoveryFilterVersionKey) < 2 {
+            defaults.removeObject(forKey: savedRingKey)
+            // CoreBluetooth otherwise resurrects the pre-filter peripheral even
+            // after the app pairing key is removed.
+            defaults.removeObject(forKey: restoreIDKey)
+            defaults.set(2, forKey: discoveryFilterVersionKey)
+        }
         let restoreID: String
         if let saved = defaults.string(forKey: restoreIDKey) {
             restoreID = saved
@@ -113,13 +145,18 @@ final class RingManager: NSObject, ObservableObject {
     var connectedIdentifier: String? { peripheral?.identifier.uuidString }
     var connectedName: String? { peripheral?.name }
     var isReady: Bool { state == .ready && uartWrite != nil && uartNotify != nil }
-    var canReadSleep: Bool { isReady && bigWrite != nil && bigNotify != nil }
+    var isRecoveryReady: Bool { state == .recoveryReady && canFlashFirmware }
+    var canDismissConnectionSheet: Bool { isReady || isRecoveryReady }
+    var canFlashFirmware: Bool {
+        peripheral?.state == .connected && bigWrite != nil && bigNotify?.isNotifying == true
+    }
+    var canReadSleep: Bool { isReady && bigWrite != nil && bigNotify?.isNotifying == true }
 
     func begin() {
         hasBegun = true
         guard central.state == .poweredOn else { return }
         switch state {
-        case .scanning, .discovered, .connecting, .discoveringServices, .ready:
+        case .scanning, .discovered, .connecting, .discoveringServices, .ready, .recoveryReady:
             return
         default:
             break
@@ -134,6 +171,13 @@ final class RingManager: NSObject, ObservableObject {
             return
         }
         reconnectTask?.cancel()
+        if recoverSystemConnectedRing() { return }
+        if recoverHistoricallyKnownRing() { return }
+        startAdvertisementScan()
+    }
+
+    private func startAdvertisementScan() {
+        recordRecoveryTrace("advertisement-scan")
         candidate = nil
         candidates = []
         state = .scanning
@@ -166,7 +210,9 @@ final class RingManager: NSObject, ObservableObject {
         candidates = []
         state = .idle
         showsOnboarding = true
-        scan()
+        // Do not immediately reattach the system connection we just cancelled.
+        // Keep scanning; the ring should advertise after the disconnect callback.
+        startAdvertisementScan()
     }
 
     func dismissOnboarding() {
@@ -192,17 +238,22 @@ final class RingManager: NSObject, ObservableObject {
 
     func requestUART(_ data: Data, command: UInt8, timeout seconds: Double = 6,
                      isComplete: @escaping ([Data], Data) -> Bool) async throws -> [Data] {
-        guard pendingUART == nil else { throw RingProtocolError.busy }
-        guard isReady else { throw RingProtocolError.notReady }
+        guard pendingUART == nil, pendingRealtimeHeartRate == nil else { throw RingProtocolError.busy }
+        guard isReady, !uartNeedsReconnect else { throw RingProtocolError.notReady }
         let remainingGap = minimumUARTCommandSpacing - Date.now.timeIntervalSince(lastUARTWriteAt)
         if remainingGap > 0 {
             try await Task.sleep(for: .seconds(remainingGap))
         }
+        // MainActor is reentrant at the sleep above.
+        try Task.checkCancellation()
+        guard pendingUART == nil, pendingRealtimeHeartRate == nil else { throw RingProtocolError.busy }
+        guard isReady, !uartNeedsReconnect else { throw RingProtocolError.notReady }
         let id = UUID()
         return try await withCheckedThrowingContinuation { continuation in
             let timeout = Task { [weak self] in
                 try? await Task.sleep(for: .seconds(seconds))
                 guard !Task.isCancelled else { return }
+                self?.uartNeedsReconnect = true
                 self?.failUART(id: id, error: RingProtocolError.timeout)
             }
             pendingUART = PendingUART(id: id, command: command, packets: [],
@@ -217,10 +268,9 @@ final class RingManager: NSObject, ObservableObject {
 
     func requestBigData(_ data: Data, dataID: UInt8, timeout seconds: Double = 12) async throws -> Data {
         guard pendingBigData == nil else { throw RingProtocolError.busy }
-        guard let peripheral, let bigWrite, let bigNotify, peripheral.state == .connected else {
+        guard canReadSleep, let peripheral, let bigWrite, peripheral.state == .connected else {
             throw RingProtocolError.notReady
         }
-        peripheral.setNotifyValue(true, for: bigNotify)
         let id = UUID()
         return try await withCheckedThrowingContinuation { continuation in
             let timeout = Task { [weak self] in
@@ -269,16 +319,226 @@ final class RingManager: NSObject, ObservableObject {
         failRealtimeHeartRate(id: pending.id, error: CancellationError())
     }
 
-    private func restoreOrScan() {
-        if let identifier = pairedIdentifier,
-           let saved = central.retrievePeripherals(withIdentifiers: [identifier]).first {
-            connect(saved)
-        } else {
-            scan()
+    /// Transfers one already hash-checked RT02CR image over the ring's DFU service.
+    /// CHECK is the commit gate; END normally disconnects before acknowledging.
+    func flashFirmware(_ firmware: Data, initType: UInt8,
+                       progress: @escaping (Double, String) -> Void) async throws {
+        guard pendingUART == nil, pendingBigData == nil, pendingRealtimeHeartRate == nil,
+              pendingDFUReply == nil, pendingCharacteristicWrite == nil else {
+            throw RingProtocolError.busy
+        }
+        guard let peripheral, let write = bigWrite, let notify = bigNotify,
+              peripheral.state == .connected else { throw RingProtocolError.notReady }
+
+        peripheral.setNotifyValue(true, for: notify)
+        let total = (firmware.count + R02DFU.chunkSize - 1) / R02DFU.chunkSize
+        progress(0, "Starting firmware transfer")
+        _ = try await sendDFUFrame(R02DFU.frame(command: 1), command: 1, peripheral: peripheral, write: write)
+        _ = try await sendDFUFrame(try R02DFU.initFrame(firmware: firmware, type: initType),
+                                   command: 2, peripheral: peripheral, write: write)
+        for index in 0..<total {
+            _ = try await sendDFUFrame(try R02DFU.dataFrame(firmware: firmware, index: index),
+                                       command: 3, peripheral: peripheral, write: write)
+            progress(Double(index + 1) / Double(total), "Writing firmware · \(index + 1)/\(total)")
+        }
+        _ = try await sendDFUFrame(R02DFU.frame(command: 4), command: 4,
+                                   peripheral: peripheral, write: write)
+        progress(1, "Firmware verified · rebooting ring")
+
+        // CHECK confirmed the complete image. END applies it and usually reboots the
+        // ring before a notification can return, so only its writes are required.
+        do {
+            try await writeDFUSegments(R02DFU.frame(command: 5), peripheral: peripheral, write: write)
+        } catch {
+            // A disconnect here is the normal successful response to END. CHECK
+            // already proved that the complete image was accepted.
         }
     }
 
+    private func sendDFUFrame(_ frame: Data, command: UInt8, peripheral: CBPeripheral,
+                              write: CBCharacteristic) async throws -> Data {
+        let id = UUID()
+        return try await withCheckedThrowingContinuation { continuation in
+            let timeout = Task { [weak self] in
+                try? await Task.sleep(for: .seconds(15))
+                guard !Task.isCancelled else { return }
+                self?.failDFU(id: id, error: RingProtocolError.timeout)
+            }
+            pendingDFUReply = PendingDFUReply(id: id, command: command,
+                                              continuation: continuation, timeout: timeout)
+            Task { @MainActor [weak self] in
+                do {
+                    guard let self else { throw RingProtocolError.notReady }
+                    try await self.writeDFUSegments(frame, peripheral: peripheral, write: write)
+                } catch {
+                    self?.failDFU(id: id, error: error)
+                }
+            }
+        }
+    }
+
+    private func writeDFUSegments(_ frame: Data, peripheral: CBPeripheral,
+                                  write: CBCharacteristic) async throws {
+        let segmentSize = min(240, peripheral.maximumWriteValueLength(for: .withResponse))
+        guard segmentSize >= 20 else { throw RingProtocolError.peripheral("BLE write size is too small for DFU.") }
+        for start in stride(from: 0, to: frame.count, by: segmentSize) {
+            let end = min(start + segmentSize, frame.count)
+            try await writeDFUSegment(Data(frame[start..<end]), peripheral: peripheral, characteristic: write)
+        }
+    }
+
+    private func writeDFUSegment(_ data: Data, peripheral: CBPeripheral,
+                                 characteristic: CBCharacteristic) async throws {
+        guard pendingCharacteristicWrite == nil else { throw RingProtocolError.busy }
+        let id = UUID()
+        try await withCheckedThrowingContinuation { continuation in
+            pendingCharacteristicWrite = PendingCharacteristicWrite(id: id, continuation: continuation)
+            peripheral.writeValue(data, for: characteristic, type: .withResponse)
+        }
+    }
+
+    private func restoreOrScan() {
+        if let identifier = pairedIdentifier,
+           let saved = central.retrievePeripherals(withIdentifiers: [identifier]).first {
+            if let name = saved.name, !name.uppercased().contains("R02") {
+#if DEBUG
+                NSLog("%@", "R02 BLE DROP_STALE id=\(saved.identifier.uuidString) name=\(name)")
+#endif
+                UserDefaults.standard.removeObject(forKey: savedRingKey)
+                scan()
+                return
+            }
+            connect(saved)
+        } else {
+            if recoverSystemConnectedRing() { return }
+            if recoverHistoricallyKnownRing() { return }
+            startAdvertisementScan()
+        }
+    }
+
+    /// `Forget` historically removed only `pairedColmiR02Identifier`; health
+    /// and mode records retained the exact CoreBluetooth UUID. Ask iOS for that
+    /// already-known peripheral before depending on a new advertisement.
+    @discardableResult
+    private func recoverHistoricallyKnownRing() -> Bool {
+        let defaults = UserDefaults.standard
+        let ids = RingRecoverySelector.historicalIdentifiers(
+            from: Array(defaults.dictionaryRepresentation().keys)
+        )
+        guard !ids.isEmpty else { return false }
+
+        let known = central.retrievePeripherals(withIdentifiers: ids)
+        recordRecoveryTrace("historical-cache ids=\(ids.count) returned=\(known.count)")
+        let namedR02 = known.filter { $0.name?.uppercased().contains("R02") == true }
+        let selected: CBPeripheral?
+        if known.count == 1 {
+            selected = known[0]
+        } else if namedR02.count == 1 {
+            selected = namedR02[0]
+        } else {
+            selected = nil
+        }
+        guard let selected else {
+#if DEBUG
+            NSLog("%@", "R02 BLE HISTORICAL_REJECTED ids=\(ids.map(\.uuidString).joined(separator: ",")) returned=\(known.count)")
+#endif
+            return false
+        }
+
+        let recovered = DiscoveredRing(
+            id: selected.identifier,
+            name: selected.name ?? "Colmi R02",
+            rssi: 0
+        )
+        candidate = recovered
+        candidates = [recovered]
+        showsOnboarding = true
+        isPairing = true
+#if DEBUG
+        NSLog("%@", "R02 BLE HISTORICAL id=\(selected.identifier.uuidString) name=\(selected.name ?? "<nil>")")
+#endif
+        recordRecoveryTrace("historical-connect id=\(selected.identifier.uuidString) state=\(selected.state.rawValue)")
+        connect(selected)
+        return true
+    }
+
+    /// CoreBluetooth scans report advertisements only. If iOS, HID, or another
+    /// process already holds the R02's single BLE link, the ring is connected but
+    /// absent from scan results. Query system-connected peripherals service by
+    /// service and attach only to a uniquely identifiable R02.
+    @discardableResult
+    private func recoverSystemConnectedRing() -> Bool {
+        let ringSpecific = [
+            CBUUID(string: ColmiR02Protocol.uartService),
+            CBUUID(string: ColmiR02Protocol.bigDataService),
+        ]
+        let identityOnly = [
+            CBUUID(string: ColmiR02Protocol.hidService),
+            CBUUID(string: ColmiR02Protocol.legacyWeChatService),
+        ]
+        var peripherals: [UUID: CBPeripheral] = [:]
+        var descriptors: [RingRecoveryCandidate] = []
+
+        for service in ringSpecific {
+            for item in central.retrieveConnectedPeripherals(withServices: [service]) {
+                peripherals[item.identifier] = item
+                descriptors.append(RingRecoveryCandidate(
+                    id: item.identifier,
+                    name: item.name,
+                    matchedRingSpecificService: true
+                ))
+            }
+        }
+        for service in identityOnly {
+            for item in central.retrieveConnectedPeripherals(withServices: [service]) {
+                peripherals[item.identifier] = item
+                descriptors.append(RingRecoveryCandidate(
+                    id: item.identifier,
+                    name: item.name,
+                    matchedRingSpecificService: false
+                ))
+            }
+        }
+
+        guard let selectedID = RingRecoverySelector.select(
+            descriptors, preferredID: pairedIdentifier
+        ), let selected = peripherals[selectedID] else {
+#if DEBUG
+            if !descriptors.isEmpty {
+                let summary = descriptors.map {
+                    "\($0.id.uuidString):\($0.name ?? "<nil>"):specific=\($0.matchedRingSpecificService)"
+                }.joined(separator: ",")
+                NSLog("%@", "R02 BLE SYSTEM_CONNECTED_REJECTED candidates=\(summary)")
+            }
+#endif
+            return false
+        }
+
+        let recovered = DiscoveredRing(
+            id: selected.identifier,
+            name: selected.name ?? "Colmi R02",
+            rssi: 0
+        )
+        candidate = recovered
+        candidates = [recovered]
+        showsOnboarding = true
+        isPairing = true
+#if DEBUG
+        NSLog("%@", "R02 BLE SYSTEM_CONNECTED id=\(selected.identifier.uuidString) name=\(selected.name ?? "<nil>")")
+#endif
+        recordRecoveryTrace("system-connected id=\(selected.identifier.uuidString)")
+        connect(selected)
+        return true
+    }
+
+    private func recordRecoveryTrace(_ message: String) {
+        UserDefaults.standard.set("\(Date().timeIntervalSince1970) \(message)", forKey: recoveryTraceKey)
+    }
+
     private func connect(_ peripheral: CBPeripheral) {
+#if DEBUG
+        NSLog("%@", "R02 BLE CONNECT_REQUEST id=\(peripheral.identifier.uuidString) name=\(peripheral.name ?? "<nil>") state=\(peripheral.state.rawValue)")
+#endif
         central.stopScan()
         self.peripheral = peripheral
         peripheral.delegate = self
@@ -295,6 +555,9 @@ final class RingManager: NSObject, ObservableObject {
     }
 
     private func resetCharacteristics() {
+        firmware = nil
+        hardware = nil
+        uartNeedsReconnect = false
         uartWrite = nil
         uartNotify = nil
         bigWrite = nil
@@ -306,15 +569,22 @@ final class RingManager: NSObject, ObservableObject {
     }
 
     private func announceReadyIfPossible() {
-        guard pendingCharacteristicDiscoveries == 0,
-              uartWrite != nil, uartNotify != nil, !hasAnnouncedReady else { return }
+        guard pendingCharacteristicDiscoveries == 0, !hasAnnouncedReady else { return }
+        let uartReady = uartWrite != nil && uartNotify?.isNotifying == true
+            && (bigNotify == nil || bigNotify?.isNotifying == true)
+        let recoveryReady = !uartReady && canFlashFirmware
+        guard uartReady || recoveryReady else { return }
         hasAnnouncedReady = true
         if let id = peripheral?.identifier, isPairing {
             UserDefaults.standard.set(id.uuidString, forKey: savedRingKey)
         }
         isPairing = false
-        state = .ready
-        onReady?()
+        if uartReady {
+            state = .ready
+            onReady?()
+        } else {
+            state = .recoveryReady
+        }
     }
 
     private func receiveUART(_ data: Data) {
@@ -326,6 +596,9 @@ final class RingManager: NSObject, ObservableObject {
                 failUART(id: pending.id, error: RingProtocolError.invalidPacket)
             }
             return
+        }
+        if data[0] == 0xa1, data[1] == 0x03 {
+            onRawMotion?(data, ProcessInfo.processInfo.systemUptime)
         }
         if data.first == ColmiR02Protocol.startRealtimeCommand,
            data.count == 16, data[1] == 1, data[2] == 0,
@@ -358,6 +631,17 @@ final class RingManager: NSObject, ObservableObject {
 #if DEBUG
         print("R02 BIG RX", data.map { String(format: "%02X", $0) }.joined(separator: " "))
 #endif
+        if let pending = pendingDFUReply, data.first == R02DFU.magic {
+            do {
+                try R02DFU.validateResponse(data, command: pending.command)
+                pending.timeout.cancel()
+                pendingDFUReply = nil
+                pending.continuation.resume(returning: data)
+            } catch {
+                failDFU(id: pending.id, error: error)
+            }
+            return
+        }
         guard let pending = pendingBigData,
               let message = pending.reassembler.ingest(data), message.dataID == pending.dataID else { return }
         pending.timeout.cancel()
@@ -386,12 +670,27 @@ final class RingManager: NSObject, ObservableObject {
         pending.continuation.resume(throwing: error)
     }
 
+    private func failDFU(id: UUID, error: Error) {
+        guard let pending = pendingDFUReply, pending.id == id else { return }
+        pending.timeout.cancel()
+        pendingDFUReply = nil
+        pending.continuation.resume(throwing: error)
+    }
+
+    private func failCharacteristicWrite(error: Error) {
+        guard let pending = pendingCharacteristicWrite else { return }
+        pendingCharacteristicWrite = nil
+        pending.continuation.resume(throwing: error)
+    }
+
     private func failPending(_ error: Error) {
         if let pending = pendingUART { failUART(id: pending.id, error: error) }
         if let pending = pendingBigData { failBigData(id: pending.id, error: error) }
         if let pending = pendingRealtimeHeartRate {
             failRealtimeHeartRate(id: pending.id, error: error)
         }
+        if let pending = pendingDFUReply { failDFU(id: pending.id, error: error) }
+        failCharacteristicWrite(error: error)
     }
 }
 
@@ -429,12 +728,16 @@ extension RingManager: CBCentralManagerDelegate {
                                     advertisementData: [String: Any], rssi RSSI: NSNumber) {
         Task { @MainActor in
             let advertisedName = advertisementData[CBAdvertisementDataLocalNameKey] as? String
-            let name = advertisedName ?? peripheral.name ?? "Colmi R02"
+            let knownName = advertisedName ?? peripheral.name
             let services = (advertisementData[CBAdvertisementDataServiceUUIDsKey] as? [CBUUID]) ?? []
-            let looksLikeR02 = name.uppercased().contains("R02")
+            let looksLikeR02 = knownName?.uppercased().contains("R02") == true
                 || services.contains(CBUUID(string: ColmiR02Protocol.uartService))
             guard looksLikeR02 else { return }
+            let name = knownName ?? "Colmi R02"
             let found = DiscoveredRing(id: peripheral.identifier, name: name, rssi: RSSI.intValue)
+#if DEBUG
+            NSLog("%@", "R02 BLE DISCOVER id=\(found.id.uuidString) name=\(found.name) advertised=\(advertisedName ?? "<nil>") rssi=\(found.rssi)")
+#endif
             // Some unbonded R02 firmware revisions rotate their BLE address. CoreBluetooth
             // can consequently surface the same physical ring with a fresh UUID. Prefer the
             // advertised Colmi name as its stable discovery identity so the chooser does not
@@ -463,8 +766,12 @@ extension RingManager: CBCentralManagerDelegate {
 
     nonisolated func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
         Task { @MainActor in
+#if DEBUG
+            NSLog("%@", "R02 BLE DID_CONNECT id=\(peripheral.identifier.uuidString)")
+#endif
             self.peripheral = peripheral
             peripheral.delegate = self
+            recordRecoveryTrace("did-connect id=\(peripheral.identifier.uuidString)")
             state = .discoveringServices
             peripheral.discoverServices([
                 CBUUID(string: ColmiR02Protocol.uartService),
@@ -477,6 +784,10 @@ extension RingManager: CBCentralManagerDelegate {
     nonisolated func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral,
                                     error: Error?) {
         Task { @MainActor in
+#if DEBUG
+            NSLog("%@", "R02 BLE CONNECT_FAILED id=\(peripheral.identifier.uuidString) error=\(error?.localizedDescription ?? "<nil>")")
+#endif
+            recordRecoveryTrace("connect-failed id=\(peripheral.identifier.uuidString) error=\(error?.localizedDescription ?? "none")")
             state = .disconnected(error?.localizedDescription ?? "Could not connect")
             scheduleReconnect()
         }
@@ -485,6 +796,9 @@ extension RingManager: CBCentralManagerDelegate {
     nonisolated func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral,
                                     error: Error?) {
         Task { @MainActor in
+#if DEBUG
+            NSLog("%@", "R02 BLE DISCONNECTED id=\(peripheral.identifier.uuidString) error=\(error?.localizedDescription ?? "<nil>")")
+#endif
             resetCharacteristics()
             failPending(error ?? RingProtocolError.peripheral("The ring disconnected."))
             state = .disconnected("Ring out of range")
@@ -500,6 +814,9 @@ extension RingManager: CBCentralManagerDelegate {
                                     isReconnecting: Bool,
                                     error: Error?) {
         Task { @MainActor in
+#if DEBUG
+            NSLog("%@", "R02 BLE DISCONNECTED17 id=\(peripheral.identifier.uuidString) reconnecting=\(isReconnecting) error=\(error?.localizedDescription ?? "<nil>")")
+#endif
             resetCharacteristics()
             failPending(error ?? RingProtocolError.peripheral("The ring disconnected."))
             onDisconnect?()
@@ -526,6 +843,10 @@ extension RingManager: CBCentralManagerDelegate {
 extension RingManager: CBPeripheralDelegate {
     nonisolated func peripheral(_ peripheral: CBPeripheral, didDiscoverServices error: Error?) {
         Task { @MainActor in
+#if DEBUG
+            let serviceIDs = (peripheral.services ?? []).map { $0.uuid.uuidString }.joined(separator: ",")
+            NSLog("%@", "R02 BLE SERVICES error=\(error?.localizedDescription ?? "<nil>") ids=\(serviceIDs)")
+#endif
             if let error {
                 state = .disconnected(error.localizedDescription)
                 return
@@ -543,6 +864,10 @@ extension RingManager: CBPeripheralDelegate {
     nonisolated func peripheral(_ peripheral: CBPeripheral, didDiscoverCharacteristicsFor service: CBService,
                                 error: Error?) {
         Task { @MainActor in
+#if DEBUG
+            let characteristicIDs = (service.characteristics ?? []).map { $0.uuid.uuidString }.joined(separator: ",")
+            NSLog("%@", "R02 BLE CHARACTERISTICS service=\(service.uuid.uuidString) error=\(error?.localizedDescription ?? "<nil>") ids=\(characteristicIDs)")
+#endif
             if error == nil {
                 for characteristic in service.characteristics ?? [] {
                     switch characteristic.uuid.uuidString.uppercased() {
@@ -551,7 +876,9 @@ extension RingManager: CBPeripheralDelegate {
                         uartNotify = characteristic
                         peripheral.setNotifyValue(true, for: characteristic)
                     case ColmiR02Protocol.bigDataWrite: bigWrite = characteristic
-                    case ColmiR02Protocol.bigDataNotify: bigNotify = characteristic
+                    case ColmiR02Protocol.bigDataNotify:
+                        bigNotify = characteristic
+                        peripheral.setNotifyValue(true, for: characteristic)
                     case ColmiR02Protocol.firmwareRevision:
                         firmwareCharacteristic = characteristic
                         peripheral.readValue(for: characteristic)
@@ -585,6 +912,36 @@ extension RingManager: CBPeripheralDelegate {
                 print("R02 HARDWARE", hardware ?? "<unreadable>")
 #endif
             default: break
+            }
+        }
+    }
+
+    nonisolated func peripheral(_ peripheral: CBPeripheral,
+                                didUpdateNotificationStateFor characteristic: CBCharacteristic, error: Error?) {
+        Task { @MainActor in
+            guard peripheral === self.peripheral else { return }
+#if DEBUG
+            NSLog("%@", "R02 BLE NOTIFY characteristic=\(characteristic.uuid.uuidString) enabled=\(characteristic.isNotifying) error=\(error?.localizedDescription ?? "<nil>")")
+#endif
+            if let error {
+                failPending(error)
+                state = .disconnected("Notification setup failed: \(error.localizedDescription)")
+                central.cancelPeripheralConnection(peripheral)
+            } else {
+                announceReadyIfPossible()
+            }
+        }
+    }
+
+    nonisolated func peripheral(_ peripheral: CBPeripheral, didWriteValueFor characteristic: CBCharacteristic,
+                                error: Error?) {
+        Task { @MainActor in
+            guard pendingCharacteristicWrite != nil else { return }
+            if let error {
+                failCharacteristicWrite(error: error)
+            } else if let pending = pendingCharacteristicWrite {
+                pendingCharacteristicWrite = nil
+                pending.continuation.resume()
             }
         }
     }

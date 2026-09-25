@@ -1,0 +1,6 @@
+firmware/unified/fresh_source.c:3:ws_profile_valid	20	static
+firmware/unified/fresh_source.c:19:ws_init	8	static
+firmware/unified/fresh_source.c:21:ws_start	32	static
+firmware/unified/fresh_source.c:29:ws_stop	0	static
+firmware/unified/fresh_source.c:33:ws_tick	8	static
+firmware/unified/fresh_source.c:47:ws_observe	184	static

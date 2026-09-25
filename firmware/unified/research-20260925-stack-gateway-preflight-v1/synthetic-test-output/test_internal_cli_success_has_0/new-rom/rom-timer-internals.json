@@ -1,0 +1,61 @@
+{
+  "schema": "whip.rom-timer-internals.capture.v1",
+  "evidence_kind": "device_capture",
+  "session_id": "new-rom",
+  "prerequisite_capture": {
+    "schema": "whip.capacity.capture.v1",
+    "evidence_kind": "device_capture",
+    "session_id": "new-rom",
+    "image_sha256": "0d18a0fa860d58ab8f984b5f542f45dac105241f47bf1c2af41321eb0431e14c",
+    "windows": [
+      {
+        "address": 2098048,
+        "data_hex": "007c2000007000000074000070380000",
+        "sha256": "d181b7378851e44b709578a730fdafcbcf658ee96e9a0ee2a199fba433d30099"
+      },
+      {
+        "address": 2098148,
+        "data_hex": "002080000080040000a084000000000000a084000040000000e084000040020000000001000080000000000000000000",
+        "sha256": "19f636dc558b3e0d11daebb254ecaaf76d5c3a8597e7219063bf55f3715bf32e"
+      },
+      {
+        "address": 8397208,
+        "data_hex": "00d08000001000000030800000a00000006082000040020000a084000000000000a084000000000000a084000000000000a084000000000000a084000000000000a084000000000000e0800000800100",
+        "sha256": "d74c3afddf382c36dd4c566c539d2dcff16a22e0c7f525a9c1a342875cc4e12f"
+      }
+    ]
+  },
+  "app_rom_identifier": {
+    "address": 8544268,
+    "data_hex": "f94c6b7e11c5eb118282f74a0c0cef5b",
+    "sha256": "e8ba1c25f4faf46abe7c2d6e1e7e61a074298dd07181652bfc82ea89c94ff5d9"
+  },
+  "timer_code": {
+    "address": 79548,
+    "data_hex": "38b504464d480268002a07d0694620469047002802d06846007838bd204600f0f8fc38bd38b5044645480268002a07d0694620469047002802d06846007838bd204600f011fd38bd",
+    "sha256": "bf0174582ef92307490e0cdcf0802c912f6f36d8946aac5208f641ad81514e88"
+  },
+  "repeated_equal": true,
+  "symbols_sha256": "6f5a59f6444c01328808ac148b9c60771410196ab3b57e08fc8ff90525934247",
+  "full_image_attestation": false,
+  "callback_drain_verified": false,
+  "recovery_verified": false,
+  "flash_authorized": false,
+  "internal_windows": {
+    "literals": {
+      "address": 79864,
+      "data_hex": "0000004014042000",
+      "sha256": "ff30ce7116821d7cbcb520db766b14f41f01a8cc6592d5567c8d236832286162"
+    },
+    "defaults": {
+      "address": 82126,
+      "data_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaab",
+      "sha256": "dfabc97f215403a3cc2bcf132a35fc832e87b7de0f2e7560f2ad9d8f06e38b63"
+    }
+  },
+  "prior_capture_sha256": "4290a08b6703c6b3e2ddf262285a28100368253ccff6a46b9116d31df039f16d",
+  "pointer_following": false,
+  "target_execution": false,
+  "actual_hook_state_read": false,
+  "complete_implementations_verified": false
+}

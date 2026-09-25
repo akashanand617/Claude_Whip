@@ -1,0 +1,10 @@
+firmware/unified/wire.c:3:ww_get32	0	static
+firmware/unified/wire.c:7:ww_put32	0	static
+firmware/unified/wire.c:10:ww_crc	16	static
+firmware/unified/wire.c:29:ww_body_valid	40	static
+firmware/unified/wire.c:49:ww_pack_control	40	static
+firmware/unified/wire.c:19:seal	8	static
+firmware/unified/wire.c:66:ww_rx_begin	32	static
+firmware/unified/wire.c:61:reject	0	static
+firmware/unified/wire.c:74:ww_rx_feed	32	static
+firmware/unified/wire.c:87:ww_pack_motion	24	static

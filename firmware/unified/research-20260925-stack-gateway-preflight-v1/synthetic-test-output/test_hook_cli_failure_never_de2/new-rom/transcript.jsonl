@@ -1,0 +1,3 @@
+{"kind": "header", "wall": 1790310016.6101062, "plan": "rom-timer-hooks-v1", "flashing": false, "sensor_commands": false, "target_execution": false, "pointer_following": false, "max_transactions": 144, "warning": "CD bookkeeping side effects; sampled identity is not full attestation"}
+{"kind": "device", "name": "R02_CC07", "hardware": "other", "firmware": "RT02CR_3.12.07_260514", "address": "fake-device"}
+{"kind": "aborted", "error": "unexpected device/firmware; no diagnostic command sent", "retry": false, "disconnect_confirmed": true}

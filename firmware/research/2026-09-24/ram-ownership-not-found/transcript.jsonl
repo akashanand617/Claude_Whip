@@ -1,0 +1,2 @@
+{"kind": "header", "wall": 1790281165.49952, "plan": "ram-ownership-v1", "flashing": false, "sensor_commands": false, "target_execution": false, "pointer_following": false, "max_transactions": 268, "gap_bytes_logged": false, "warning": "CD bookkeeping side effects; sampled identity is not full attestation"}
+{"kind": "aborted", "error": "no device found at address 3C2FA77E-1BE3-A0C5-0DD5-DB6A3AD452B2", "retry": false, "disconnect_confirmed": null}

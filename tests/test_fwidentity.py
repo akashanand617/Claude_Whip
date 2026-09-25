@@ -4,11 +4,12 @@ from pathlib import Path
 
 import pytest
 
-from whip import fwbuild, fwidentity, fwoptical, protocol
+from whip import fwbuild, fwidentity, fwoptical, fwoptical_unified, protocol
 
 
 BASE = Path(__file__).resolve().parent.parent / "firmware" / "rt02cr-25hz.bin"
 CANDIDATE = BASE.with_name("rt02cr-25hz-optical-off-v2-experimental.bin")
+UNIFIED_CANDIDATE = BASE.with_name("rt02cr-25hz-health-default-gesture-v1-experimental.bin")
 EARLIER_CANDIDATE = BASE.with_name("rt02cr-25hz-optical-off-experimental.bin")
 
 
@@ -42,6 +43,7 @@ def test_archive_mapping_and_actual_instruction_bytes(base):
         0x21D6: (0x828186, "5b480bf053fd0120c0020bf05cfd"),
         0x2244: (0x8281F4, "38703d4804220123d2003f491038"),
         0x6918: (0x82C8C8, "7976b876787400f090fb2046ff38"),
+        0x7498: (0x82D448, "304800f03ffa2b4ca41f20702d48"),
         0x7ED0: (0x82DE80, "c0070bd17d21c900e01ce5f703dc"),
         0xBF04: (0x831EB4, "32200968884705210f20fff79afe"),
         0xCAD0: (0x832A80, "f8bda07900280ed0fff736fafff7"),
@@ -62,17 +64,18 @@ def test_archive_mapping_and_actual_instruction_bytes(base):
 
 def test_fixed_chunks_cover_ranges_without_gaps_or_overlap():
     sites = fwidentity.read_sites()
-    assert len(sites) == 22
+    assert len(sites) == 26
     assert len({site.name for site in sites}) == len(sites)
-    expected_ranges = [(0x21D6, 20), (0x2244, 16), (0x6918, 24), (0x7ED0, 20),
+    expected_ranges = [(0x21D6, 20), (0x2244, 16), (0x6918, 24), (0x7498, 44), (0x7ED0, 20),
                        (0xBF04, 16), (0xCAD0, 20), (0xF68A, 80), (0x122FE, 48)]
     expected_offsets = {offset + i for offset, length in expected_ranges for i in range(length)}
     actual_offsets = [site.file_offset + i for site in sites for i in range(site.length)]
-    assert len(actual_offsets) == len(set(actual_offsets)) == 244
+    assert len(actual_offsets) == len(set(actual_offsets)) == 288
     assert set(actual_offsets) == expected_offsets
     assert fwoptical.PAYLOAD_CHANGE_ALLOWLIST <= set(actual_offsets)
     assert all(1 <= site.length <= 14 for site in sites)
-    assert [site.length for site in sites] == [14, 6, 14, 2, 14, 10, 14, 6, 14, 2,
+    assert [site.length for site in sites] == [14, 6, 14, 2, 14, 10,
+                                             14, 14, 14, 2, 14, 6, 14, 2,
                                              14, 6, 14, 14, 14, 14, 14, 10,
                                              14, 14, 14, 6]
 
@@ -108,6 +111,24 @@ def test_all_sampled_bytes_match_both_reviewed_images(base, candidate):
             payload = image[site.file_offset:site.file_offset + site.length]
             observed[site.name] = fwidentity.decode_reply(site, reply(payload))
         assert fwidentity.classify(base, observed) == expected
+
+
+def test_unified_candidate_has_its_own_complete_sampled_identity(base):
+    unified = fwoptical_unified.build(base)
+    assert fwidentity.classify(base, samples(unified)) == fwidentity.UNIFIED_CANDIDATE
+    assert hashlib.sha256(unified).hexdigest() == fwidentity.UNIFIED_CANDIDATE_SHA256
+    if UNIFIED_CANDIDATE.exists():
+        revoked = UNIFIED_CANDIDATE.read_bytes()
+        assert hashlib.sha256(revoked).hexdigest() == (
+            "b1070bed755ce14936501431e379c6c47570ce747265fe0b6af0e87553eb2dc4"
+        )
+        assert fwidentity.classify(base, samples(revoked)) == fwidentity.MIXED_OR_UNKNOWN
+        with pytest.raises(ValueError, match="differs from the strict unified"):
+            fwidentity.validate_images(base, unified_candidate=revoked)
+    # At least one sampled byte separates all three reviewed images.
+    v2 = fwoptical.build(base)
+    assert samples(unified) != samples(base)
+    assert samples(unified) != samples(v2)
 
 
 @pytest.mark.parametrize("offset", [0x21DC, 0x691E, 0xCAD2, 0xF68C, 0xF690,

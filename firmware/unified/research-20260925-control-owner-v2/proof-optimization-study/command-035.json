@@ -1,0 +1,26 @@
+{
+  "command": [
+    "/usr/bin/clang",
+    "--target=armv6m-none-eabi",
+    "-mcpu=cortex-m0plus",
+    "-mthumb",
+    "-ffreestanding",
+    "-fno-builtin",
+    "-Oz",
+    "-std=c11",
+    "-Wall",
+    "-Wextra",
+    "-Werror",
+    "-fstack-usage",
+    "-I",
+    "/Users/akashanand/Claude_Whip/firmware/unified",
+    "-flto",
+    "-c",
+    "/Users/akashanand/Claude_Whip/firmware/unified/stock_timer_fence.c",
+    "-o",
+    "/tmp/whip-owner-lto.vFb7OT/lto/stock_timer_fence.o"
+  ],
+  "exit": 0,
+  "stdout": "",
+  "stderr": ""
+}

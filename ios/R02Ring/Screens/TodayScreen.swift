@@ -30,6 +30,12 @@ struct TodayScreen: View {
                 .padding(.horizontal, Tok.side)
                 .padding(.top, 8)
 
+                if let message = model.healthCoverageMessage {
+                    Text(message).font(.mono(10)).foregroundStyle(Tok.muted)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, Tok.side).padding(.top, 8)
+                }
+
                 sleepHero
 
                 VStack(spacing: 0) {
@@ -56,10 +62,10 @@ struct TodayScreen: View {
                 }
 
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Text(data.sleepHours.map(String.init) ?? "0")
+                    Text(data.sleepHours.map(String.init) ?? "—")
                         .font(.mono(72, .medium)).tracking(-4)
                     Text("h").font(.mono(18)).foregroundStyle(Tok.muted)
-                    Text(data.sleepMinutes.map(String.init) ?? "0")
+                    Text(data.sleepMinutes.map(String.init) ?? "—")
                         .font(.mono(72, .medium)).tracking(-4)
                         .padding(.leading, 8)
                     Text("m").font(.mono(18)).foregroundStyle(Tok.muted)
@@ -223,7 +229,7 @@ struct TodayScreen: View {
                     Text("›").font(.mono(10)).foregroundStyle(Tok.accent)
                 }
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Text(verbatim: (data.steps ?? 0).formatted()).font(.mono(40, .medium)).tracking(-2)
+                    Text(verbatim: data.steps.map { $0.formatted() } ?? "—").font(.mono(40, .medium)).tracking(-2)
                     Text("/ 10 000").font(.mono(13)).foregroundStyle(Tok.muted)
                 }
                 .padding(.top, 4)

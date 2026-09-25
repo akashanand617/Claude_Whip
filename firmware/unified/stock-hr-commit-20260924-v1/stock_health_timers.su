@@ -1,0 +1,2 @@
+firmware/unified/stock_health_timers.c:12:wht_stop_reviewed	48	static
+firmware/unified/stock_health_timers.c:55:wht_stop_scheduled	8	static

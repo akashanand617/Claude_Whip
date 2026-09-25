@@ -10,6 +10,8 @@ struct SettingsScreen: View {
     @State private var showsRing = false
     @State private var exportURLs: [URL] = []
     @State private var showsExport = false
+    @State private var showsModePicker = false
+    @State private var pendingFirmwareMode: RingFirmwareMode?
 
     var body: some View {
         Screen(tab: $tab) {
@@ -45,6 +47,25 @@ struct SettingsScreen: View {
         #if os(iOS)
         .sheet(isPresented: $showsExport) { ActivityView(items: exportURLs) }
         #endif
+        .confirmationDialog("Firmware maintenance", isPresented: $showsModePicker, titleVisibility: .visible) {
+            Button("Stock Health firmware") { chooseMode(.health) }
+            Button("Unified firmware (disabled after failed boot)") { chooseMode(.unified) }
+                .disabled(!BundledFirmware.unifiedInstallEnabled)
+            Button("Experimental Gesture-only V2 firmware") { chooseMode(.gesture) }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This replaces the installed firmware. It is not the planned instant runtime toggle.")
+        }
+        .alert(item: $pendingFirmwareMode) { target in
+            Alert(
+                title: Text("Switch to \(target.title) mode?"),
+                message: Text(modeWarning(target)),
+                primaryButton: .destructive(Text("Flash \(target.title) firmware")) {
+                    Task { await model.switchFirmware(to: target) }
+                },
+                secondaryButton: .cancel()
+            )
+        }
     }
 
     private var userTag: some View {
@@ -79,15 +100,32 @@ struct SettingsScreen: View {
                     .foregroundStyle(model.ring.linked ? Tok.accent : Tok.muted)
             } action: { showsRing = true }
 
+            SettingsRow(title: "Firmware maintenance", subtitle: modeSubtitle) {
+                if model.isFirmwareSwitching {
+                    ProgressView(value: model.firmwareProgress)
+                        .tint(Tok.accent)
+                        .frame(width: 72)
+                } else {
+                    Text("\(model.firmwareMode.title) ›")
+                        .font(.mono(11)).foregroundStyle(Tok.muted)
+                }
+            } action: {
+                guard !model.isFirmwareSwitching else { return }
+                showsModePicker = true
+            }
+
             SettingsRow(title: "Haptics", isButton: false) {
                 RingToggle(isOn: $model.haptics)
             }
 
-            SettingsRow(title: "Heart-rate logging", subtitle: "Every 5 minutes", isButton: false) {
+            SettingsRow(title: "Heart-rate logging", subtitle: model.heartRateSettingsKnown
+                        ? "Every \(model.heartRateIntervalMinutes) minutes" : "Settings not read", isButton: false) {
                 RingToggle(isOn: Binding(
                     get: { model.heartRateLogging },
                     set: { enabled in Task { await model.setHeartRateLogging(enabled) } }
                 ))
+                .disabled(!model.healthSyncEnabled || !model.heartRateSettingsKnown)
+                .opacity(model.healthSyncEnabled ? 1 : 0.45)
             }
 
             SettingsRow(title: "Units") {
@@ -115,6 +153,34 @@ struct SettingsScreen: View {
         return "\(model.ring.id) · firmware \(model.ring.firmware)"
     }
 
+    private var modeSubtitle: String {
+        if model.isFirmwareSwitching { return model.syncMessage }
+        switch model.firmwareMode {
+        case .health: return "Stock health tracking · gestures unavailable"
+        case .unified: return "Health default · instant temporary Gesture sessions"
+        case .gesture: return "25 Hz gestures · optical health paused"
+        case .unknown: return "Connect to identify installed firmware"
+        }
+    }
+
+    private func chooseMode(_ mode: RingFirmwareMode) {
+        guard mode != model.firmwareMode else { return }
+        pendingFirmwareMode = mode
+    }
+
+    private func modeWarning(_ target: RingFirmwareMode) -> String {
+        switch target {
+        case .gesture:
+            return "The app will sync pending health history first. Heart-rate and blood-oxygen tracking will stop while Gesture mode is active. Keep the app open and the ring nearby."
+        case .health:
+            return "This restores stock health tracking. Gesture recognition will be unavailable until you switch back. Keep the app open and the ring nearby."
+        case .unified:
+            return "This installs the size-neutral Health-default image. The app will sync pending health history first. Gesture sessions then switch instantly without another firmware transfer."
+        case .unknown:
+            return ""
+        }
+    }
+
     private var ringSheet: some View {
         ZStack {
             Tok.ink.ignoresSafeArea()
@@ -130,6 +196,12 @@ struct SettingsScreen: View {
                 infoRow("Hardware", model.ring.hardware)
                 infoRow("Firmware", model.ring.firmware)
                 infoRow("Last sync", model.syncMessage)
+                if let duration = model.lastFirmwareSwitchDuration {
+                    infoRow("Last mode switch", String(format: "%.1f s", duration))
+                }
+                if let duration = model.lastFirmwareTransferDuration {
+                    infoRow("DFU transfer", String(format: "%.1f s", duration))
+                }
                 Spacer()
                 if model.ringManager.pairedIdentifier == nil {
                     OutlineButton(title: "Add R02") {

@@ -1,0 +1,7 @@
+0
+386 19686348 1790307359274449971 7bd03f87f2faaf45e3f4402a5d9d2e3f 0 /Users/akashanand/Claude_Whip/firmware/unified/stock_event_gate.c
+1081 19686347 1790307359274088381 8098f8eebd4f83d3e11c053ef74ed024 0 /Users/akashanand/Claude_Whip/firmware/unified/stock_event_gate.h
+31054 18581882 1760154798000000000 1df950c62cbc96dd5d9790733bbe6016 1 include/stdint.h
+1802 19677463 1790306847227068710 5f6df0bf8eb1fd1e597ead19589afc05 0 /Users/akashanand/Claude_Whip/firmware/unified/stock_service_slot.h
+1317 18647395 1790152294511313775 1e9116705795add5c979e919e64a0d2d 0 /Users/akashanand/Claude_Whip/firmware/unified/stock_transport.h
+1172 18581879 1760154798000000000 69b529ccb10bbb5d826c563cf9b929c1 1 include/stdbool.h

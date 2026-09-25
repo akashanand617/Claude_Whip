@@ -1,0 +1,27 @@
+{
+  "command": [
+    "/usr/bin/clang",
+    "--target=armv6m-none-eabi",
+    "-mcpu=cortex-m0plus",
+    "-mthumb",
+    "-ffreestanding",
+    "-fno-builtin",
+    "-Oz",
+    "-std=c11",
+    "-Wall",
+    "-Wextra",
+    "-Werror",
+    "-fstack-usage",
+    "-I",
+    "/Users/akashanand/Claude_Whip/firmware/unified",
+    "-include",
+    "/private/tmp/whip-runtime-stamp-proof.bhbqVC/pytest-final/runtime-stamp160/evidence/low16/runtime.h",
+    "-c",
+    "/Users/akashanand/Claude_Whip/firmware/unified/stock_coordinator.c",
+    "-o",
+    "/private/tmp/whip-runtime-stamp-proof.bhbqVC/pytest-final/runtime-stamp160/evidence/low16/stock_coordinator-repeat.o"
+  ],
+  "exit": 0,
+  "stdout": "",
+  "stderr": ""
+}

@@ -1,0 +1,6 @@
+/private/tmp/whip-runtime-stamp-proof.bhbqVC/pytest-final/runtime-stamp160/evidence/low16/control_owner.c:23:wco_init	24	static
+/private/tmp/whip-runtime-stamp-proof.bhbqVC/pytest-final/runtime-stamp160/evidence/low16/control_owner.c:32:wco_open	24	static
+/private/tmp/whip-runtime-stamp-proof.bhbqVC/pytest-final/runtime-stamp160/evidence/low16/control_owner.c:19:close	16	static
+/private/tmp/whip-runtime-stamp-proof.bhbqVC/pytest-final/runtime-stamp160/evidence/low16/control_owner.c:43:wco_step	88	static
+/private/tmp/whip-runtime-stamp-proof.bhbqVC/pytest-final/runtime-stamp160/evidence/low16/control_owner.c:78:wco_service	40	static
+/private/tmp/whip-runtime-stamp-proof.bhbqVC/pytest-final/runtime-stamp160/evidence/low16/control_owner.c:92:wuw_supervise	8	static

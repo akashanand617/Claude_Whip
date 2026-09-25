@@ -1,0 +1,6 @@
+# Isolated offline exporter; no training, quantization, or ring connection.
+# coremltools warns Torch 2.11 is outside its tested range. The export command
+# therefore MUST run its per-window numerical gate; never skip predict checks.
+coremltools==9.0
+torch==2.11.0
+numpy==2.3.4

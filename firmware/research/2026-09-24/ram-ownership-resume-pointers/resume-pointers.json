@@ -1,0 +1,66 @@
+{
+  "schema": "whip.ram-ownership-resume-pointers.capture.v1",
+  "evidence_kind": "device_capture",
+  "session_id": "ram-ownership-resume-pointers",
+  "prerequisite_capture": {
+    "schema": "whip.capacity.capture.v1",
+    "evidence_kind": "device_capture",
+    "session_id": "ram-ownership-resume-pointers",
+    "image_sha256": "0d18a0fa860d58ab8f984b5f542f45dac105241f47bf1c2af41321eb0431e14c",
+    "windows": [
+      {
+        "address": 2098048,
+        "data_hex": "007c2000007000000074000070380000",
+        "sha256": "d181b7378851e44b709578a730fdafcbcf658ee96e9a0ee2a199fba433d30099"
+      },
+      {
+        "address": 2098148,
+        "data_hex": "002080000080040000a084000000000000a084000040000000e084000040020000000001000080000000000000000000",
+        "sha256": "19f636dc558b3e0d11daebb254ecaaf76d5c3a8597e7219063bf55f3715bf32e"
+      },
+      {
+        "address": 8397208,
+        "data_hex": "00d08000001000000030800000a00000006082000040020000a084000000000000a084000000000000a084000000000000a084000000000000a084000000000000a084000000000000e0800000800100",
+        "sha256": "d74c3afddf382c36dd4c566c539d2dcff16a22e0c7f525a9c1a342875cc4e12f"
+      }
+    ]
+  },
+  "windows": {
+    "boot_hooks": [
+      {
+        "address": 2097392,
+        "data_hex": "eb400000000400002dd2000062870e00",
+        "sha256": "2befe57b48101e89d6ca81051af8dbbeb41349316796887d5c520b2078fd2c16"
+      },
+      {
+        "address": 2097392,
+        "data_hex": "eb400000000400002dd2000062870e00",
+        "sha256": "2befe57b48101e89d6ca81051af8dbbeb41349316796887d5c520b2078fd2c16"
+      }
+    ],
+    "pre_boot_hook": [
+      {
+        "address": 2097484,
+        "data_hex": "b3b90000",
+        "sha256": "4731a577fa73b996509d87ca9e356a4ef06d84ace98dfc6802373b7db524df35"
+      },
+      {
+        "address": 2097484,
+        "data_hex": "b3b90000",
+        "sha256": "4731a577fa73b996509d87ca9e356a4ef06d84ace98dfc6802373b7db524df35"
+      }
+    ]
+  },
+  "repeated_equal": true,
+  "decoded": {
+    "first_boot_hook_0x2000f0": 16619,
+    "word_0x2000f4": 1024,
+    "resume_pointer_0x2000f8": 53805,
+    "word_0x2000fc": 952162,
+    "pre_boot_hook_0x20014c": 47539,
+    "followed": false
+  },
+  "pointer_following": false,
+  "target_execution": false,
+  "flash_authorized": false
+}

@@ -1,0 +1,6 @@
+firmware/unified/control_owner.c:23:wco_init	24	static
+firmware/unified/control_owner.c:32:wco_open	24	static
+firmware/unified/control_owner.c:19:close	16	static
+firmware/unified/control_owner.c:43:wco_step	88	static
+firmware/unified/control_owner.c:78:wco_service	40	static
+firmware/unified/control_owner.c:92:wuw_supervise	8	static

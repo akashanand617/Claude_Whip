@@ -1,0 +1,67 @@
+{
+  "schema": "whip.rom-timer-hooks.capture.v1",
+  "evidence_kind": "device_capture",
+  "session_id": "new-rom",
+  "prerequisite_capture": {
+    "schema": "whip.capacity.capture.v1",
+    "evidence_kind": "device_capture",
+    "session_id": "new-rom",
+    "image_sha256": "0d18a0fa860d58ab8f984b5f542f45dac105241f47bf1c2af41321eb0431e14c",
+    "windows": [
+      {
+        "address": 2098048,
+        "data_hex": "007c2000007000000074000070380000",
+        "sha256": "d181b7378851e44b709578a730fdafcbcf658ee96e9a0ee2a199fba433d30099"
+      },
+      {
+        "address": 2098148,
+        "data_hex": "002080000080040000a084000000000000a084000040000000e084000040020000000001000080000000000000000000",
+        "sha256": "19f636dc558b3e0d11daebb254ecaaf76d5c3a8597e7219063bf55f3715bf32e"
+      },
+      {
+        "address": 8397208,
+        "data_hex": "00d08000001000000030800000a00000006082000040020000a084000000000000a084000000000000a084000000000000a084000000000000a084000000000000a084000000000000e0800000800100",
+        "sha256": "d74c3afddf382c36dd4c566c539d2dcff16a22e0c7f525a9c1a342875cc4e12f"
+      }
+    ]
+  },
+  "app_rom_identifier": {
+    "address": 8544268,
+    "data_hex": "f94c6b7e11c5eb118282f74a0c0cef5b",
+    "sha256": "e8ba1c25f4faf46abe7c2d6e1e7e61a074298dd07181652bfc82ea89c94ff5d9"
+  },
+  "timer_code": {
+    "address": 79548,
+    "data_hex": "38b504464d480268002a07d0694620469047002802d06846007838bd204600f0f8fc38bd38b5044645480268002a07d0694620469047002802d06846007838bd204600f011fd38bd",
+    "sha256": "bf0174582ef92307490e0cdcf0802c912f6f36d8946aac5208f641ad81514e88"
+  },
+  "repeated_equal": true,
+  "symbols_sha256": "6f5a59f6444c01328808ac148b9c60771410196ab3b57e08fc8ff90525934247",
+  "full_image_attestation": false,
+  "callback_drain_verified": false,
+  "recovery_verified": false,
+  "flash_authorized": false,
+  "internal_windows": {
+    "literals": {
+      "address": 79864,
+      "data_hex": "5016200054162000",
+      "sha256": "a2f7b08f69cf8f6848ae008853bc9a53921ab3961e7b7f5f6ca1f3fd08cac777"
+    },
+    "defaults": {
+      "address": 82126,
+      "data_hex": "1cb5040025d02068002822d05c48407ec0071ed100f0a9f801460020002907d0009000231a4603212068fcf7f2fb0ee00190009001ab002208212068fcf7e9fb0199002903d001214c4a09075160012800d000201cbd38b5040006d02068002803d04649497ec90701d0002038bd00252b462a4605210095fcf7cbfb0028f5d00120256038bd10b53d48407ec00701d1fcf726fe012010bd70b50d46040006d02068002803d03548407ec007",
+      "sha256": "d814c35d1f453d068409600fe9aa30d031bd5e8029cf72d9d803b9e570166da7"
+    }
+  },
+  "prior_capture_sha256": "4290a08b6703c6b3e2ddf262285a28100368253ccff6a46b9116d31df039f16d",
+  "pointer_following": false,
+  "target_execution": false,
+  "actual_hook_state_read": true,
+  "complete_implementations_verified": false,
+  "hook_slots": {
+    "address": 2102864,
+    "data_hex": "0100004001042000",
+    "sha256": "752f5138f3a53649e6b0021154ba06c66f0f8ea566942eeaf14bf0274aaf3d88"
+  },
+  "prior_internals_sha256": "79fe567846b308a081d6820ce552b45fba107470f2258035d67e4cd2d1c88525"
+}

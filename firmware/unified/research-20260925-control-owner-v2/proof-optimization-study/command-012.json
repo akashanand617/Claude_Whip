@@ -1,0 +1,25 @@
+{
+  "command": [
+    "/usr/bin/clang",
+    "--target=armv6m-none-eabi",
+    "-mcpu=cortex-m0plus",
+    "-mthumb",
+    "-ffreestanding",
+    "-fno-builtin",
+    "-Oz",
+    "-std=c11",
+    "-Wall",
+    "-Wextra",
+    "-Werror",
+    "-fstack-usage",
+    "-I",
+    "/Users/akashanand/Claude_Whip/firmware/unified",
+    "-c",
+    "/Users/akashanand/Claude_Whip/firmware/unified/stock_schedule_settings.c",
+    "-o",
+    "/tmp/whip-owner-lto.vFb7OT/native/stock_schedule_settings.o"
+  ],
+  "exit": 0,
+  "stdout": "",
+  "stderr": ""
+}

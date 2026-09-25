@@ -96,26 +96,33 @@ final class HealthStore {
         self.context = context
     }
 
+    private func transaction(_ edits: () throws -> Void) throws {
+        // Never roll back somebody else's unsaved edits in the shared context.
+        guard !context.hasChanges else { throw RingProtocolError.busy }
+        do { try edits(); try context.save() }
+        catch { context.rollback(); throw error }
+    }
+
     func saveHeartRates(deviceID: String, day: Date, log: HeartRateLog) throws {
-        for (index, bpm) in log.samples.enumerated() where (30...240).contains(bpm) {
-            guard let timestamp = ringCalendar.date(
-                byAdding: .minute, value: index * log.intervalMinutes,
-                to: ringCalendar.startOfDay(for: day)
-            ) else { continue }
-            upsertHeartRate(deviceID: deviceID, timestamp: timestamp, bpm: bpm, source: "periodic")
+        try transaction {
+            for (index, bpm) in log.samples.enumerated() where (30...240).contains(bpm) {
+                guard let timestamp = ringCalendar.date(
+                    byAdding: .minute, value: index * log.intervalMinutes,
+                    to: ringCalendar.startOfDay(for: day)
+                ) else { continue }
+                try upsertHeartRate(deviceID: deviceID, timestamp: timestamp, bpm: bpm, source: "periodic")
+            }
         }
-        try context.save()
     }
 
     func saveLiveHeartRate(deviceID: String, timestamp: Date, bpm: Int) throws {
-        upsertHeartRate(deviceID: deviceID, timestamp: timestamp, bpm: bpm, source: "live")
-        try context.save()
+        try transaction { try upsertHeartRate(deviceID: deviceID, timestamp: timestamp, bpm: bpm, source: "live") }
     }
 
-    private func upsertHeartRate(deviceID: String, timestamp: Date, bpm: Int, source: String) {
+    private func upsertHeartRate(deviceID: String, timestamp: Date, bpm: Int, source: String) throws {
         let key = "\(deviceID)|\(Int(timestamp.timeIntervalSince1970))|\(source)"
         let descriptor = FetchDescriptor<HeartRateRecord>(predicate: #Predicate { $0.key == key })
-        if let existing = try? context.fetch(descriptor).first {
+        if let existing = try context.fetch(descriptor).first {
             existing.bpm = bpm
         } else {
             context.insert(HeartRateRecord(deviceID: deviceID, timestamp: timestamp, bpm: bpm, source: source))
@@ -123,65 +130,68 @@ final class HealthStore {
     }
 
     func saveSteps(deviceID: String, buckets: [StepBucket]) throws {
-        for bucket in buckets {
-            var components = DateComponents()
-            // The ring clock and the date/time fields in 0x43 step packets are UTC.
-            // Decode them in that same frame, then let dashboard queries/chart labels
-            // convert the absolute Date into the user's current timezone.
-            components.calendar = ringCalendar
-            components.timeZone = ringCalendar.timeZone
-            components.year = bucket.year
-            components.month = bucket.month
-            components.day = bucket.day
-            components.hour = bucket.timeIndex / 4
-            components.minute = (bucket.timeIndex % 4) * 15
-            guard let timestamp = components.date else { continue }
-            let key = "\(deviceID)|\(Int(timestamp.timeIntervalSince1970))"
-            let descriptor = FetchDescriptor<StepRecord>(predicate: #Predicate { $0.key == key })
-            if let existing = try? context.fetch(descriptor).first {
-                existing.steps = bucket.steps
-                existing.calories = bucket.calories
-                existing.distanceMeters = bucket.distanceMeters
-            } else {
-                context.insert(StepRecord(deviceID: deviceID, timestamp: timestamp, steps: bucket.steps,
-                                          calories: bucket.calories, distanceMeters: bucket.distanceMeters))
+        try transaction {
+            for bucket in buckets {
+                var components = DateComponents()
+                // Decode ring UTC, then convert absolute dates for local presentation.
+                components.calendar = ringCalendar
+                components.timeZone = ringCalendar.timeZone
+                components.year = bucket.year
+                components.month = bucket.month
+                components.day = bucket.day
+                components.hour = bucket.timeIndex / 4
+                components.minute = (bucket.timeIndex % 4) * 15
+                guard let timestamp = components.date else { continue }
+                let key = "\(deviceID)|\(Int(timestamp.timeIntervalSince1970))"
+                let descriptor = FetchDescriptor<StepRecord>(predicate: #Predicate { $0.key == key })
+                if let existing = try context.fetch(descriptor).first {
+                    existing.steps = bucket.steps
+                    existing.calories = bucket.calories
+                    existing.distanceMeters = bucket.distanceMeters
+                } else {
+                    context.insert(StepRecord(deviceID: deviceID, timestamp: timestamp, steps: bucket.steps,
+                                              calories: bucket.calories, distanceMeters: bucket.distanceMeters))
+                }
             }
         }
-        try context.save()
     }
 
-    func saveSleep(deviceID: String, nights: [RingSleepNight], now: Date = .now) throws {
+    func saveSleep(deviceID: String, nights: [RingSleepNight], now: Date) throws {
+        guard nights.allSatisfy({ !$0.stages.isEmpty && $0.endMinutes > $0.startMinutes
+            && $0.stages.allSatisfy { $0.durationMinutes > 0 } }),
+              Set(nights.map(\.daysAgo)).count == nights.count else { throw RingProtocolError.invalidPacket }
         let today = ringCalendar.startOfDay(for: now)
-        for night in nights {
-            guard let wakeDay = ringCalendar.date(byAdding: .day, value: -night.daysAgo, to: today),
-                  let start = ringCalendar.date(byAdding: .minute, value: night.startMinutes, to: wakeDay),
-                  let end = ringCalendar.date(byAdding: .minute, value: night.endMinutes, to: wakeDay)
-            else { continue }
-            let sessionKey = "\(deviceID)|\(Int(wakeDay.timeIntervalSince1970))"
-            let sessionDescriptor = FetchDescriptor<SleepSessionRecord>(predicate: #Predicate { $0.key == sessionKey })
-            let session: SleepSessionRecord
-            if let existing = try? context.fetch(sessionDescriptor).first {
-                existing.start = start
-                existing.end = end
-                session = existing
-            } else {
-                session = SleepSessionRecord(deviceID: deviceID, start: start, end: end, wakeDay: wakeDay)
-                context.insert(session)
-            }
+        try transaction {
+            for night in nights {
+                guard let wakeDay = ringCalendar.date(byAdding: .day, value: -night.daysAgo, to: today),
+                      let start = ringCalendar.date(byAdding: .minute, value: night.startMinutes, to: wakeDay),
+                      let end = ringCalendar.date(byAdding: .minute, value: night.endMinutes, to: wakeDay)
+                else { continue }
+                let sessionKey = "\(deviceID)|\(Int(wakeDay.timeIntervalSince1970))"
+                let sessionDescriptor = FetchDescriptor<SleepSessionRecord>(predicate: #Predicate { $0.key == sessionKey })
+                let session: SleepSessionRecord
+                if let existing = try context.fetch(sessionDescriptor).first {
+                    existing.start = start
+                    existing.end = end
+                    session = existing
+                } else {
+                    session = SleepSessionRecord(deviceID: deviceID, start: start, end: end, wakeDay: wakeDay)
+                    context.insert(session)
+                }
 
-            let oldStages = try context.fetch(FetchDescriptor<SleepStageRecord>(
-                predicate: #Predicate { $0.sessionKey == sessionKey }
-            ))
-            oldStages.forEach(context.delete)
-            var stageStart = start
-            for (index, item) in night.stages.enumerated() {
-                guard let stageEnd = calendar.date(byAdding: .minute, value: item.durationMinutes, to: stageStart) else { continue }
-                context.insert(SleepStageRecord(sessionKey: sessionKey, start: stageStart,
-                                                end: stageEnd, stage: item.stage, index: index))
-                stageStart = stageEnd
+                let oldStages = try context.fetch(FetchDescriptor<SleepStageRecord>(
+                    predicate: #Predicate { $0.sessionKey == sessionKey }
+                ))
+                oldStages.forEach(context.delete)
+                var stageStart = start
+                for (index, item) in night.stages.enumerated() {
+                    guard let stageEnd = calendar.date(byAdding: .minute, value: item.durationMinutes, to: stageStart) else { continue }
+                    context.insert(SleepStageRecord(sessionKey: sessionKey, start: stageStart,
+                                                    end: stageEnd, stage: item.stage, index: index))
+                    stageStart = stageEnd
+                }
             }
         }
-        try context.save()
     }
 
     func today(deviceID: String?, now: Date = .now) -> HealthData.TodaySummary {
@@ -289,9 +299,18 @@ final class HealthStore {
             "\($0.sessionKey),\(iso.string(from: $0.start)),\(iso.string(from: $0.end)),\($0.stageRaw)"
         }.joined(separator: "\n")
 
+        let coverage = try context.fetch(FetchDescriptor<HealthCoverageRecord>(
+            predicate: #Predicate { $0.deviceID == deviceID }, sortBy: [SortDescriptor(\.started)]))
+        let coverageCSV = "start,end,reason,optics_available,steps_sleep_verified,firmware,timezone\n" + coverage.map {
+            let end = $0.ended.map { iso.string(from: $0) } ?? ""
+            func quoted(_ value: String) -> String { "\"" + value.replacingOccurrences(of: "\"", with: "\"\"") + "\"" }
+            return "\(iso.string(from: $0.started)),\(end),\($0.reason),\($0.opticalMeasurementsAvailable),\($0.stepsAndSleepVerified),\(quoted($0.firmwareIdentity)),\(quoted($0.timezoneID))"
+        }.joined(separator: "\n")
+
         let files = [
             ("heart_rate.csv", heartCSV), ("steps.csv", stepsCSV),
             ("sleep_sessions.csv", sessionCSV), ("sleep_stages.csv", stageCSV),
+            ("health_coverage.csv", coverageCSV),
         ]
         return try files.compactMap { name, contents in
             let url = directory.appendingPathComponent(name)

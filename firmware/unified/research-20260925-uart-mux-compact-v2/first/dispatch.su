@@ -1,0 +1,10 @@
+firmware/unified/experiments/dispatch_compact.c:16:wd_init	24	static
+firmware/unified/experiments/dispatch_compact.c:20:wd_open	24	static
+firmware/unified/experiments/dispatch_compact.c:29:wd_close	16	static
+firmware/unified/experiments/dispatch_compact.c:9:close_current	8	static
+firmware/unified/experiments/dispatch_compact.c:34:wd_charging	16	static
+firmware/unified/experiments/dispatch_compact.c:59:wd_tick	16	static
+firmware/unified/experiments/dispatch_compact.c:40:ready	32	static
+firmware/unified/experiments/dispatch_compact.c:110:wd_receive	56	static
+firmware/unified/experiments/dispatch_compact.c:133:wd_reply_next	32	static
+firmware/unified/experiments/dispatch_compact.c:144:wd_reply_sent	32	static

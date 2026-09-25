@@ -1,0 +1,2 @@
+{"kind": "header", "wall": 1790281233.413428, "plan": "ram-ownership-v1", "flashing": false, "sensor_commands": false, "target_execution": false, "pointer_following": false, "max_transactions": 268, "gap_bytes_logged": false, "warning": "CD bookkeeping side effects; sampled identity is not full attestation"}
+{"kind": "aborted", "error": "", "retry": false, "disconnect_confirmed": null}

@@ -157,7 +157,8 @@ class Session:
 
 
 async def exercise(client, log, base, *, cycle=1, check_only=False,
-                   duration=60.0, idle_duration=15.0):
+                   duration=60.0, idle_duration=15.0,
+                   expected_classification=fwidentity.OPTICAL_OFF_CANDIDATE):
     session = Session(client, log, cycle)
     attempted_start = False
     try:
@@ -165,8 +166,10 @@ async def exercise(client, log, base, *, cycle=1, check_only=False,
         classification = await session.identify(base)
         if check_only:
             return {"classification": classification}
-        if classification != "optical_off_candidate":
-            raise RuntimeError("Active validation requires the optical-off candidate fingerprint; no start sent")
+        if classification != expected_classification:
+            raise RuntimeError(
+                f"Active validation requires {expected_classification}; no start sent"
+            )
         await session.state()
         session.flush()
         session.phase = "tracking_A104_only"

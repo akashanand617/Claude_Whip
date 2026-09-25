@@ -1,0 +1,25 @@
+{
+  "command": [
+    "/usr/bin/clang",
+    "--target=armv6m-none-eabi",
+    "-mcpu=cortex-m0plus",
+    "-mthumb",
+    "-ffreestanding",
+    "-fno-builtin",
+    "-Oz",
+    "-std=c11",
+    "-Wall",
+    "-Wextra",
+    "-Werror",
+    "-fstack-usage",
+    "-I",
+    "/Users/akashanand/Claude_Whip/firmware/unified",
+    "-c",
+    "/Users/akashanand/Claude_Whip/firmware/unified/sample_tap.c",
+    "-o",
+    "/Users/akashanand/Claude_Whip/firmware/unified/research-20260925-whole28-flags-rejected-v1/baseline/sample_tap.o"
+  ],
+  "exit": 0,
+  "stdout": "",
+  "stderr": ""
+}

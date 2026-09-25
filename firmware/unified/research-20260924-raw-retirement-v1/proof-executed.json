@@ -1,0 +1,1003 @@
+{
+  "schema": 1,
+  "phase": "execution",
+  "valid": true,
+  "exitstatus": 0,
+  "collected": [
+    "tests/test_raw_relocation_trial.py::test_whole_current_candidate_actually_links_with_all_gates_false",
+    "tests/test_raw_relocation_trial.py::test_all_object_functions_constants_and_current_compile_pins_retained",
+    "tests/test_raw_relocation_trial.py::test_no_stock_file_or_entry_pool_neighbor_modified_by_elf_overlay",
+    "tests/test_raw_relocation_trial.py::test_malformed_layouts_and_incomplete_inventory_rejected[entry]",
+    "tests/test_raw_relocation_trial.py::test_malformed_layouts_and_incomplete_inventory_rejected[machine]",
+    "tests/test_raw_relocation_trial.py::test_malformed_layouts_and_incomplete_inventory_rejected[raw_stub]",
+    "tests/test_raw_relocation_trial.py::test_malformed_layouts_and_incomplete_inventory_rejected[raw_pool]",
+    "tests/test_raw_relocation_trial.py::test_malformed_layouts_and_incomplete_inventory_rejected[bf_pool]",
+    "tests/test_raw_relocation_trial.py::test_malformed_layouts_and_incomplete_inventory_rejected[diag_stub]",
+    "tests/test_raw_relocation_trial.py::test_malformed_layouts_and_incomplete_inventory_rejected[shared_tail]",
+    "tests/test_raw_relocation_trial.py::test_malformed_layouts_and_incomplete_inventory_rejected[append_end]",
+    "tests/test_raw_relocation_trial.py::test_malformed_layouts_and_incomplete_inventory_rejected[overlap]",
+    "tests/test_raw_relocation_trial.py::test_malformed_layouts_and_incomplete_inventory_rejected[load_gap]",
+    "tests/test_raw_relocation_trial.py::test_malformed_layouts_and_incomplete_inventory_rejected[load_write]",
+    "tests/test_raw_relocation_trial.py::test_malformed_layouts_and_incomplete_inventory_rejected[missing_function]",
+    "tests/test_raw_relocation_trial.py::test_malformed_layouts_and_incomplete_inventory_rejected[extra_function]",
+    "tests/test_raw_relocation_trial.py::test_malformed_layouts_and_incomplete_inventory_rejected[service_bytes]",
+    "tests/test_raw_relocation_trial.py::test_malformed_layouts_and_incomplete_inventory_rejected[unwind_header]",
+    "tests/test_raw_relocation_trial.py::test_object_too_large_is_rejected_before_link_script",
+    "tests/test_raw_relocation_trial.py::test_earlier_object_opcode_drift_during_later_compile_is_rejected",
+    "tests/test_raw_relocation_trial.py::test_relocated_controller_matches_pinned_actual_arm_across_regions[complete-0]",
+    "tests/test_raw_relocation_trial.py::test_relocated_controller_matches_pinned_actual_arm_across_regions[complete-4294967040]",
+    "tests/test_raw_relocation_trial.py::test_relocated_controller_matches_pinned_actual_arm_across_regions[disconnect-0]",
+    "tests/test_raw_relocation_trial.py::test_relocated_controller_matches_pinned_actual_arm_across_regions[disconnect-4294967040]",
+    "tests/test_raw_relocation_trial.py::test_relocated_controller_matches_pinned_actual_arm_across_regions[timeout-0]",
+    "tests/test_raw_relocation_trial.py::test_relocated_controller_matches_pinned_actual_arm_across_regions[timeout-4294967040]",
+    "tests/test_raw_relocation_trial.py::test_relocated_stop_matches_baseline_with_explicit_bus_and_rom_fixtures[1-1-results0]",
+    "tests/test_raw_relocation_trial.py::test_relocated_stop_matches_baseline_with_explicit_bus_and_rom_fixtures[0-1-results1]",
+    "tests/test_raw_relocation_trial.py::test_relocated_stop_matches_baseline_with_explicit_bus_and_rom_fixtures[1-0-results2]",
+    "tests/test_raw_relocation_trial.py::test_relocated_stop_matches_baseline_with_explicit_bus_and_rom_fixtures[1-1-results3]",
+    "tests/test_raw_relocation_trial.py::test_relocated_compiler_helper_matches_baseline_actual_arm[0-0]",
+    "tests/test_raw_relocation_trial.py::test_relocated_compiler_helper_matches_baseline_actual_arm[4294967295-40]",
+    "tests/test_raw_relocation_trial.py::test_relocated_compiler_helper_matches_baseline_actual_arm[2147483648-3]",
+    "tests/test_raw_relocation_trial.py::test_relocated_compiler_helper_matches_baseline_actual_arm[1234567-1]",
+    "tests/test_raw_relocation_trial.py::test_relocated_legacy_gate_keeps_stock_gate_and_denies_four_retired_opcodes[191-16-0-False]",
+    "tests/test_raw_relocation_trial.py::test_relocated_legacy_gate_keeps_stock_gate_and_denies_four_retired_opcodes[206-16-0-False]",
+    "tests/test_raw_relocation_trial.py::test_relocated_legacy_gate_keeps_stock_gate_and_denies_four_retired_opcodes[205-16-0-False]",
+    "tests/test_raw_relocation_trial.py::test_relocated_legacy_gate_keeps_stock_gate_and_denies_four_retired_opcodes[161-16-0-False]",
+    "tests/test_raw_relocation_trial.py::test_relocated_legacy_gate_keeps_stock_gate_and_denies_four_retired_opcodes[81-16-0-True]",
+    "tests/test_raw_relocation_trial.py::test_relocated_legacy_gate_keeps_stock_gate_and_denies_four_retired_opcodes[161-16-1-False]",
+    "tests/test_raw_relocation_trial.py::test_relocated_legacy_gate_keeps_stock_gate_and_denies_four_retired_opcodes[205-65552-0-False]",
+    "tests/test_raw_relocation_trial.py::test_no_default_profile_or_source_is_implicitly_admitted_after_cross_region_init",
+    "tests/test_stock_retirement.py::test_old_inspected_layout_cannot_claim_a1_retirement",
+    "tests/test_stock_retirement.py::test_exact_records_policy_and_all_false_permissions",
+    "tests/test_stock_retirement.py::test_source_stock_instruction_overlap_and_layout_mutants_refuse",
+    "tests/test_stock_retirement.py::test_nonhelper_opcode_drift_cannot_hide_behind_unchanged_geometry",
+    "tests/test_stock_retirement.py::test_all_fifteen_direct_entries_are_noops_without_fake_timer_cancellation",
+    "tests/test_stock_retirement.py::test_actual_uart_filter_and_separate_dfu_route_with_combined_layout",
+    "tests/test_stock_retirement.py::test_actual_queued_a1_wrap_and_stored_callbacks_hit_stubs",
+    "tests/test_stock_retirement.py::test_known_direct_diagnostic_dispatch_calls_hit_stubs_with_prelude_explicit",
+    "tests/test_stock_retirement.py::test_old_interior_cannot_masquerade_as_a_relocated_function",
+    "tests/test_stock_retirement.py::test_restoring_an_entry_or_uart_bl_breaks_known_root_shutdown",
+    "tests/test_stock_retirement.py::test_selected_health_optical_current_schedule_and_a0_keep_stock_behavior",
+    "tests/test_stock_retirement.py::test_retained_9c_charging_tail_and_idle_mode_veto_match_stock",
+    "tests/test_stock_retirement.py::test_shared_optical_reader_fifo_and_step_sleep_input_boundary_unchanged"
+  ],
+  "deselected": [],
+  "collection_problems": [],
+  "reports": {
+    "tests/test_raw_relocation_trial.py::test_whole_current_candidate_actually_links_with_all_gates_false": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_raw_relocation_trial.py::test_all_object_functions_constants_and_current_compile_pins_retained": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_raw_relocation_trial.py::test_no_stock_file_or_entry_pool_neighbor_modified_by_elf_overlay": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_raw_relocation_trial.py::test_malformed_layouts_and_incomplete_inventory_rejected[entry]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_raw_relocation_trial.py::test_malformed_layouts_and_incomplete_inventory_rejected[machine]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_raw_relocation_trial.py::test_malformed_layouts_and_incomplete_inventory_rejected[raw_stub]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_raw_relocation_trial.py::test_malformed_layouts_and_incomplete_inventory_rejected[raw_pool]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_raw_relocation_trial.py::test_malformed_layouts_and_incomplete_inventory_rejected[bf_pool]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_raw_relocation_trial.py::test_malformed_layouts_and_incomplete_inventory_rejected[diag_stub]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_raw_relocation_trial.py::test_malformed_layouts_and_incomplete_inventory_rejected[shared_tail]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_raw_relocation_trial.py::test_malformed_layouts_and_incomplete_inventory_rejected[append_end]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_raw_relocation_trial.py::test_malformed_layouts_and_incomplete_inventory_rejected[overlap]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_raw_relocation_trial.py::test_malformed_layouts_and_incomplete_inventory_rejected[load_gap]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_raw_relocation_trial.py::test_malformed_layouts_and_incomplete_inventory_rejected[load_write]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_raw_relocation_trial.py::test_malformed_layouts_and_incomplete_inventory_rejected[missing_function]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_raw_relocation_trial.py::test_malformed_layouts_and_incomplete_inventory_rejected[extra_function]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_raw_relocation_trial.py::test_malformed_layouts_and_incomplete_inventory_rejected[service_bytes]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_raw_relocation_trial.py::test_malformed_layouts_and_incomplete_inventory_rejected[unwind_header]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_raw_relocation_trial.py::test_object_too_large_is_rejected_before_link_script": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_raw_relocation_trial.py::test_earlier_object_opcode_drift_during_later_compile_is_rejected": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_raw_relocation_trial.py::test_relocated_controller_matches_pinned_actual_arm_across_regions[complete-0]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_raw_relocation_trial.py::test_relocated_controller_matches_pinned_actual_arm_across_regions[complete-4294967040]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_raw_relocation_trial.py::test_relocated_controller_matches_pinned_actual_arm_across_regions[disconnect-0]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_raw_relocation_trial.py::test_relocated_controller_matches_pinned_actual_arm_across_regions[disconnect-4294967040]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_raw_relocation_trial.py::test_relocated_controller_matches_pinned_actual_arm_across_regions[timeout-0]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_raw_relocation_trial.py::test_relocated_controller_matches_pinned_actual_arm_across_regions[timeout-4294967040]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_raw_relocation_trial.py::test_relocated_stop_matches_baseline_with_explicit_bus_and_rom_fixtures[1-1-results0]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_raw_relocation_trial.py::test_relocated_stop_matches_baseline_with_explicit_bus_and_rom_fixtures[0-1-results1]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_raw_relocation_trial.py::test_relocated_stop_matches_baseline_with_explicit_bus_and_rom_fixtures[1-0-results2]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_raw_relocation_trial.py::test_relocated_stop_matches_baseline_with_explicit_bus_and_rom_fixtures[1-1-results3]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_raw_relocation_trial.py::test_relocated_compiler_helper_matches_baseline_actual_arm[0-0]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_raw_relocation_trial.py::test_relocated_compiler_helper_matches_baseline_actual_arm[4294967295-40]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_raw_relocation_trial.py::test_relocated_compiler_helper_matches_baseline_actual_arm[2147483648-3]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_raw_relocation_trial.py::test_relocated_compiler_helper_matches_baseline_actual_arm[1234567-1]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_raw_relocation_trial.py::test_relocated_legacy_gate_keeps_stock_gate_and_denies_four_retired_opcodes[191-16-0-False]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_raw_relocation_trial.py::test_relocated_legacy_gate_keeps_stock_gate_and_denies_four_retired_opcodes[206-16-0-False]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_raw_relocation_trial.py::test_relocated_legacy_gate_keeps_stock_gate_and_denies_four_retired_opcodes[205-16-0-False]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_raw_relocation_trial.py::test_relocated_legacy_gate_keeps_stock_gate_and_denies_four_retired_opcodes[161-16-0-False]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_raw_relocation_trial.py::test_relocated_legacy_gate_keeps_stock_gate_and_denies_four_retired_opcodes[81-16-0-True]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_raw_relocation_trial.py::test_relocated_legacy_gate_keeps_stock_gate_and_denies_four_retired_opcodes[161-16-1-False]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_raw_relocation_trial.py::test_relocated_legacy_gate_keeps_stock_gate_and_denies_four_retired_opcodes[205-65552-0-False]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_raw_relocation_trial.py::test_no_default_profile_or_source_is_implicitly_admitted_after_cross_region_init": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_stock_retirement.py::test_old_inspected_layout_cannot_claim_a1_retirement": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_stock_retirement.py::test_exact_records_policy_and_all_false_permissions": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_stock_retirement.py::test_source_stock_instruction_overlap_and_layout_mutants_refuse": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_stock_retirement.py::test_nonhelper_opcode_drift_cannot_hide_behind_unchanged_geometry": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_stock_retirement.py::test_all_fifteen_direct_entries_are_noops_without_fake_timer_cancellation": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_stock_retirement.py::test_actual_uart_filter_and_separate_dfu_route_with_combined_layout": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_stock_retirement.py::test_actual_queued_a1_wrap_and_stored_callbacks_hit_stubs": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_stock_retirement.py::test_known_direct_diagnostic_dispatch_calls_hit_stubs_with_prelude_explicit": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_stock_retirement.py::test_old_interior_cannot_masquerade_as_a_relocated_function": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_stock_retirement.py::test_restoring_an_entry_or_uart_bl_breaks_known_root_shutdown": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_stock_retirement.py::test_selected_health_optical_current_schedule_and_a0_keep_stock_behavior": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_stock_retirement.py::test_retained_9c_charging_tail_and_idle_mode_veto_match_stock": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_stock_retirement.py::test_shared_optical_reader_fifo_and_step_sleep_input_boundary_unchanged": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ]
+  },
+  "violations": []
+}

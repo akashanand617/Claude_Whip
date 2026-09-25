@@ -32,11 +32,24 @@ async def watch(duration: float, samples: dict) -> None:
 
     def on_detect(device, adv) -> None:
         name = adv.local_name or device.name
-        samples[device.address]["rssi"].append(adv.rssi)
+        # CoreBluetooth reports 127 when RSSI is unavailable. Treating that as
+        # an exceptionally strong signal can make an unrelated anonymous
+        # device outrank the ring during recovery diagnostics.
+        if adv.rssi is not None and -127 <= adv.rssi < 0:
+            samples[device.address]["rssi"].append(adv.rssi)
         if name:
             samples[device.address]["name"] = name
         if adv.service_uuids:
             samples[device.address]["uuids"].update(u.upper() for u in adv.service_uuids)
+        samples[device.address]["manufacturers"].update(adv.manufacturer_data)
+        for item in adv.platform_data:
+            try:
+                if "kCBAdvDataIsConnectable" in item:
+                    samples[device.address]["connectable"].add(
+                        bool(item["kCBAdvDataIsConnectable"])
+                    )
+            except (TypeError, KeyError):
+                continue
 
     scanner = BleakScanner(detection_callback=on_detect)
     await scanner.start()
@@ -47,7 +60,13 @@ async def watch(duration: float, samples: dict) -> None:
 
 
 def new_bucket() -> dict:
-    return {"rssi": [], "name": None, "uuids": set()}
+    return {
+        "rssi": [],
+        "name": None,
+        "uuids": set(),
+        "manufacturers": set(),
+        "connectable": set(),
+    }
 
 
 async def run(phase: float) -> int:
@@ -102,22 +121,34 @@ async def run(phase: float) -> int:
     print("=" * 60)
     print("  CANDIDATES -- biggest signal drop first")
     print("=" * 60)
-    print(f"  {'drop':>6} {'near':>6} {'far':>6}  {'name':<20} address")
-    print(f"  {'-' * 6} {'-' * 6} {'-' * 6}  {'-' * 20} {'-' * 36}")
+    print(f"  {'drop':>6} {'near':>6} {'far':>6}  {'name':<20} {'link':<5} {'mfg':<10} address")
+    print(f"  {'-' * 6} {'-' * 6} {'-' * 6}  {'-' * 20} {'-' * 5} {'-' * 10} {'-' * 36}")
 
     for drop, near_rssi, far_rssi, vanished, addr, data in results[:12]:
         name = data["name"] or "(unnamed)"
         far_txt = "gone" if vanished else f"{far_rssi:.0f}"
+        link = "yes" if True in data["connectable"] else "no" if data["connectable"] == {False} else "?"
+        manufacturers = ",".join(f"{value:04x}" for value in sorted(data["manufacturers"])) or "-"
         ring_hint = ""
         if protocol.UART_SERVICE_UUID.upper() in data["uuids"]:
             ring_hint = "  <-- UART SERVICE"
         elif protocol.looks_like_ring(name):
             ring_hint = "  <-- ring name"
-        print(f"  {drop:6.0f} {near_rssi:6.0f} {far_txt:>6}  {name:<20} {addr}{ring_hint}")
+        elif data["manufacturers"] == {0x004C} and data["connectable"] == {False}:
+            ring_hint = "  <-- Apple, nonconnectable"
+        print(
+            f"  {drop:6.0f} {near_rssi:6.0f} {far_txt:>6}  "
+            f"{name:<20} {link:<5} {manufacturers:<10} {addr}{ring_hint}"
+        )
 
     print()
-    if results:
-        best = results[0]
+    plausible = [
+        row for row in results
+        if 0x004C not in row[5]["manufacturers"]
+        and row[5]["connectable"] != {False}
+    ]
+    if plausible:
+        best = plausible[0]
         print(f"  most likely the ring: {best[5]['name'] or '(unnamed)'}  {best[4]}")
         print(f"  signal dropped {best[0]:.0f} dB when you walked away")
         print()

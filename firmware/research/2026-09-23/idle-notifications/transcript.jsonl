@@ -1,0 +1,4 @@
+{"kind": "header", "plan": "passive-notification-types-v1", "wall": 1790201528.862855, "observation_seconds": 60, "max_notifications": 120, "uart_commands_sent": 0, "sensor_commands": false, "flashing": false, "payload_saved": false}
+{"kind": "device", "address": "3C2FA77E-1BE3-A0C5-0DD5-DB6A3AD452B2", "name": "R02_CC07", "firmware": "RT02CR_3.12.07_260514", "hardware": "RT02CR_V3.1"}
+{"kind": "disconnected", "confirmed": true}
+{"kind": "completed", "notifications": 0, "families": {}, "observation_seconds": 60, "idle_proven": false, "uart_commands_sent": 0, "payload_saved": false}

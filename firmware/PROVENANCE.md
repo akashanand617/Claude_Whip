@@ -13,13 +13,19 @@ Detailed reverse-engineering and mode-switching handoff:
 [2026-09-22 evidence archive](research/2026-09-22/README.md) preserves completed
 reviews, mapping tools, hardware captures and exact experimental patch bytes.
 
+Current-state correction, 2026-09-23: the installed image is V2 optical-off,
+not original 25 Hz and not unified. The stock archive below is an application
+OTA restore image, not a complete factory backup or a demonstrated recovery
+route after BLE/OTA fails to boot. See the
+[memory/recovery boundary](../docs/UNIFIED_RESOURCE_BUDGET.md).
+
 ---
 
 ## Sources
 
 All links verified 2026-09-09.
 
-### `rt02cr-stock-3.12.02.bin` — vendor stock, the recovery image
+### `rt02cr-stock-3.12.02.bin` — vendor stock, application OTA restore image
 
 ```
 http://api2.qcwxkjvip.com/download/ota/RT02CR_V3.1/RT02CR_3.12.02_260824.bin
@@ -32,8 +38,20 @@ is `download/ota/<HARDWARE_STRING>/<FIRMWARE_STRING>.bin`, so any ring's stock
 image can be fetched given the two strings `probe/scan.py` prints. Directory
 listing is blocked (403), so you need the exact filename.
 
-Upstream publishes no RT02CR stock image, which is why this one is archived here:
-without it there is no recovery path for this hardware.
+This exact RT02CR stock application is archived for restoration through a
+working OTA path. It does not include the ring's complete boot/ROM-patch/upper-
+stack image or establish recovery from a failed application boot.
+
+### `rt02cr-25hz-health-default-gesture-v1-experimental.bin` — built here
+
+137,540 bytes · `b1070bed755ce14936501431e379c6c47570ce747265fe0b6af0e87553eb2dc4`
+
+Built only from the exact pinned `rt02cr-25hz.bin` SHA-256
+`f13e63d3fdef3b10aa20fd4e0672077b66f60bb19c689ef64053840e4d35d3d9`
+by `python -m probe.build_unified_mode --out <new path>`. The source, exact
+patch map, ARM helpers, proof tests and remaining physical gates are in
+[UNIFIED_MODE_V1.md](../docs/UNIFIED_MODE_V1.md). It is bundled for a bounded
+app-driven validation but has not been flashed or device-validated.
 
 ### `rt02cr-low-latency.bin` — upstream patched image
 
@@ -71,9 +89,18 @@ The raw-motion timer immediate at file offset `0x2248`. `whip/fwbuild.py` then
 refreshes the payload SHA-256, clears the Realtek `not_ready` bit and recomputes
 the outer body sum, without which the image transfers but does not boot.
 
-`rt02cr-25hz.bin` is the one that passes the M0 gate and is currently flashed.
+`rt02cr-25hz.bin` passed the M0 gate and was subsequently replaced on the ring
+by the optical-off V2 image below.
 
-### `rt02cr-25hz-optical-off-v2-experimental.bin` — unflashed research candidate
+2026-09-23 reference recheck: all five current hashes matched this record and
+`SHA256SUMS`. Byte comparison of the entire payload (`0x450..EOF`) confirms
+that low-latency 50 Hz, 33 Hz and original 25 Hz differ only at `0x2248`, with
+immediates 2, 3 and 4 respectively. Their other payload bytes, including Health
+code, are identical. This is code/layout equivalence outside that timer byte,
+not proof of identical scheduling, health accuracy or physical continuity.
+The distinct stock 3.12.02 map and V2's global optical disable remain separate.
+
+### `rt02cr-25hz-optical-off-v2-experimental.bin` — installed experimental V2
 
 Built locally on 2026-09-22 from the exact hash-pinned 25 Hz image:
 
@@ -93,17 +120,18 @@ mode-4 deep-sleep veto. Reconnect requires a new `A1 04`. Rate, range and DFU ar
 unchanged. Optical health measurements and optical indicators are disabled
 globally, not only during streaming.
 
-This is **not hardware validated or the default flash target**. Pinning its hash
-does not certify safety. Boot behavior, LED darkness, fresh motion, start/stop,
-disconnect/reconnect and battery drain still require tests on this candidate.
-The successful one-minute optical-off command trial ran on the original 25 Hz
-firmware, not on this image. See [the investigation record](../docs/LED_FIX.md).
+V2 was subsequently deployed and native motion/visible-darkness trials were
+recorded; see [the deployment record](../docs/FIRMWARE_RESEARCH.md). Those tests
+are not proof of health continuity, complete recovery or unified-image safety.
+Optical health is globally disabled on V2. The earlier one-minute command-
+workaround trial ran on original 25 Hz and must not be relabeled as a V2 test.
 
 The preserved, superseded `rt02cr-25hz-optical-off-experimental.bin` has hash
 `f862e5bb1b65ff43d6133524d20fd82bcbc072bd8a1245a9927367993a213f27` (47 payload
 bytes changed). It lacks disconnect timer/mode cleanup. It is no longer in the
 current build/hash manifest; the current builder does not reproduce it, and the
-candidate identity validator rejects it. Neither version has been flashed.
+candidate identity validator rejects it. V1 was not flashed; V2 was later
+deployed as described above.
 Fable's separate one-halfword candidate (`3c57b73e…`) is also superseded; its
 verification results must not be represented as verification of either image here.
 

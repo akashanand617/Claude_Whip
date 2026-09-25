@@ -1,0 +1,9 @@
+firmware/unified/stock_coordinator.c:35:wc_init	8	static
+firmware/unified/stock_coordinator.c:42:wc_pump	72	static
+firmware/unified/stock_coordinator.c:10:context	0	static
+firmware/unified/stock_coordinator.c:23:retired_pause	8	static
+firmware/unified/stock_coordinator.c:15:closing	16	static
+firmware/unified/stock_coordinator.c:28:failed	16	static
+firmware/unified/stock_coordinator.c:110:wc_optics_stopped	40	static
+firmware/unified/stock_coordinator.c:133:wc_resume_prepared	48	static
+firmware/unified/stock_coordinator.c:150:wc_physical_done	24	static

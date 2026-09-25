@@ -57,7 +57,7 @@ def test_flash_targets_are_the_two_pinned_images(tmp_path):
         res = await client.get("/api/flash/targets")
         body = await res.json()
         assert set(body) == {"gesture", "stock"}
-        assert body["gesture"]["image"] == "rt02cr-25hz.bin"
+        assert body["gesture"]["image"] == "rt02cr-25hz-optical-off-v2-experimental.bin"
         assert body["stock"]["image"] == "rt02cr-stock-3.12.02.bin"
     run(check(tmp_path))
 

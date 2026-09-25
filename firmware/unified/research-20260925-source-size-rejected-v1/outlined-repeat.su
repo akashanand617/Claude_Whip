@@ -1,0 +1,9 @@
+firmware/unified/research-20260925-source-size-rejected-v1/sources/outlined.c:7:ws_set_bounds	16	static
+firmware/unified/research-20260925-source-size-rejected-v1/sources/outlined.c:18:ws_profile_valid	20	static
+firmware/unified/research-20260925-source-size-rejected-v1/sources/outlined.c:34:ws_init	8	static
+firmware/unified/research-20260925-source-size-rejected-v1/sources/outlined.c:36:ws_start	32	static
+firmware/unified/research-20260925-source-size-rejected-v1/sources/outlined.c:44:ws_stop	0	static
+firmware/unified/research-20260925-source-size-rejected-v1/sources/outlined.c:48:ws_tick	8	static
+firmware/unified/research-20260925-source-size-rejected-v1/sources/outlined.c:146:ws_observe	72	static
+firmware/unified/research-20260925-source-size-rejected-v1/sources/outlined.c:62:preflight	16	static
+firmware/unified/research-20260925-source-size-rejected-v1/sources/outlined.c:92:frame	56	static

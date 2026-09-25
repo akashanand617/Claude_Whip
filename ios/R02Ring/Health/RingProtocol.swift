@@ -8,6 +8,11 @@ enum ColmiR02Protocol {
     static let bigDataWrite = "DE5BF72A-D711-4E47-AF26-65E3012A5DC7"
     static let bigDataNotify = "DE5BF729-D711-4E47-AF26-65E3012A5DC7"
     static let deviceInfoService = "180A"
+    // The stock image also exposes HID and the legacy WeChat service. They are
+    // useful only for finding a ring that iOS already owns and therefore no
+    // longer advertises; neither is specific enough to identify an unnamed ring.
+    static let hidService = "1812"
+    static let legacyWeChatService = "FEE7"
     static let firmwareRevision = "2A26"
     static let hardwareRevision = "2A27"
 
@@ -19,6 +24,15 @@ enum ColmiR02Protocol {
     static let startRealtimeCommand: UInt8 = 0x69
     static let stopRealtimeCommand: UInt8 = 0x6A
     static let sleepDataID: UInt8 = 0x27
+
+    static func rawSensorPacket(_ mode: UInt8) -> Data {
+        packet(command: 0xa1, payload: [mode])
+    }
+
+    static var startRawMotionPacket: Data { rawSensorPacket(0x04) }
+    static var stopRawMotionPackets: [Data] {
+        [rawSensorPacket(0x05), rawSensorPacket(0x02)]
+    }
 
     static func checksum<S: Sequence>(_ bytes: S) -> UInt8 where S.Element == UInt8 {
         UInt8(truncatingIfNeeded: bytes.reduce(0) { $0 + Int($1) })
@@ -104,6 +118,68 @@ enum ColmiR02Protocol {
 
 }
 
+/// A value-only view of a peripheral returned by CoreBluetooth's
+/// `retrieveConnectedPeripherals`. Keeping selection independent of
+/// CoreBluetooth makes the safety rule directly testable.
+struct RingRecoveryCandidate: Equatable {
+    let id: UUID
+    let name: String?
+    let matchedRingSpecificService: Bool
+
+    var hasR02Name: Bool {
+        name?.uppercased().contains("R02") == true
+    }
+
+    var isEligible: Bool {
+        matchedRingSpecificService || hasR02Name
+    }
+}
+
+enum RingRecoverySelector {
+    /// Prefer the app's saved peripheral when it still identifies as a ring.
+    /// Without that identity, attach automatically only when exactly one safe
+    /// candidate remains. An unnamed HID/FEE7 device is never eligible.
+    static func select(_ candidates: [RingRecoveryCandidate], preferredID: UUID?) -> UUID? {
+        var merged: [UUID: RingRecoveryCandidate] = [:]
+        for candidate in candidates {
+            if let old = merged[candidate.id] {
+                merged[candidate.id] = RingRecoveryCandidate(
+                    id: candidate.id,
+                    name: candidate.name ?? old.name,
+                    matchedRingSpecificService: old.matchedRingSpecificService
+                        || candidate.matchedRingSpecificService
+                )
+            } else {
+                merged[candidate.id] = candidate
+            }
+        }
+
+        let eligible = merged.values.filter(\.isEligible)
+        if let preferredID,
+           eligible.contains(where: { $0.id == preferredID }) {
+            return preferredID
+        }
+        return eligible.count == 1 ? eligible[0].id : nil
+    }
+
+    /// Health and firmware-mode state is written only after a real R02 link has
+    /// supplied a CoreBluetooth identifier. Those per-ring keys can therefore
+    /// restore the identifier accidentally removed by the app's Forget action.
+    static func historicalIdentifiers(from keys: [String]) -> [UUID] {
+        let prefixes = ["lastHealthSync.", "ringFirmwareMode."]
+        var result = Set<UUID>()
+        for key in keys {
+            for prefix in prefixes where key.hasPrefix(prefix) {
+                let suffix = String(key.dropFirst(prefix.count))
+                if let id = UUID(uuidString: suffix), suffix == id.uuidString {
+                    result.insert(id)
+                }
+            }
+        }
+        return result.sorted { $0.uuidString < $1.uuidString }
+    }
+}
+
 enum RingProtocolError: LocalizedError {
     case notReady
     case busy
@@ -138,39 +214,49 @@ final class HeartRateLogParser {
     // A day contains 288 five-minute slots. D507 can deliver the packets out of
     // order and may repeat the same packet, so address samples by packet index
     // instead of advancing a sequential cursor.
-    private var raw = [Int](repeating: 0, count: 288)
-    private var expectedPackets = 0
-    private var interval = 5
-    private var seenIndices = Set<Int>()
+    private var received: [Int: Data] = [:]
+    private var invalid = false
+    private var noData = false
+
+    private var complete: Bool {
+        guard let header = received[0] else { return false }
+        let count = Int(header[2])
+        return count >= 2 && count <= 113 && received.count == count
+            && (0..<count).allSatisfy { received[$0] != nil }
+    }
 
     func ingest(_ data: Data) -> Bool {
-        guard data.count == 16 else { return false }
+        guard ColmiR02Protocol.isValidPacket(data), data[0] == 0x15 else {
+            invalid = true; return true
+        }
         let subtype = Int(data[1])
-        if subtype == 255 { return true }
-        if subtype == 0 {
-            expectedPackets = Int(data[2])
-            interval = max(1, Int(data[3]))
-            seenIndices.insert(subtype)
-            return false
+        if subtype == 255 { noData = true; return true }
+        if subtype > 112 || (subtype == 0 && (data[2] < 2 || data[2] > 113 || data[3] == 0)) {
+            invalid = true; return true
         }
-        if subtype == 1 {
-            for index in 0..<9 where index < raw.count { raw[index] = Int(data[6 + index]) }
-        } else if subtype > 1 {
-            let sampleOffset = 9 + (subtype - 2) * 13
-            for index in 0..<13 where sampleOffset + index < raw.count {
-                raw[sampleOffset + index] = Int(data[2 + index])
-            }
-        }
-        seenIndices.insert(subtype)
-        // Current R02 firmware uses 24 packets (indices 0...23). The header can
-        // itself arrive late or not at all, so index 23 is also a safe terminal.
-        return subtype == 23 || (expectedPackets > 0 && subtype == expectedPackets - 1)
+        if let old = received[subtype], old != data { invalid = true; return true }
+        received[subtype] = data
+        // Seeing the last index does NOT prove the preceding packets arrived.
+        return complete
     }
 
     func result(from packets: [Data]) throws -> HeartRateLog {
-        if packets.last?[1] == 255 { throw RingProtocolError.noData }
-        if seenIndices.isEmpty {
-            for packet in packets { _ = ingest(packet) }
+        if received.isEmpty && !noData { for packet in packets { _ = ingest(packet) } }
+        guard !invalid else { throw RingProtocolError.invalidPacket }
+        if noData {
+            guard received.isEmpty else { throw RingProtocolError.invalidPacket }
+            throw RingProtocolError.noData
+        }
+        guard complete, let header = received[0] else { throw RingProtocolError.invalidPacket }
+        let interval = Int(header[3])
+        let slots = (1440 + interval - 1) / interval
+        guard 9 + (Int(header[2]) - 2) * 13 >= slots else { throw RingProtocolError.invalidPacket }
+        var raw = [Int](repeating: 0, count: slots)
+        for subtype in 1..<Int(header[2]) {
+            guard let packet = received[subtype] else { throw RingProtocolError.invalidPacket }
+            let offset = subtype == 1 ? 0 : 9 + (subtype - 2) * 13
+            let source = subtype == 1 ? 6 : 2
+            for i in 0..<(15 - source) where offset + i < slots { raw[offset + i] = Int(packet[source + i]) }
         }
         return HeartRateLog(samples: raw, intervalMinutes: interval)
     }
@@ -187,33 +273,59 @@ struct StepBucket: Equatable {
 }
 
 final class StepLogParser {
-    private var newCalorieProtocol = false
-    private(set) var buckets: [StepBucket] = []
+    private var header: Data?
+    private var details: [Int: Data] = [:]
+    private var expected = 0
+    private var invalid = false
+    private var noData = false
+
+    var buckets: [StepBucket] {
+        details.sorted { $0.key < $1.key }.map { _, data in
+            StepBucket(year: 2000 + ColmiR02Protocol.decimal(data[1]),
+                       month: ColmiR02Protocol.decimal(data[2]), day: ColmiR02Protocol.decimal(data[3]),
+                       timeIndex: Int(data[4]), steps: ColmiR02Protocol.uint16LE(data[9], data[10]),
+                       calories: ColmiR02Protocol.uint16LE(data[7], data[8]) * (header?[3] == 1 ? 10 : 1),
+                       distanceMeters: ColmiR02Protocol.uint16LE(data[11], data[12]))
+        }
+    }
+
+    private var complete: Bool {
+        header != nil && expected > 0 && details.count == expected
+            && (0..<expected).allSatisfy { details[$0] != nil }
+    }
 
     func ingest(_ data: Data) -> Bool {
-        guard data.count == 16 else { return false }
-        if data[1] == 255 { return true }
+        guard ColmiR02Protocol.isValidPacket(data), data[0] == 0x43 else { invalid = true; return true }
+        if data[1] == 255 { noData = true; return true }
         if data[1] == 240 {
-            newCalorieProtocol = data[3] == 1
-            return false
+            if let header, header != data { invalid = true }
+            header = data
+            return invalid || complete
         }
-        var calories = ColmiR02Protocol.uint16LE(data[7], data[8])
-        if newCalorieProtocol { calories *= 10 }
-        buckets.append(.init(
-            year: 2000 + ColmiR02Protocol.decimal(data[1]),
-            month: ColmiR02Protocol.decimal(data[2]),
-            day: ColmiR02Protocol.decimal(data[3]),
-            timeIndex: Int(data[4]),
-            steps: ColmiR02Protocol.uint16LE(data[9], data[10]),
-            calories: calories,
-            distanceMeters: ColmiR02Protocol.uint16LE(data[11], data[12])
-        ))
-        return Int(data[5]) == Int(data[6]) - 1
+        let count = Int(data[6]), index = Int(data[5])
+        var utc = Calendar(identifier: .gregorian)
+        utc.timeZone = TimeZone(secondsFromGMT: 0)!
+        let parts = DateComponents(year: 2000 + ColmiR02Protocol.decimal(data[1]),
+                                   month: ColmiR02Protocol.decimal(data[2]), day: ColmiR02Protocol.decimal(data[3]))
+        guard (1...96).contains(count), index < count, data[4] < 96,
+              (1...3).allSatisfy({ data[$0] >> 4 <= 9 && data[$0] & 15 <= 9 }),
+              let date = utc.date(from: parts), utc.dateComponents([.year, .month, .day], from: date) == parts,
+              expected == 0 || expected == count else { invalid = true; return true }
+        if let old = details[index], old != data { invalid = true; return true }
+        if let other = details.values.first, other[1...3] != data[1...3] { invalid = true; return true }
+        expected = count
+        details[index] = data
+        return complete
     }
 
     func result(from packets: [Data]) throws -> [StepBucket] {
-        if packets.last?[1] == 255 { throw RingProtocolError.noData }
-        if buckets.isEmpty { for packet in packets { _ = ingest(packet) } }
+        if details.isEmpty && !noData { for packet in packets { _ = ingest(packet) } }
+        guard !invalid else { throw RingProtocolError.invalidPacket }
+        if noData {
+            guard details.isEmpty else { throw RingProtocolError.invalidPacket }
+            throw RingProtocolError.noData
+        }
+        guard complete, Set(buckets.map(\.timeIndex)).count == buckets.count else { throw RingProtocolError.invalidPacket }
         return buckets
     }
 }
@@ -230,6 +342,7 @@ final class BigDataReassembler {
 
     func ingest(_ chunk: Data) -> BigDataMessage? {
         buffer.append(chunk)
+        guard buffer.count <= 65_541, buffer.first == 0xbc else { reset(); return nil }
         guard buffer.count >= 6 else { return nil }
         let length = Int(buffer[2]) | (Int(buffer[3]) << 8)
         guard buffer.count >= 6 + length else { return nil }
@@ -258,26 +371,30 @@ enum SleepPayloadParser {
         var nights: [RingSleepNight] = []
         var cursor = 1
         for _ in 0..<Int(count) {
-            guard cursor + 6 <= payload.count else { break }
+            guard cursor + 6 <= payload.count else { throw RingProtocolError.invalidPacket }
             let daysAgo = Int(payload[cursor])
             let recordLength = Int(payload[cursor + 1])
-            let end = min(payload.count, cursor + 2 + recordLength)
+            let end = cursor + 2 + recordLength
+            guard recordLength >= 6, recordLength.isMultiple(of: 2), end <= payload.count,
+                  !nights.contains(where: { $0.daysAgo == daysAgo }) else { throw RingProtocolError.invalidPacket }
             let startMinutes = signed16(payload[cursor + 2], payload[cursor + 3])
             let endMinutes = signed16(payload[cursor + 4], payload[cursor + 5])
             var stages: [RingSleepStage] = []
             var stageCursor = cursor + 6
             while stageCursor + 1 < end {
-                if let stage = stage(from: payload[stageCursor]) {
-                    stages.append(.init(stage: stage, durationMinutes: Int(payload[stageCursor + 1])))
+                guard let stage = stage(from: payload[stageCursor]), payload[stageCursor + 1] > 0 else {
+                    throw RingProtocolError.invalidPacket
                 }
+                stages.append(.init(stage: stage, durationMinutes: Int(payload[stageCursor + 1])))
                 stageCursor += 2
             }
             if !stages.isEmpty {
                 nights.append(.init(daysAgo: daysAgo, startMinutes: startMinutes,
                                     endMinutes: endMinutes, stages: stages))
             }
-            cursor = max(cursor + 6, cursor + 2 + recordLength)
+            cursor = end
         }
+        guard cursor == payload.count else { throw RingProtocolError.invalidPacket }
         return nights
     }
 

@@ -1,0 +1,10 @@
+firmware/unified/runtime.c:10:wr_init	8	static
+firmware/unified/runtime.c:16:wr_tick	16	static
+firmware/unified/runtime.c:3:discard_if_not_gesture	8	static
+firmware/unified/runtime.c:24:wr_link	16	static
+firmware/unified/runtime.c:29:wr_request	16	static
+firmware/unified/runtime.c:35:wr_complete	32	static
+firmware/unified/runtime.c:51:wr_offer	56	static
+firmware/unified/runtime.c:74:wr_next	24	static
+firmware/unified/runtime.c:90:wr_sent	24	static
+firmware/unified/runtime.c:110:wr_renew	24	static

@@ -323,7 +323,7 @@ class Engine:
                 if event.start_s - 1e-9 <= s <= event.end_s + 1e-9]
         confidence = float(np.mean([p for p, _ in meta])) if meta else 0.0
         directions = [d for _, d in meta if d != "none"]
-        direction = max(set(directions), key=directions.count) if directions else "none"
+        direction = events.dominant_direction(directions)
         return GestureEvent(name=event.label, direction=direction,
                             t_s=event.centre_s, confidence=confidence,
                             run_length=event.run_length)

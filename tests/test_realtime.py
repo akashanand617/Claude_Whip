@@ -100,6 +100,20 @@ def test_stream_output_length_equals_input_length():
 
 # ---------------------------------------------------------------- engine parity
 
+@pytest.mark.parametrize("directions, expected", [
+    (["up", "down", "none"], "up"),
+    (["down", "up", "none"], "down"),
+    (["up", "down", "down"], "down"),
+    (["none", "none", "none"], "none"),
+])
+def test_sustained_event_direction_uses_same_deterministic_vote_policy(directions, expected):
+    provenance = make_provenance()
+    engine = Engine(trained_stub(provenance["labels"]), provenance)
+    engine._run_meta.extend((i * events.STRIDE_S, .8, d) for i, d in enumerate(directions))
+    event = events.Event("wave", 0, 2 * events.STRIDE_S, 3)
+    assert engine._enrich(event).direction == expected
+
+
 def test_engine_events_are_identical_to_the_offline_pipeline():
     """
     THE test. The same despiked samples through the live engine and through the

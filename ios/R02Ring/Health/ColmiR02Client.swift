@@ -102,83 +102,90 @@ struct HealthSyncResult {
 
 @MainActor
 final class HealthSyncService {
-    private let client: ColmiR02Client
-    private let store: HealthStore
+    private let client: any HealthHistoryReader
+    private let store: any HealthHistoryWriter
+    private let defaults: UserDefaults
+    private let clock: () -> Date
     private var ringCalendar: Calendar {
         var value = Calendar(identifier: .gregorian)
         value.timeZone = TimeZone(secondsFromGMT: 0)!
         return value
     }
 
-    init(client: ColmiR02Client, store: HealthStore) {
+    init(client: any HealthHistoryReader, store: any HealthHistoryWriter,
+         defaults: UserDefaults = .standard, clock: @escaping () -> Date = { .now }) {
         self.client = client
         self.store = store
+        self.defaults = defaults
+        self.clock = clock
     }
 
     func sync(deviceID: String, full: Bool,
               onProgress: (String, RingBattery?) -> Void = { _, _ in }) async -> HealthSyncResult {
         var result = HealthSyncResult()
-        // Command 0x01 is not a harmless clock refresh on stock Colmi firmware:
-        // it clears accumulated activity history. Initialize a new ring once, before
-        // it begins collecting for this app, and never send it during routine syncs.
-        if full {
-            try? client.setClock()
-        }
+        // Full means history depth only. Provisioning/settings are separate user actions.
+        let started = clock()
+        var ledger = HealthSyncLedger.load(deviceID: deviceID, defaults: defaults)
         result.battery = try? await client.battery()
         onProgress(result.battery == nil ? "Connected · battery unavailable" : "Connected · reading history",
                    result.battery)
 
-        if let settings = try? await client.heartRateLoggingSettings(),
-           !settings.enabled || settings.interval != 5 {
-            try? await client.setHeartRateLogging(enabled: true, intervalMinutes: 5)
-        }
-
-        let dayCount = full ? 7 : 2
+        let stepDays = ledger.days(metric: "steps", full: full, now: started)
         // Current steps are the fastest useful dashboard value, so import them before
         // the longer multi-day heart-rate history.
-        do {
-            for offset in 0..<dayCount {
-                onProgress("Syncing steps · \(offset + 1)/\(dayCount)", nil)
-                do {
-                    let buckets = try await client.steps(dayOffset: UInt8(offset))
-                    try store.saveSteps(deviceID: deviceID, buckets: buckets)
-                } catch RingProtocolError.noData {
-                    continue
+        for offset in 0..<stepDays {
+            onProgress("Syncing steps · \(offset + 1)/\(stepDays)", nil)
+            do {
+                let requested = clock()
+                let buckets = try await client.steps(dayOffset: UInt8(offset))
+                // Relative offsets are ambiguous if midnight passed in flight.
+                guard ringCalendar.isDate(requested, inSameDayAs: clock()) else {
+                    throw RingProtocolError.invalidPacket
                 }
+                try store.saveSteps(deviceID: deviceID, buckets: buckets)
+            } catch RingProtocolError.noData {
+                continue
+            } catch {
+                result.stepsError = error.localizedDescription
             }
-        } catch {
-            result.stepsError = error.localizedDescription
         }
+        if result.stepsError == nil { ledger.completed["steps"] = started }
         onProgress(result.stepsError.map { "Steps unavailable · \($0)" } ?? "Steps imported", nil)
 
-        do {
-            let ringToday = ringCalendar.startOfDay(for: .now)
-            for offset in 0..<dayCount {
-                onProgress("Syncing heart rate · \(offset + 1)/\(dayCount)", nil)
-                guard let day = ringCalendar.date(byAdding: .day, value: -offset,
-                                                  to: ringToday) else { continue }
-                do {
-                    let log = try await client.heartRateHistory(day: day)
-                    try store.saveHeartRates(deviceID: deviceID, day: day, log: log)
-                } catch RingProtocolError.noData {
-                    continue
-                }
+        let ringToday = ringCalendar.startOfDay(for: started)
+        let heartDays = ledger.days(metric: "heartRate", full: full, now: started)
+        for offset in 0..<heartDays {
+            onProgress("Syncing heart rate · \(offset + 1)/\(heartDays)", nil)
+            guard let day = ringCalendar.date(byAdding: .day, value: -offset,
+                                              to: ringToday) else { continue }
+            do {
+                let log = try await client.heartRateHistory(day: day)
+                try store.saveHeartRates(deviceID: deviceID, day: day, log: log)
+            } catch RingProtocolError.noData {
+                continue
+            } catch {
+                result.heartRateError = error.localizedDescription
             }
-        } catch {
-            result.heartRateError = error.localizedDescription
         }
+        if result.heartRateError == nil { ledger.completed["heartRate"] = started }
         onProgress(result.heartRateError.map { "Heart rate unavailable · \($0)" }
                    ?? "Heart-rate history imported", nil)
 
         do {
             onProgress("Syncing sleep", nil)
+            let requested = clock()
             let nights = try await client.sleepHistory()
-            try store.saveSleep(deviceID: deviceID, nights: nights)
+            guard ringCalendar.isDate(requested, inSameDayAs: clock()) else {
+                throw RingProtocolError.invalidPacket
+            }
+            try store.saveSleep(deviceID: deviceID, nights: nights, now: requested)
         } catch RingProtocolError.noData {
             // An empty sleep history is valid for a new or unworn ring.
         } catch {
             result.sleepError = error.localizedDescription
         }
+        if result.sleepError == nil { ledger.completed["sleep"] = started }
+        ledger.save(deviceID: deviceID, defaults: defaults)
         onProgress(result.sleepError.map { "Sleep unavailable · \($0)" } ?? "Sleep imported", nil)
         return result
     }

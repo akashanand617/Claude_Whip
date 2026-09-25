@@ -1,0 +1,2 @@
+firmware/unified/discovery.c:4:wdi_encode	24	static
+firmware/unified/discovery.c:15:wdi_read	0	static

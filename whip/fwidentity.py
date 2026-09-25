@@ -1,4 +1,4 @@
-"""Read-only, critical-site fingerprint for the two reviewed 25 Hz images.
+"""Read-only, critical-site fingerprint for the reviewed 25 Hz images.
 
 Both images report the same DIS firmware version. These fixed reads compare
 their patch sites and nearby instructions, including the v2 disconnect hook
@@ -21,7 +21,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 import hashlib
 
-from whip import fwbuild, fwoptical, protocol
+from whip import fwbuild, fwoptical, fwoptical_unified, protocol
 
 
 # Application file offset 0x450 is loaded at 0x826400. Code reads use byte
@@ -30,9 +30,11 @@ APP_ADDRESS = 0x826400
 FILE_TO_ADDRESS = APP_ADDRESS - fwbuild.PAYLOAD_START  # 0x825fb0
 MAX_READ_LENGTH = 14
 CANDIDATE_SHA256 = "0d18a0fa860d58ab8f984b5f542f45dac105241f47bf1c2af41321eb0431e14c"
+UNIFIED_CANDIDATE_SHA256 = "7e2b3e2e61906031f5b79262ca39022fc34518ab421f814a586f9e49f8691243"
 
 ORIGINAL_25HZ = "original25Hz"
 OPTICAL_OFF_CANDIDATE = "optical_off_candidate"
+UNIFIED_CANDIDATE = "unified_candidate"
 MIXED_OR_UNKNOWN = "mixed_or_unknown"
 
 
@@ -64,6 +66,10 @@ _CODE_RANGES = (
     ("raw_start", 0x21D6, 20),
     ("raw_period", 0x2244, 16),
     ("disconnect_hook", 0x6918, 24),
+    # UART, DFU, DIS, FEE7 and HID setup. The revoked first unified image
+    # changed UART's call instead of FEE7's; omitting this range made the
+    # supposedly critical fingerprint unable to detect that exact failure.
+    ("ble_service_setup", 0x7498, 44),
     ("dfu_timer", 0x7ED0, 20),
     ("accel_range", 0xBF04, 16),
     ("idle_request", 0xCAD0, 20),
@@ -79,7 +85,7 @@ _READ_SITES = tuple(
 
 
 def read_sites() -> tuple[ReadSite, ...]:
-    """Return the fixed, ordered application-code reads (22 requests, 244 bytes)."""
+    """Return the fixed, ordered application-code reads (26 requests, 288 bytes)."""
     return _READ_SITES
 
 
@@ -113,8 +119,9 @@ def decode_reply(site: ReadSite, packet: bytes | bytearray) -> bytes:
     return bytes(packet[1:1 + site.length])
 
 
-def validate_images(base: bytes, candidate: bytes | None = None) -> bytes:
-    """Validate the pinned base and rebuild the exact reviewed candidate.
+def validate_images(base: bytes, candidate: bytes | None = None,
+                    unified_candidate: bytes | None = None) -> bytes:
+    """Validate the pinned base and rebuild both exact reviewed candidates.
 
     If a candidate archive is supplied, require byte-for-byte equality with the
     strict builder's output. Call this before connecting when preparing a probe.
@@ -124,6 +131,11 @@ def validate_images(base: bytes, candidate: bytes | None = None) -> bytes:
         raise ValueError("builder output is not the pinned optical-off candidate")
     if candidate is not None and candidate != built:
         raise ValueError("candidate archive differs from the strict optical-off build")
+    unified = fwoptical_unified.build(base)
+    if hashlib.sha256(unified).hexdigest() != UNIFIED_CANDIDATE_SHA256:
+        raise ValueError("builder output is not the pinned unified candidate")
+    if unified_candidate is not None and unified_candidate != unified:
+        raise ValueError("unified archive differs from the strict unified build")
     return built
 
 
@@ -135,13 +147,16 @@ def classify(base: bytes, samples_by_name: Mapping[str, bytes]) -> str:
     installed image was read or that the emitters stay dark on hardware.
     """
     candidate = validate_images(base)
+    unified = fwoptical_unified.build(base)
     if set(samples_by_name) != {site.name for site in _READ_SITES}:
         return MIXED_OR_UNKNOWN
     for site in _READ_SITES:
         sample = samples_by_name[site.name]
         if not isinstance(sample, (bytes, bytearray)) or len(sample) != site.length:
             return MIXED_OR_UNKNOWN
-    for label, reference in ((ORIGINAL_25HZ, base), (OPTICAL_OFF_CANDIDATE, candidate)):
+    for label, reference in ((ORIGINAL_25HZ, base),
+                             (OPTICAL_OFF_CANDIDATE, candidate),
+                             (UNIFIED_CANDIDATE, unified)):
         if all(samples_by_name[site.name] == reference[site.file_offset:site.file_offset + site.length]
                for site in _READ_SITES):
             return label

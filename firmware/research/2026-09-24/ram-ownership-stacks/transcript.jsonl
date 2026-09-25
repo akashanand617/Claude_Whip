@@ -1,0 +1,403 @@
+{"kind": "header", "wall": 1790300028.559339, "plan": "ram-ownership-stacks-v1", "flashing": false, "sensor_commands": false, "target_execution": false, "pointer_following": false, "max_transactions": 198, "gap_bytes_logged": false, "warning": "CD bookkeeping side effects; sampled identity is not full attestation"}
+{"kind": "device", "address": "3C2FA77E-1BE3-A0C5-0DD5-DB6A3AD452B2", "name": "R02_CC07", "firmware": "RT02CR_3.12.07_260514", "hardware": "RT02CR_V3.1"}
+{"kind": "request", "address": 8552838, "length": 14, "packet": "cd010e00828186000000000000000065", "monotonic": 654254.67425225}
+{"kind": "reply", "address": 8552838, "length": 14, "packet": "cd5b480bf053fd042038700af091fc0e", "monotonic": 654254.811804666}
+{"kind": "request", "address": 8552852, "length": 6, "packet": "cd01060082819400000000000000006b", "monotonic": 654254.811891166}
+{"kind": "reply", "address": 8552852, "length": 6, "packet": "cd04202de0012000000000000000001f", "monotonic": 654254.944323625}
+{"kind": "request", "address": 8552948, "length": 14, "packet": "cd010e008281f40000000000000000d3", "monotonic": 654254.944394875}
+{"kind": "reply", "address": 8552948, "length": 14, "packet": "cd38703d4804220123d2003f491038e6", "monotonic": 654255.066537666}
+{"kind": "request", "address": 8552962, "length": 2, "packet": "cd0102008282020000000000000000d6", "monotonic": 654255.066609791}
+{"kind": "reply", "address": 8552962, "length": 2, "packet": "cd01f0000000000000000000000000be", "monotonic": 654255.199599958}
+{"kind": "request", "address": 8571080, "length": 14, "packet": "cd010e0082c8c80000000000000000ee", "monotonic": 654255.199673125}
+{"kind": "reply", "address": 8571080, "length": 14, "packet": "cd7976b876787408f0c9fe2046ff3832", "monotonic": 654255.321777875}
+{"kind": "request", "address": 8571094, "length": 10, "packet": "cd010a0082c8d60000000000000000f8", "monotonic": 654255.321872458}
+{"kind": "reply", "address": 8571094, "length": 10, "packet": "cd143811d02046ff38173800000000e6", "monotonic": 654255.456067208}
+{"kind": "request", "address": 8576640, "length": 14, "packet": "cd010e0082de800000000000000000bc", "monotonic": 654255.45614075}
+{"kind": "reply", "address": 8576640, "length": 14, "packet": "cdc0070bd17d21c900e01ce5f703dc8e", "monotonic": 654255.591079666}
+{"kind": "request", "address": 8576654, "length": 6, "packet": "cd01060082de8e0000000000000000c2", "monotonic": 654255.5911745}
+{"kind": "reply", "address": 8576654, "length": 6, "packet": "cd002804d02078000000000000000061", "monotonic": 654255.728157416}
+{"kind": "request", "address": 8593076, "length": 14, "packet": "cd010e00831eb4000000000000000031", "monotonic": 654255.72825525}
+{"kind": "reply", "address": 8593076, "length": 14, "packet": "cd32200968884705210f20fff79afe42", "monotonic": 654255.874568375}
+{"kind": "request", "address": 8593090, "length": 2, "packet": "cd010200831ec2000000000000000033", "monotonic": 654255.8746655}
+{"kind": "reply", "address": 8593090, "length": 2, "packet": "cd5e200000000000000000000000004b", "monotonic": 654255.99581725}
+{"kind": "request", "address": 8596096, "length": 14, "packet": "cd010e00832a80000000000000000009", "monotonic": 654255.995889708}
+{"kind": "reply", "address": 8596096, "length": 14, "packet": "cdf8bd02f0ddfd0ed0fff736fafff748", "monotonic": 654256.129423291}
+{"kind": "request", "address": 8596110, "length": 6, "packet": "cd010600832a8e00000000000000000f", "monotonic": 654256.129488166}
+{"kind": "reply", "address": 8596110, "length": 6, "packet": "cdd4fe0028f5d000000000000000008c", "monotonic": 654256.250626333}
+{"kind": "request", "address": 8607290, "length": 14, "packet": "cd010e0083563a0000000000000000ef", "monotonic": 654256.2507135}
+{"kind": "reply", "address": 8607290, "length": 14, "packet": "cd08bd7047044606480078042805d15b", "monotonic": 654256.385758833}
+{"kind": "request", "address": 8607304, "length": 14, "packet": "cd010e008356480000000000000000fd", "monotonic": 654256.385845625}
+{"kind": "reply", "address": 8607304, "length": 14, "packet": "cd05480078022801d100207047a0797e", "monotonic": 654256.519678041}
+{"kind": "request", "address": 8607318, "length": 14, "packet": "cd010e0083565600000000000000000b", "monotonic": 654256.519758708}
+{"kind": "reply", "address": 8607318, "length": 14, "packet": "cd0028704700bfac9c2000099e20009a", "monotonic": 654256.655718208}
+{"kind": "request", "address": 8607332, "length": 14, "packet": "cd010e00835664000000000000000019", "monotonic": 654256.655811541}
+{"kind": "reply", "address": 8607332, "length": 14, "packet": "cd10b5f7f7c4fc054c2078042805d12b", "monotonic": 654256.789542458}
+{"kind": "request", "address": 8607346, "length": 14, "packet": "cd010e00835672000000000000000027", "monotonic": 654256.789704875}
+{"kind": "reply", "address": 8607346, "length": 14, "packet": "cd0020207020461030f4f735fb10bd0b", "monotonic": 654256.912126125}
+{"kind": "request", "address": 8607360, "length": 10, "packet": "cd010a00835680000000000000000031", "monotonic": 654256.912200875}
+{"kind": "reply", "address": 8607360, "length": 10, "packet": "cdac9c200000206873288800000000e0", "monotonic": 654257.044503333}
+{"kind": "request", "address": 8618670, "length": 14, "packet": "cd010e008382ae00000000000000008f", "monotonic": 654257.044622708}
+{"kind": "reply", "address": 8618670, "length": 14, "packet": "cd08b500216a461170002805d0012802", "monotonic": 654257.165856875}
+{"kind": "request", "address": 8618684, "length": 14, "packet": "cd010e008382bc00000000000000009d", "monotonic": 654257.165934083}
+{"kind": "reply", "address": 8618684, "length": 14, "packet": "cd05d0022805d0012008bd117003e0eb", "monotonic": 654257.299498625}
+{"kind": "request", "address": 8618698, "length": 14, "packet": "cd010e008382ca0000000000000000ab", "monotonic": 654257.299564375}
+{"kind": "reply", "address": 8618698, "length": 14, "packet": "cd002000e0a5201070012269467b207f", "monotonic": 654257.421730125}
+{"kind": "request", "address": 8618712, "length": 6, "packet": "cd0106008382d80000000000000000b1", "monotonic": 654257.421805916}
+{"kind": "reply", "address": 8618712, "length": 6, "packet": "cdfcf7dbfc08bd00000000000000005c", "monotonic": 654257.55433125}
+{"kind": "request", "address": 8566266, "length": 14, "packet": "cd010e0082b5fa00000000000000000d", "monotonic": 654257.558967}
+{"kind": "reply", "address": 8566266, "length": 14, "packet": "cd10b504460078432803d0482801d0d3", "monotonic": 654257.69100925}
+{"kind": "request", "address": 8566280, "length": 6, "packet": "cd01060082b608000000000000000014", "monotonic": 654257.691075291}
+{"kind": "reply", "address": 8566280, "length": 6, "packet": "cd02f049fc207800000000000000009c", "monotonic": 654257.824695083}
+{"kind": "request", "address": 8567176, "length": 14, "packet": "cd010e0082b98800000000000000009f", "monotonic": 654257.824779666}
+{"kind": "reply", "address": 8567176, "length": 14, "packet": "cdfe4a1278012a02d0102900d131e6bd", "monotonic": 654257.946885958}
+{"kind": "request", "address": 8563398, "length": 14, "packet": "cd010e0082aac60000000000000000ce", "monotonic": 654257.946953041}
+{"kind": "reply", "address": 8563398, "length": 14, "packet": "cd1fb500210091019102910391cd21fa", "monotonic": 654258.081102791}
+{"kind": "request", "address": 8563412, "length": 14, "packet": "cd010e0082aad40000000000000000dc", "monotonic": 654258.081171625}
+{"kind": "reply", "address": 8563412, "length": 14, "packet": "cd6a4611700279c3781102194349ba26", "monotonic": 654258.214545666}
+{"kind": "request", "address": 8563426, "length": 14, "packet": "cd010e0082aae20000000000000000ea", "monotonic": 654258.214622208}
+{"kind": "reply", "address": 8563426, "length": 14, "packet": "cd0b044179827809020b4381790b4331", "monotonic": 654258.336799208}
+{"kind": "request", "address": 8563440, "length": 14, "packet": "cd010e0082aaf00000000000000000f8", "monotonic": 654258.336873791}
+{"kind": "reply", "address": 8563440, "length": 14, "packet": "cd417801290ad002291ed011290fd0bc", "monotonic": 654258.470080625}
+{"kind": "request", "address": 8563454, "length": 14, "packet": "cd010e0082aafe000000000000000006", "monotonic": 654258.470151916}
+{"kind": "reply", "address": 8563454, "length": 14, "packet": "cd122911d0212912d0222914d015e039", "monotonic": 654258.60451625}
+{"kind": "request", "address": 8563468, "length": 14, "packet": "cd010e0082ab0c000000000000000015", "monotonic": 654258.604615291}
+{"kind": "reply", "address": 8563468, "length": 14, "packet": "cd0e2a00d90e2200a81946013014f44e", "monotonic": 654258.72747175}
+{"kind": "request", "address": 8563482, "length": 14, "packet": "cd010e0082ab1a000000000000000023", "monotonic": 654258.727547125}
+{"kind": "reply", "address": 8563482, "length": 14, "packet": "cd96f60ce0cd2005f065fd08e005f066", "monotonic": 654258.859530666}
+{"kind": "request", "address": 8563496, "length": 14, "packet": "cd010e0082ab28000000000000000031", "monotonic": 654258.859619291}
+{"kind": "reply", "address": 8563496, "length": 14, "packet": "cd61fd05e0cd2005f061fd01e005f026", "monotonic": 654258.981817833}
+{"kind": "request", "address": 8563510, "length": 14, "packet": "cd010e0082ab3600000000000000003f", "monotonic": 654258.98188775}
+{"kind": "reply", "address": 8563510, "length": 14, "packet": "cd5dfd0f216846fff7aef96946c8738c", "monotonic": 654259.114450708}
+{"kind": "request", "address": 8563524, "length": 8, "packet": "cd01080082ab44000000000000000047", "monotonic": 654259.114512333}
+{"kind": "reply", "address": 8563524, "length": 8, "packet": "cd684603f039f81fbd0000000000007b", "monotonic": 654259.236655791}
+{"kind": "request", "address": 8576670, "length": 14, "packet": "cd010e0082de9e0000000000000000da", "monotonic": 654259.236731375}
+{"kind": "reply", "address": 8576670, "length": 14, "packet": "cd10b501f0ecfa002809d0022801d065", "monotonic": 654259.369326208}
+{"kind": "request", "address": 8576684, "length": 14, "packet": "cd010e0082deac0000000000000000e8", "monotonic": 654259.369398166}
+{"kind": "reply", "address": 8576684, "length": 14, "packet": "cd032805d1fff7e3ff0021084601f006", "monotonic": 654259.491500708}
+{"kind": "request", "address": 8576698, "length": 14, "packet": "cd010e0082deba0000000000000000f6", "monotonic": 654259.49156625}
+{"kind": "reply", "address": 8576698, "length": 14, "packet": "cdb5f988490120491e087010bd70b53e", "monotonic": 654259.624664541}
+{"kind": "request", "address": 8576712, "length": 8, "packet": "cd01080082dec80000000000000000fe", "monotonic": 654259.624744416}
+{"kind": "reply", "address": 8576712, "length": 8, "packet": "cd854c0b34204608300000000000007b", "monotonic": 654259.745967666}
+{"kind": "request", "address": 8576634, "length": 14, "packet": "cd010e0082de7a0000000000000000b6", "monotonic": 654259.746048791}
+{"kind": "reply", "address": 8576634, "length": 14, "packet": "cd10b5984c2078c0070bd17d21c90018", "monotonic": 654259.879682875}
+{"kind": "request", "address": 8576648, "length": 14, "packet": "cd010e0082de880000000000000000c4", "monotonic": 654259.879755}
+{"kind": "reply", "address": 8576648, "length": 14, "packet": "cde01ce5f703dc002804d0207801213a", "monotonic": 654260.014450916}
+{"kind": "request", "address": 8576662, "length": 8, "packet": "cd01080082de960000000000000000cc", "monotonic": 654260.014530541}
+{"kind": "reply", "address": 8576662, "length": 8, "packet": "cd08430840207010bd000000000000bd", "monotonic": 654260.136704791}
+{"kind": "request", "address": 8577248, "length": 4, "packet": "cd01040082e0e0000000000000000014", "monotonic": 654260.136777208}
+{"kind": "reply", "address": 8577248, "length": 4, "packet": "cd65a6200000000000000000000000f8", "monotonic": 654260.26931025}
+{"kind": "request", "address": 8582268, "length": 6, "packet": "cd01060082f47c0000000000000000c6", "monotonic": 654260.269376916}
+{"kind": "reply", "address": 8582268, "length": 6, "packet": "cd26480078704700000000000000006a", "monotonic": 654260.391813708}
+{"kind": "request", "address": 8582424, "length": 14, "packet": "cd010e0082f51800000000000000006b", "monotonic": 654260.391881791}
+{"kind": "reply", "address": 8582424, "length": 14, "packet": "cdf0bb2000f89d2000fc538400048cb0", "monotonic": 654260.525950291}
+{"kind": "request", "address": 8582438, "length": 6, "packet": "cd01060082f526000000000000000071", "monotonic": 654260.526021958}
+{"kind": "reply", "address": 8582438, "length": 6, "packet": "cd2000c1f28200000000000000000022", "monotonic": 654260.659528}
+{"kind": "request", "address": 8581664, "length": 14, "packet": "cd010e0082f220000000000000000070", "monotonic": 654260.6596055}
+{"kind": "reply", "address": 8581664, "length": 14, "packet": "cdbd494860f2e7f8b50446bc480d46a2", "monotonic": 654260.781617666}
+{"kind": "request", "address": 8581678, "length": 14, "packet": "cd010e0082f22e00000000000000007e", "monotonic": 654260.78168325}
+{"kind": "reply", "address": 8581678, "length": 14, "packet": "cd407c022814d1b84ff878002805d00c", "monotonic": 654260.914532583}
+{"kind": "request", "address": 8581692, "length": 14, "packet": "cd010e0082f23c00000000000000008c", "monotonic": 654260.914611}
+{"kind": "reply", "address": 8581692, "length": 14, "packet": "cd38460838e4f73cda0020f8703878b4", "monotonic": 654261.049543625}
+{"kind": "request", "address": 8581706, "length": 14, "packet": "cd010e0082f24a00000000000000009a", "monotonic": 654261.049609458}
+{"kind": "reply", "address": 8581706, "length": 14, "packet": "cd042c08d0042805d0797809060bd5b6", "monotonic": 654261.184392666}
+{"kind": "request", "address": 8581720, "length": 14, "packet": "cd010e0082f2580000000000000000a8", "monotonic": 654261.184470291}
+{"kind": "reply", "address": 8581720, "length": 14, "packet": "cd802004437c70f8bd0428fcd0042071", "monotonic": 654261.306019208}
+{"kind": "request", "address": 8581734, "length": 14, "packet": "cd010e0082f2660000000000000000b6", "monotonic": 654261.306090333}
+{"kind": "reply", "address": 8581734, "length": 14, "packet": "cd3870ad48fff7d9fff8bda04219d0b8", "monotonic": 654261.43983225}
+{"kind": "request", "address": 8581748, "length": 14, "packet": "cd010e0082f2740000000000000000c4", "monotonic": 654261.439901208}
+{"kind": "reply", "address": 8581748, "length": 14, "packet": "cdab4e002c08d0012c04d0022c09d0d2", "monotonic": 654261.561103458}
+{"kind": "request", "address": 8581762, "length": 14, "packet": "cd010e0082f2820000000000000000d2", "monotonic": 654261.561167708}
+{"kind": "reply", "address": 8581762, "length": 14, "packet": "cd032c0fd109e0304601e0a44814304c", "monotonic": 654261.694471958}
+{"kind": "request", "address": 8581776, "length": 14, "packet": "cd010e0082f2900000000000000000e0", "monotonic": 654261.694538208}
+{"kind": "reply", "address": 8581776, "length": 14, "packet": "cdfff7c6ff07e0a248183001e0a0486a", "monotonic": 654261.816765083}
+{"kind": "request", "address": 8581790, "length": 14, "packet": "cd010e0082f29e0000000000000000ee", "monotonic": 654261.81687475}
+{"kind": "reply", "address": 8581790, "length": 14, "packet": "cd1c30fff7beff00253c70002de0d07a", "monotonic": 654261.964647}
+{"kind": "request", "address": 8581804, "length": 14, "packet": "cd010e0082f2ac0000000000000000fc", "monotonic": 654261.964724333}
+{"kind": "reply", "address": 8581804, "length": 14, "packet": "cd0120f870994800232a469c490838ef", "monotonic": 654262.099536291}
+{"kind": "request", "address": 8581818, "length": 6, "packet": "cd01060082f2ba000000000000000002", "monotonic": 654262.099602375}
+{"kind": "reply", "address": 8581818, "length": 6, "packet": "cdfaf7fffcf8bd00000000000000006e", "monotonic": 654262.221635833}
+{"kind": "request", "address": 2137260, "length": 1, "packet": "cd010100209cac000000000000000037", "monotonic": 654262.221715125}
+{"kind": "reply", "address": 2137260, "length": 1, "packet": "cd0000000000000000000000000000cd", "monotonic": 654262.354272541}
+{"kind": "request", "address": 2098048, "length": 14, "packet": "cd010e0020038000000000000000007f", "monotonic": 654262.354343791}
+{"kind": "reply", "address": 2098048, "length": 14, "packet": "cd007c200000700000007400007038f5", "monotonic": 654262.4782335}
+{"kind": "request", "address": 2098062, "length": 2, "packet": "cd01020020038e000000000000000081", "monotonic": 654262.478302833}
+{"kind": "reply", "address": 2098062, "length": 2, "packet": "cd0000000000000000000000000000cd", "monotonic": 654262.611175791}
+{"kind": "request", "address": 2098048, "length": 14, "packet": "cd010e0020038000000000000000007f", "monotonic": 654262.611258458}
+{"kind": "reply", "address": 2098048, "length": 14, "packet": "cd007c200000700000007400007038f5", "monotonic": 654262.746791708}
+{"kind": "request", "address": 2098062, "length": 2, "packet": "cd01020020038e000000000000000081", "monotonic": 654262.746867208}
+{"kind": "reply", "address": 2098062, "length": 2, "packet": "cd0000000000000000000000000000cd", "monotonic": 654262.879683166}
+{"kind": "request", "address": 2098148, "length": 14, "packet": "cd010e002003e40000000000000000e3", "monotonic": 654262.87976425}
+{"kind": "reply", "address": 2098148, "length": 14, "packet": "cd002080000080040000a08400000015", "monotonic": 654263.0014785}
+{"kind": "request", "address": 2098162, "length": 14, "packet": "cd010e002003f20000000000000000f1", "monotonic": 654263.00154325}
+{"kind": "reply", "address": 2098162, "length": 14, "packet": "cd000000a084000040000000e0840095", "monotonic": 654263.164439125}
+{"kind": "request", "address": 2098176, "length": 14, "packet": "cd010e00200400000000000000000000", "monotonic": 654263.164500375}
+{"kind": "reply", "address": 2098176, "length": 14, "packet": "cd004002000000000100008000000090", "monotonic": 654263.286842625}
+{"kind": "request", "address": 2098190, "length": 6, "packet": "cd01060020040e000000000000000006", "monotonic": 654263.286903375}
+{"kind": "reply", "address": 2098190, "length": 6, "packet": "cd0000000000000000000000000000cd", "monotonic": 654263.421080583}
+{"kind": "request", "address": 2098148, "length": 14, "packet": "cd010e002003e40000000000000000e3", "monotonic": 654263.421157708}
+{"kind": "reply", "address": 2098148, "length": 14, "packet": "cd002080000080040000a08400000015", "monotonic": 654263.554763291}
+{"kind": "request", "address": 2098162, "length": 14, "packet": "cd010e002003f20000000000000000f1", "monotonic": 654263.554855083}
+{"kind": "reply", "address": 2098162, "length": 14, "packet": "cd000000a084000040000000e0840095", "monotonic": 654263.676073125}
+{"kind": "request", "address": 2098176, "length": 14, "packet": "cd010e00200400000000000000000000", "monotonic": 654263.676149166}
+{"kind": "reply", "address": 2098176, "length": 14, "packet": "cd004002000000000100008000000090", "monotonic": 654263.809798041}
+{"kind": "request", "address": 2098190, "length": 6, "packet": "cd01060020040e000000000000000006", "monotonic": 654263.809868}
+{"kind": "reply", "address": 2098190, "length": 6, "packet": "cd0000000000000000000000000000cd", "monotonic": 654263.931024208}
+{"kind": "request", "address": 2137260, "length": 1, "packet": "cd010100209cac000000000000000037", "monotonic": 654263.931098083}
+{"kind": "reply", "address": 2137260, "length": 1, "packet": "cd0000000000000000000000000000cd", "monotonic": 654264.06448825}
+{"kind": "identity", "classification": "optical_off_candidate", "scope": "critical sites and diagnostic code only; NOT full image attestation"}
+{"kind": "request", "address": 8397208, "length": 14, "packet": "cd010e00802198000000000000000015", "monotonic": 654264.065665166}
+{"kind": "reply", "address": 8397208, "length": 14, "packet": "cd00d08000001000000030800000a07d", "monotonic": 654264.199386208}
+{"kind": "request", "address": 8397222, "length": 14, "packet": "cd010e008021a6000000000000000023", "monotonic": 654264.199460291}
+{"kind": "reply", "address": 8397222, "length": 14, "packet": "cd0000006082000040020000a0840015", "monotonic": 654264.321877}
+{"kind": "request", "address": 8397236, "length": 14, "packet": "cd010e008021b4000000000000000031", "monotonic": 654264.32195775}
+{"kind": "reply", "address": 8397236, "length": 14, "packet": "cd0000000000a084000000000000a091", "monotonic": 654264.454311666}
+{"kind": "request", "address": 8397250, "length": 14, "packet": "cd010e008021c200000000000000003f", "monotonic": 654264.454386291}
+{"kind": "reply", "address": 8397250, "length": 14, "packet": "cd84000000000000a084000000000075", "monotonic": 654264.576391583}
+{"kind": "request", "address": 8397264, "length": 14, "packet": "cd010e008021d000000000000000004d", "monotonic": 654264.576459958}
+{"kind": "reply", "address": 8397264, "length": 14, "packet": "cd00a084000000000000a08400000015", "monotonic": 654264.708989916}
+{"kind": "request", "address": 8397278, "length": 10, "packet": "cd010a008021de000000000000000057", "monotonic": 654264.709096791}
+{"kind": "reply", "address": 8397278, "length": 10, "packet": "cd000000e080000080010000000000ae", "monotonic": 654264.831412708}
+{"kind": "request", "address": 8397208, "length": 14, "packet": "cd010e00802198000000000000000015", "monotonic": 654264.831492541}
+{"kind": "reply", "address": 8397208, "length": 14, "packet": "cd00d08000001000000030800000a07d", "monotonic": 654264.964750208}
+{"kind": "request", "address": 8397222, "length": 14, "packet": "cd010e008021a6000000000000000023", "monotonic": 654264.96481675}
+{"kind": "reply", "address": 8397222, "length": 14, "packet": "cd0000006082000040020000a0840015", "monotonic": 654265.10183775}
+{"kind": "request", "address": 8397236, "length": 14, "packet": "cd010e008021b4000000000000000031", "monotonic": 654265.101902083}
+{"kind": "reply", "address": 8397236, "length": 14, "packet": "cd0000000000a084000000000000a091", "monotonic": 654265.249594833}
+{"kind": "request", "address": 8397250, "length": 14, "packet": "cd010e008021c200000000000000003f", "monotonic": 654265.24967025}
+{"kind": "reply", "address": 8397250, "length": 14, "packet": "cd84000000000000a084000000000075", "monotonic": 654265.371638291}
+{"kind": "request", "address": 8397264, "length": 14, "packet": "cd010e008021d000000000000000004d", "monotonic": 654265.371719791}
+{"kind": "reply", "address": 8397264, "length": 14, "packet": "cd00a084000000000000a08400000015", "monotonic": 654265.504552291}
+{"kind": "request", "address": 8397278, "length": 10, "packet": "cd010a008021de000000000000000057", "monotonic": 654265.504631}
+{"kind": "reply", "address": 8397278, "length": 10, "packet": "cd000000e080000080010000000000ae", "monotonic": 654265.626682083}
+{"kind": "request", "address": 2098048, "length": 14, "packet": "cd010e0020038000000000000000007f", "monotonic": 654265.6267615}
+{"kind": "reply", "address": 2098048, "length": 14, "packet": "cd007c200000700000007400007038f5", "monotonic": 654265.774550833}
+{"kind": "request", "address": 2098062, "length": 2, "packet": "cd01020020038e000000000000000081", "monotonic": 654265.774616583}
+{"kind": "reply", "address": 2098062, "length": 2, "packet": "cd0000000000000000000000000000cd", "monotonic": 654265.924837291}
+{"kind": "request", "address": 2098148, "length": 14, "packet": "cd010e002003e40000000000000000e3", "monotonic": 654265.924917791}
+{"kind": "reply", "address": 2098148, "length": 14, "packet": "cd002080000080040000a08400000015", "monotonic": 654266.04588075}
+{"kind": "request", "address": 2098162, "length": 14, "packet": "cd010e002003f20000000000000000f1", "monotonic": 654266.045952166}
+{"kind": "reply", "address": 2098162, "length": 14, "packet": "cd000000a084000040000000e0840095", "monotonic": 654266.179161041}
+{"kind": "request", "address": 2098176, "length": 14, "packet": "cd010e00200400000000000000000000", "monotonic": 654266.179246666}
+{"kind": "reply", "address": 2098176, "length": 14, "packet": "cd004002000000000100008000000090", "monotonic": 654266.301776458}
+{"kind": "request", "address": 2098190, "length": 6, "packet": "cd01060020040e000000000000000006", "monotonic": 654266.301844541}
+{"kind": "reply", "address": 2098190, "length": 6, "packet": "cd0000000000000000000000000000cd", "monotonic": 654266.434558625}
+{"kind": "request", "address": 2137260, "length": 1, "packet": "cd010100209cac000000000000000037", "monotonic": 654266.4346475}
+{"kind": "reply", "address": 2137260, "length": 1, "packet": "cd0000000000000000000000000000cd", "monotonic": 654266.55565625}
+{"kind": "descriptor", "address": 8397208, "bytes": 80, "repeated_equal": true, "pointer_following": false}
+{"kind": "request", "address": 8544268, "length": 14, "packet": "cd010e0082600c0000000000000000ca", "monotonic": 654266.555756125}
+{"kind": "reply", "address": 8544268, "length": 14, "packet": "cdf94c6b7e11c5eb118282f74a0c0c2a", "monotonic": 654266.691722}
+{"kind": "request", "address": 8544282, "length": 2, "packet": "cd01020082601a0000000000000000cc", "monotonic": 654266.691816291}
+{"kind": "reply", "address": 8544282, "length": 2, "packet": "cdef5b00000000000000000000000017", "monotonic": 654266.825055791}
+{"kind": "request", "address": 8544268, "length": 14, "packet": "cd010e0082600c0000000000000000ca", "monotonic": 654266.825156416}
+{"kind": "reply", "address": 8544268, "length": 14, "packet": "cdf94c6b7e11c5eb118282f74a0c0c2a", "monotonic": 654266.959713083}
+{"kind": "request", "address": 8544282, "length": 2, "packet": "cd01020082601a0000000000000000cc", "monotonic": 654266.959786875}
+{"kind": "reply", "address": 8544282, "length": 2, "packet": "cdef5b00000000000000000000000017", "monotonic": 654267.080930083}
+{"kind": "request", "address": 2102080, "length": 4, "packet": "cd010400201340000000000000000045", "monotonic": 654267.081024916}
+{"kind": "reply", "address": 2102080, "length": 4, "packet": "cd68372100000000000000000000008d", "monotonic": 654267.21470375}
+{"kind": "request", "address": 2102132, "length": 14, "packet": "cd010e00201374000000000000000083", "monotonic": 654267.214786708}
+{"kind": "reply", "address": 2102132, "length": 14, "packet": "cda017210048572100101420002414e1", "monotonic": 654267.335774458}
+{"kind": "request", "address": 2102146, "length": 14, "packet": "cd010e00201382000000000000000091", "monotonic": 654267.335850125}
+{"kind": "reply", "address": 2102146, "length": 14, "packet": "cd2000010000005c572100ffffffffbe", "monotonic": 654267.469420666}
+{"kind": "request", "address": 2102160, "length": 14, "packet": "cd010e0020139000000000000000009f", "monotonic": 654267.46952825}
+{"kind": "reply", "address": 2102160, "length": 14, "packet": "cd5c5721005c57210000000000a01328", "monotonic": 654267.59109625}
+{"kind": "request", "address": 2102174, "length": 14, "packet": "cd010e0020139e0000000000000000ad", "monotonic": 654267.591201}
+{"kind": "reply", "address": 2102174, "length": 14, "packet": "cd2000ffffffffa0132000a01320008f", "monotonic": 654267.724737958}
+{"kind": "request", "address": 2102188, "length": 14, "packet": "cd010e002013ac0000000000000000bb", "monotonic": 654267.724831958}
+{"kind": "reply", "address": 2102188, "length": 14, "packet": "cd010000006c372100ffffffff6c3731", "monotonic": 654267.845878166}
+{"kind": "request", "address": 2102202, "length": 14, "packet": "cd010e002013ba0000000000000000c9", "monotonic": 654267.845971708}
+{"kind": "reply", "address": 2102202, "length": 14, "packet": "cd21006c37210000000000c8132000ad", "monotonic": 654267.979748708}
+{"kind": "request", "address": 2102216, "length": 14, "packet": "cd010e002013c80000000000000000d7", "monotonic": 654267.979839916}
+{"kind": "reply", "address": 2102216, "length": 14, "packet": "cdffffffffc8132000c81320000000bf", "monotonic": 654268.114565583}
+{"kind": "request", "address": 2102230, "length": 14, "packet": "cd010e002013d60000000000000000e5", "monotonic": 654268.114659916}
+{"kind": "reply", "address": 2102230, "length": 14, "packet": "cd0000dc132000ffffffffdc132000e7", "monotonic": 654268.235982208}
+{"kind": "request", "address": 2102244, "length": 14, "packet": "cd010e002013e40000000000000000f3", "monotonic": 654268.236106291}
+{"kind": "reply", "address": 2102244, "length": 14, "packet": "cddc13200000000000f0132000fffffd", "monotonic": 654268.386825125}
+{"kind": "request", "address": 2102258, "length": 14, "packet": "cd010e002013f2000000000000000001", "monotonic": 654268.386918375}
+{"kind": "reply", "address": 2102258, "length": 14, "packet": "cdfffff0132000f01320000000000011", "monotonic": 654268.519632083}
+{"kind": "request", "address": 2102272, "length": 14, "packet": "cd010e00201400000000000000000010", "monotonic": 654268.519742333}
+{"kind": "reply", "address": 2102272, "length": 14, "packet": "cd04142000ffffffff04142000041451", "monotonic": 654268.641637291}
+{"kind": "request", "address": 2102286, "length": 14, "packet": "cd010e0020140e00000000000000001e", "monotonic": 654268.641735583}
+{"kind": "reply", "address": 2102286, "length": 14, "packet": "cd20000100000018142000ffffffff36", "monotonic": 654268.777768541}
+{"kind": "request", "address": 2102300, "length": 14, "packet": "cd010e0020141c00000000000000002c", "monotonic": 654268.77796}
+{"kind": "reply", "address": 2102300, "length": 14, "packet": "cdc45b2100c45b2100000000002c148d", "monotonic": 654268.911858958}
+{"kind": "request", "address": 2102314, "length": 14, "packet": "cd010e0020142a00000000000000003a", "monotonic": 654268.911922666}
+{"kind": "reply", "address": 2102314, "length": 14, "packet": "cd2000ffffffff2c1420002c142000a9", "monotonic": 654269.044896}
+{"kind": "request", "address": 2102328, "length": 14, "packet": "cd010e00201438000000000000000048", "monotonic": 654269.044982791}
+{"kind": "reply", "address": 2102328, "length": 14, "packet": "cd0000000040142000ffffffff401491", "monotonic": 654269.166139791}
+{"kind": "request", "address": 2102342, "length": 14, "packet": "cd010e00201446000000000000000056", "monotonic": 654269.166213541}
+{"kind": "reply", "address": 2102342, "length": 14, "packet": "cd2000401420000000000054142000e9", "monotonic": 654269.299703375}
+{"kind": "request", "address": 2102356, "length": 14, "packet": "cd010e00201454000000000000000064", "monotonic": 654269.29979075}
+{"kind": "reply", "address": 2102356, "length": 14, "packet": "cdffffffff54142000541420000400dd", "monotonic": 654269.433776333}
+{"kind": "request", "address": 2102370, "length": 14, "packet": "cd010e00201462000000000000000072", "monotonic": 654269.433853583}
+{"kind": "reply", "address": 2102370, "length": 14, "packet": "cd000068142000ffffffff3447210001", "monotonic": 654269.556394791}
+{"kind": "request", "address": 2102384, "length": 4, "packet": "cd010400201470000000000000000076", "monotonic": 654269.556489708}
+{"kind": "reply", "address": 2102384, "length": 4, "packet": "cdb42c210000000000000000000000ce", "monotonic": 654269.689711875}
+{"kind": "request", "address": 2109952, "length": 14, "packet": "cd010e0020320000000000000000002e", "monotonic": 654269.689800416}
+{"kind": "reply", "address": 2109952, "length": 14, "packet": null, "monotonic": 654269.811752791, "packet_sha256": "33c036e1bc99e3eba5ef476fe29741a9f9465641063474caccd4699b082d42b9", "payload_all_zero": false, "redacted": true}
+{"kind": "request", "address": 2109966, "length": 14, "packet": "cd010e0020320e00000000000000003c", "monotonic": 654269.811863583}
+{"kind": "reply", "address": 2109966, "length": 14, "packet": null, "monotonic": 654269.946937208, "packet_sha256": "33c036e1bc99e3eba5ef476fe29741a9f9465641063474caccd4699b082d42b9", "payload_all_zero": false, "redacted": true}
+{"kind": "request", "address": 2109980, "length": 14, "packet": "cd010e0020321c00000000000000004a", "monotonic": 654269.94704175}
+{"kind": "reply", "address": 2109980, "length": 14, "packet": null, "monotonic": 654270.094699958, "packet_sha256": "33c036e1bc99e3eba5ef476fe29741a9f9465641063474caccd4699b082d42b9", "payload_all_zero": false, "redacted": true}
+{"kind": "request", "address": 2109994, "length": 14, "packet": "cd010e0020322a000000000000000058", "monotonic": 654270.094794708}
+{"kind": "reply", "address": 2109994, "length": 14, "packet": null, "monotonic": 654270.216854625, "packet_sha256": "33c036e1bc99e3eba5ef476fe29741a9f9465641063474caccd4699b082d42b9", "payload_all_zero": false, "redacted": true}
+{"kind": "request", "address": 2110008, "length": 14, "packet": "cd010e00203238000000000000000066", "monotonic": 654270.216952625}
+{"kind": "reply", "address": 2110008, "length": 14, "packet": null, "monotonic": 654270.349817958, "packet_sha256": "33c036e1bc99e3eba5ef476fe29741a9f9465641063474caccd4699b082d42b9", "payload_all_zero": false, "redacted": true}
+{"kind": "request", "address": 2110022, "length": 14, "packet": "cd010e00203246000000000000000074", "monotonic": 654270.34991675}
+{"kind": "reply", "address": 2110022, "length": 14, "packet": null, "monotonic": 654270.4847845, "packet_sha256": "33c036e1bc99e3eba5ef476fe29741a9f9465641063474caccd4699b082d42b9", "payload_all_zero": false, "redacted": true}
+{"kind": "request", "address": 2110036, "length": 14, "packet": "cd010e00203254000000000000000082", "monotonic": 654270.484883708}
+{"kind": "reply", "address": 2110036, "length": 14, "packet": null, "monotonic": 654270.605173375, "packet_sha256": "33c036e1bc99e3eba5ef476fe29741a9f9465641063474caccd4699b082d42b9", "payload_all_zero": false, "redacted": true}
+{"kind": "request", "address": 2110050, "length": 14, "packet": "cd010e00203262000000000000000090", "monotonic": 654270.605302416}
+{"kind": "reply", "address": 2110050, "length": 14, "packet": null, "monotonic": 654270.739916125, "packet_sha256": "33c036e1bc99e3eba5ef476fe29741a9f9465641063474caccd4699b082d42b9", "payload_all_zero": false, "redacted": true}
+{"kind": "request", "address": 2110064, "length": 14, "packet": "cd010e0020327000000000000000009e", "monotonic": 654270.740003625}
+{"kind": "reply", "address": 2110064, "length": 14, "packet": null, "monotonic": 654270.874633208, "packet_sha256": "33c036e1bc99e3eba5ef476fe29741a9f9465641063474caccd4699b082d42b9", "payload_all_zero": false, "redacted": true}
+{"kind": "request", "address": 2110078, "length": 14, "packet": "cd010e0020327e0000000000000000ac", "monotonic": 654270.874719041}
+{"kind": "reply", "address": 2110078, "length": 14, "packet": null, "monotonic": 654270.995676125, "packet_sha256": "33c036e1bc99e3eba5ef476fe29741a9f9465641063474caccd4699b082d42b9", "payload_all_zero": false, "redacted": true}
+{"kind": "request", "address": 2110092, "length": 14, "packet": "cd010e0020328c0000000000000000ba", "monotonic": 654270.99576575}
+{"kind": "reply", "address": 2110092, "length": 14, "packet": null, "monotonic": 654271.129529125, "packet_sha256": "33c036e1bc99e3eba5ef476fe29741a9f9465641063474caccd4699b082d42b9", "payload_all_zero": false, "redacted": true}
+{"kind": "request", "address": 2110106, "length": 14, "packet": "cd010e0020329a0000000000000000c8", "monotonic": 654271.129609791}
+{"kind": "reply", "address": 2110106, "length": 14, "packet": null, "monotonic": 654271.263745583, "packet_sha256": "33c036e1bc99e3eba5ef476fe29741a9f9465641063474caccd4699b082d42b9", "payload_all_zero": false, "redacted": true}
+{"kind": "request", "address": 2110120, "length": 14, "packet": "cd010e002032a80000000000000000d6", "monotonic": 654271.26383}
+{"kind": "reply", "address": 2110120, "length": 14, "packet": null, "monotonic": 654271.385754833, "packet_sha256": "33c036e1bc99e3eba5ef476fe29741a9f9465641063474caccd4699b082d42b9", "payload_all_zero": false, "redacted": true}
+{"kind": "request", "address": 2110134, "length": 14, "packet": "cd010e002032b60000000000000000e4", "monotonic": 654271.385839291}
+{"kind": "reply", "address": 2110134, "length": 14, "packet": null, "monotonic": 654271.534557, "packet_sha256": "33c036e1bc99e3eba5ef476fe29741a9f9465641063474caccd4699b082d42b9", "payload_all_zero": false, "redacted": true}
+{"kind": "request", "address": 2110148, "length": 14, "packet": "cd010e002032c40000000000000000f2", "monotonic": 654271.534641833}
+{"kind": "reply", "address": 2110148, "length": 14, "packet": null, "monotonic": 654271.66888025, "packet_sha256": "33c036e1bc99e3eba5ef476fe29741a9f9465641063474caccd4699b082d42b9", "payload_all_zero": false, "redacted": true}
+{"kind": "request", "address": 2110162, "length": 14, "packet": "cd010e002032d2000000000000000000", "monotonic": 654271.669001708}
+{"kind": "reply", "address": 2110162, "length": 14, "packet": null, "monotonic": 654271.79164125, "packet_sha256": "33c036e1bc99e3eba5ef476fe29741a9f9465641063474caccd4699b082d42b9", "payload_all_zero": false, "redacted": true}
+{"kind": "request", "address": 2110176, "length": 14, "packet": "cd010e002032e000000000000000000e", "monotonic": 654271.791739208}
+{"kind": "reply", "address": 2110176, "length": 14, "packet": null, "monotonic": 654271.924824541, "packet_sha256": "33c036e1bc99e3eba5ef476fe29741a9f9465641063474caccd4699b082d42b9", "payload_all_zero": false, "redacted": true}
+{"kind": "request", "address": 2110190, "length": 14, "packet": "cd010e002032ee00000000000000001c", "monotonic": 654271.924906708}
+{"kind": "reply", "address": 2110190, "length": 14, "packet": null, "monotonic": 654272.046017, "packet_sha256": "33c036e1bc99e3eba5ef476fe29741a9f9465641063474caccd4699b082d42b9", "payload_all_zero": false, "redacted": true}
+{"kind": "request", "address": 2110204, "length": 14, "packet": "cd010e002032fc00000000000000002a", "monotonic": 654272.04612525}
+{"kind": "reply", "address": 2110204, "length": 14, "packet": null, "monotonic": 654272.179571833, "packet_sha256": "33c036e1bc99e3eba5ef476fe29741a9f9465641063474caccd4699b082d42b9", "payload_all_zero": false, "redacted": true}
+{"kind": "request", "address": 2110218, "length": 14, "packet": "cd010e0020330a000000000000000039", "monotonic": 654272.179670541}
+{"kind": "reply", "address": 2110218, "length": 14, "packet": null, "monotonic": 654272.314855291, "packet_sha256": "33c036e1bc99e3eba5ef476fe29741a9f9465641063474caccd4699b082d42b9", "payload_all_zero": false, "redacted": true}
+{"kind": "request", "address": 2110232, "length": 14, "packet": "cd010e00203318000000000000000047", "monotonic": 654272.314945916}
+{"kind": "reply", "address": 2110232, "length": 14, "packet": null, "monotonic": 654272.436565208, "packet_sha256": "33c036e1bc99e3eba5ef476fe29741a9f9465641063474caccd4699b082d42b9", "payload_all_zero": false, "redacted": true}
+{"kind": "request", "address": 2110246, "length": 14, "packet": "cd010e00203326000000000000000055", "monotonic": 654272.436674791}
+{"kind": "reply", "address": 2110246, "length": 14, "packet": null, "monotonic": 654272.586831791, "packet_sha256": "33c036e1bc99e3eba5ef476fe29741a9f9465641063474caccd4699b082d42b9", "payload_all_zero": false, "redacted": true}
+{"kind": "request", "address": 2110260, "length": 14, "packet": "cd010e00203334000000000000000063", "monotonic": 654272.587068041}
+{"kind": "reply", "address": 2110260, "length": 14, "packet": null, "monotonic": 654272.719961083, "packet_sha256": "33c036e1bc99e3eba5ef476fe29741a9f9465641063474caccd4699b082d42b9", "payload_all_zero": false, "redacted": true}
+{"kind": "request", "address": 2110274, "length": 14, "packet": "cd010e00203342000000000000000071", "monotonic": 654272.72022575}
+{"kind": "reply", "address": 2110274, "length": 14, "packet": null, "monotonic": 654272.855949416, "packet_sha256": "33c036e1bc99e3eba5ef476fe29741a9f9465641063474caccd4699b082d42b9", "payload_all_zero": false, "redacted": true}
+{"kind": "request", "address": 2110288, "length": 14, "packet": "cd010e0020335000000000000000007f", "monotonic": 654272.856059458}
+{"kind": "reply", "address": 2110288, "length": 14, "packet": null, "monotonic": 654272.989481083, "packet_sha256": "33c036e1bc99e3eba5ef476fe29741a9f9465641063474caccd4699b082d42b9", "payload_all_zero": false, "redacted": true}
+{"kind": "request", "address": 2110302, "length": 14, "packet": "cd010e0020335e00000000000000008d", "monotonic": 654272.989701583}
+{"kind": "reply", "address": 2110302, "length": 14, "packet": null, "monotonic": 654273.111754708, "packet_sha256": "33c036e1bc99e3eba5ef476fe29741a9f9465641063474caccd4699b082d42b9", "payload_all_zero": false, "redacted": true}
+{"kind": "request", "address": 2110316, "length": 14, "packet": "cd010e0020336c00000000000000009b", "monotonic": 654273.111854583}
+{"kind": "reply", "address": 2110316, "length": 14, "packet": null, "monotonic": 654273.244636416, "packet_sha256": "33c036e1bc99e3eba5ef476fe29741a9f9465641063474caccd4699b082d42b9", "payload_all_zero": false, "redacted": true}
+{"kind": "request", "address": 2110330, "length": 6, "packet": "cd01060020337a0000000000000000a1", "monotonic": 654273.244745333}
+{"kind": "reply", "address": 2110330, "length": 6, "packet": null, "monotonic": 654273.366921333, "packet_sha256": "f9b1e5821c696f169956ebe14afd8e051d57340ef0b1193ae549ec5ac92d6c82", "payload_all_zero": false, "redacted": true}
+{"kind": "request", "address": 2102080, "length": 4, "packet": "cd010400201340000000000000000045", "monotonic": 654273.367032958}
+{"kind": "reply", "address": 2102080, "length": 4, "packet": "cd68372100000000000000000000008d", "monotonic": 654273.4999115}
+{"kind": "request", "address": 2102132, "length": 14, "packet": "cd010e00201374000000000000000083", "monotonic": 654273.500006416}
+{"kind": "reply", "address": 2102132, "length": 14, "packet": "cda017210048572100101420002414e1", "monotonic": 654273.634621}
+{"kind": "request", "address": 2102146, "length": 14, "packet": "cd010e00201382000000000000000091", "monotonic": 654273.634721458}
+{"kind": "reply", "address": 2102146, "length": 14, "packet": "cd2000010000005c572100ffffffffbe", "monotonic": 654273.756696166}
+{"kind": "request", "address": 2102160, "length": 14, "packet": "cd010e0020139000000000000000009f", "monotonic": 654273.756773083}
+{"kind": "reply", "address": 2102160, "length": 14, "packet": "cd5c5721005c57210000000000a01328", "monotonic": 654273.889414416}
+{"kind": "request", "address": 2102174, "length": 14, "packet": "cd010e0020139e0000000000000000ad", "monotonic": 654273.889486958}
+{"kind": "reply", "address": 2102174, "length": 14, "packet": "cd2000ffffffffa0132000a01320008f", "monotonic": 654274.011311375}
+{"kind": "request", "address": 2102188, "length": 14, "packet": "cd010e002013ac0000000000000000bb", "monotonic": 654274.011399041}
+{"kind": "reply", "address": 2102188, "length": 14, "packet": "cd010000006c372100ffffffff6c3731", "monotonic": 654274.14486175}
+{"kind": "request", "address": 2102202, "length": 14, "packet": "cd010e002013ba0000000000000000c9", "monotonic": 654274.144948416}
+{"kind": "reply", "address": 2102202, "length": 14, "packet": "cd21006c37210000000000c8132000ad", "monotonic": 654274.281622666}
+{"kind": "request", "address": 2102216, "length": 14, "packet": "cd010e002013c80000000000000000d7", "monotonic": 654274.281719333}
+{"kind": "reply", "address": 2102216, "length": 14, "packet": "cdffffffffc8132000c81320000000bf", "monotonic": 654274.414856625}
+{"kind": "request", "address": 2102230, "length": 14, "packet": "cd010e002013d60000000000000000e5", "monotonic": 654274.414930625}
+{"kind": "reply", "address": 2102230, "length": 14, "packet": "cd0000dc132000ffffffffdc132000e7", "monotonic": 654274.536129833}
+{"kind": "request", "address": 2102244, "length": 14, "packet": "cd010e002013e40000000000000000f3", "monotonic": 654274.5362165}
+{"kind": "reply", "address": 2102244, "length": 14, "packet": "cddc13200000000000f0132000fffffd", "monotonic": 654274.685825125}
+{"kind": "request", "address": 2102258, "length": 14, "packet": "cd010e002013f2000000000000000001", "monotonic": 654274.685906416}
+{"kind": "reply", "address": 2102258, "length": 14, "packet": "cdfffff0132000f01320000000000011", "monotonic": 654274.819586041}
+{"kind": "request", "address": 2102272, "length": 14, "packet": "cd010e00201400000000000000000010", "monotonic": 654274.81966175}
+{"kind": "reply", "address": 2102272, "length": 14, "packet": "cd04142000ffffffff04142000041451", "monotonic": 654274.955828208}
+{"kind": "request", "address": 2102286, "length": 14, "packet": "cd010e0020140e00000000000000001e", "monotonic": 654274.956011458}
+{"kind": "reply", "address": 2102286, "length": 14, "packet": "cd20000100000018142000ffffffff36", "monotonic": 654275.089815916}
+{"kind": "request", "address": 2102300, "length": 14, "packet": "cd010e0020141c00000000000000002c", "monotonic": 654275.089932833}
+{"kind": "reply", "address": 2102300, "length": 14, "packet": "cdc45b2100c45b2100000000002c148d", "monotonic": 654275.21098075}
+{"kind": "request", "address": 2102314, "length": 14, "packet": "cd010e0020142a00000000000000003a", "monotonic": 654275.211075958}
+{"kind": "reply", "address": 2102314, "length": 14, "packet": "cd2000ffffffff2c1420002c142000a9", "monotonic": 654275.344787}
+{"kind": "request", "address": 2102328, "length": 14, "packet": "cd010e00201438000000000000000048", "monotonic": 654275.344876166}
+{"kind": "reply", "address": 2102328, "length": 14, "packet": "cd0000000040142000ffffffff401491", "monotonic": 654275.467064916}
+{"kind": "request", "address": 2102342, "length": 14, "packet": "cd010e00201446000000000000000056", "monotonic": 654275.467143125}
+{"kind": "reply", "address": 2102342, "length": 14, "packet": "cd2000401420000000000054142000e9", "monotonic": 654275.599713916}
+{"kind": "request", "address": 2102356, "length": 14, "packet": "cd010e00201454000000000000000064", "monotonic": 654275.599812625}
+{"kind": "reply", "address": 2102356, "length": 14, "packet": "cdffffffff54142000541420000400dd", "monotonic": 654275.73536075}
+{"kind": "request", "address": 2102370, "length": 14, "packet": "cd010e00201462000000000000000072", "monotonic": 654275.73546275}
+{"kind": "reply", "address": 2102370, "length": 14, "packet": "cd000068142000fffffffff4522100cc", "monotonic": 654275.869025416}
+{"kind": "request", "address": 2102384, "length": 4, "packet": "cd010400201470000000000000000076", "monotonic": 654275.86911725}
+{"kind": "reply", "address": 2102384, "length": 4, "packet": "cdb42c210000000000000000000000ce", "monotonic": 654275.9919825}
+{"kind": "request", "address": 2109952, "length": 14, "packet": "cd010e0020320000000000000000002e", "monotonic": 654275.992069916}
+{"kind": "reply", "address": 2109952, "length": 14, "packet": null, "monotonic": 654276.126143625, "packet_sha256": "33c036e1bc99e3eba5ef476fe29741a9f9465641063474caccd4699b082d42b9", "payload_all_zero": false, "redacted": true}
+{"kind": "request", "address": 2109966, "length": 14, "packet": "cd010e0020320e00000000000000003c", "monotonic": 654276.126237208}
+{"kind": "reply", "address": 2109966, "length": 14, "packet": null, "monotonic": 654276.259873708, "packet_sha256": "33c036e1bc99e3eba5ef476fe29741a9f9465641063474caccd4699b082d42b9", "payload_all_zero": false, "redacted": true}
+{"kind": "request", "address": 2109980, "length": 14, "packet": "cd010e0020321c00000000000000004a", "monotonic": 654276.259974083}
+{"kind": "reply", "address": 2109980, "length": 14, "packet": null, "monotonic": 654276.380963666, "packet_sha256": "33c036e1bc99e3eba5ef476fe29741a9f9465641063474caccd4699b082d42b9", "payload_all_zero": false, "redacted": true}
+{"kind": "request", "address": 2109994, "length": 14, "packet": "cd010e0020322a000000000000000058", "monotonic": 654276.381049291}
+{"kind": "reply", "address": 2109994, "length": 14, "packet": null, "monotonic": 654276.531055375, "packet_sha256": "33c036e1bc99e3eba5ef476fe29741a9f9465641063474caccd4699b082d42b9", "payload_all_zero": false, "redacted": true}
+{"kind": "request", "address": 2110008, "length": 14, "packet": "cd010e00203238000000000000000066", "monotonic": 654276.531150791}
+{"kind": "reply", "address": 2110008, "length": 14, "packet": null, "monotonic": 654276.666952166, "packet_sha256": "33c036e1bc99e3eba5ef476fe29741a9f9465641063474caccd4699b082d42b9", "payload_all_zero": false, "redacted": true}
+{"kind": "request", "address": 2110022, "length": 14, "packet": "cd010e00203246000000000000000074", "monotonic": 654276.667039875}
+{"kind": "reply", "address": 2110022, "length": 14, "packet": null, "monotonic": 654276.799001708, "packet_sha256": "33c036e1bc99e3eba5ef476fe29741a9f9465641063474caccd4699b082d42b9", "payload_all_zero": false, "redacted": true}
+{"kind": "request", "address": 2110036, "length": 14, "packet": "cd010e00203254000000000000000082", "monotonic": 654276.799161291}
+{"kind": "reply", "address": 2110036, "length": 14, "packet": null, "monotonic": 654276.921594666, "packet_sha256": "33c036e1bc99e3eba5ef476fe29741a9f9465641063474caccd4699b082d42b9", "payload_all_zero": false, "redacted": true}
+{"kind": "request", "address": 2110050, "length": 14, "packet": "cd010e00203262000000000000000090", "monotonic": 654276.921691666}
+{"kind": "reply", "address": 2110050, "length": 14, "packet": null, "monotonic": 654277.054728125, "packet_sha256": "33c036e1bc99e3eba5ef476fe29741a9f9465641063474caccd4699b082d42b9", "payload_all_zero": false, "redacted": true}
+{"kind": "request", "address": 2110064, "length": 14, "packet": "cd010e0020327000000000000000009e", "monotonic": 654277.054813833}
+{"kind": "reply", "address": 2110064, "length": 14, "packet": null, "monotonic": 654277.176014583, "packet_sha256": "33c036e1bc99e3eba5ef476fe29741a9f9465641063474caccd4699b082d42b9", "payload_all_zero": false, "redacted": true}
+{"kind": "request", "address": 2110078, "length": 14, "packet": "cd010e0020327e0000000000000000ac", "monotonic": 654277.176125}
+{"kind": "reply", "address": 2110078, "length": 14, "packet": null, "monotonic": 654277.309630583, "packet_sha256": "33c036e1bc99e3eba5ef476fe29741a9f9465641063474caccd4699b082d42b9", "payload_all_zero": false, "redacted": true}
+{"kind": "request", "address": 2110092, "length": 14, "packet": "cd010e0020328c0000000000000000ba", "monotonic": 654277.309730291}
+{"kind": "reply", "address": 2110092, "length": 14, "packet": null, "monotonic": 654277.446171375, "packet_sha256": "33c036e1bc99e3eba5ef476fe29741a9f9465641063474caccd4699b082d42b9", "payload_all_zero": false, "redacted": true}
+{"kind": "request", "address": 2110106, "length": 14, "packet": "cd010e0020329a0000000000000000c8", "monotonic": 654277.446259}
+{"kind": "reply", "address": 2110106, "length": 14, "packet": null, "monotonic": 654277.579853375, "packet_sha256": "33c036e1bc99e3eba5ef476fe29741a9f9465641063474caccd4699b082d42b9", "payload_all_zero": false, "redacted": true}
+{"kind": "request", "address": 2110120, "length": 14, "packet": "cd010e002032a80000000000000000d6", "monotonic": 654277.579947333}
+{"kind": "reply", "address": 2110120, "length": 14, "packet": null, "monotonic": 654277.714899125, "packet_sha256": "33c036e1bc99e3eba5ef476fe29741a9f9465641063474caccd4699b082d42b9", "payload_all_zero": false, "redacted": true}
+{"kind": "request", "address": 2110134, "length": 14, "packet": "cd010e002032b60000000000000000e4", "monotonic": 654277.714984375}
+{"kind": "reply", "address": 2110134, "length": 14, "packet": null, "monotonic": 654277.836111916, "packet_sha256": "33c036e1bc99e3eba5ef476fe29741a9f9465641063474caccd4699b082d42b9", "payload_all_zero": false, "redacted": true}
+{"kind": "request", "address": 2110148, "length": 14, "packet": "cd010e002032c40000000000000000f2", "monotonic": 654277.836204541}
+{"kind": "reply", "address": 2110148, "length": 14, "packet": null, "monotonic": 654277.969690833, "packet_sha256": "33c036e1bc99e3eba5ef476fe29741a9f9465641063474caccd4699b082d42b9", "payload_all_zero": false, "redacted": true}
+{"kind": "request", "address": 2110162, "length": 14, "packet": "cd010e002032d2000000000000000000", "monotonic": 654277.969789333}
+{"kind": "reply", "address": 2110162, "length": 14, "packet": null, "monotonic": 654278.091893166, "packet_sha256": "33c036e1bc99e3eba5ef476fe29741a9f9465641063474caccd4699b082d42b9", "payload_all_zero": false, "redacted": true}
+{"kind": "request", "address": 2110176, "length": 14, "packet": "cd010e002032e000000000000000000e", "monotonic": 654278.091987083}
+{"kind": "reply", "address": 2110176, "length": 14, "packet": null, "monotonic": 654278.224681, "packet_sha256": "33c036e1bc99e3eba5ef476fe29741a9f9465641063474caccd4699b082d42b9", "payload_all_zero": false, "redacted": true}
+{"kind": "request", "address": 2110190, "length": 14, "packet": "cd010e002032ee00000000000000001c", "monotonic": 654278.2247715}
+{"kind": "reply", "address": 2110190, "length": 14, "packet": null, "monotonic": 654278.345764958, "packet_sha256": "33c036e1bc99e3eba5ef476fe29741a9f9465641063474caccd4699b082d42b9", "payload_all_zero": false, "redacted": true}
+{"kind": "request", "address": 2110204, "length": 14, "packet": "cd010e002032fc00000000000000002a", "monotonic": 654278.345861583}
+{"kind": "reply", "address": 2110204, "length": 14, "packet": null, "monotonic": 654278.4947905, "packet_sha256": "33c036e1bc99e3eba5ef476fe29741a9f9465641063474caccd4699b082d42b9", "payload_all_zero": false, "redacted": true}
+{"kind": "request", "address": 2110218, "length": 14, "packet": "cd010e0020330a000000000000000039", "monotonic": 654278.494894208}
+{"kind": "reply", "address": 2110218, "length": 14, "packet": null, "monotonic": 654278.629382375, "packet_sha256": "33c036e1bc99e3eba5ef476fe29741a9f9465641063474caccd4699b082d42b9", "payload_all_zero": false, "redacted": true}
+{"kind": "request", "address": 2110232, "length": 14, "packet": "cd010e00203318000000000000000047", "monotonic": 654278.629475625}
+{"kind": "reply", "address": 2110232, "length": 14, "packet": null, "monotonic": 654278.751860375, "packet_sha256": "33c036e1bc99e3eba5ef476fe29741a9f9465641063474caccd4699b082d42b9", "payload_all_zero": false, "redacted": true}
+{"kind": "request", "address": 2110246, "length": 14, "packet": "cd010e00203326000000000000000055", "monotonic": 654278.751956083}
+{"kind": "reply", "address": 2110246, "length": 14, "packet": null, "monotonic": 654278.884943166, "packet_sha256": "33c036e1bc99e3eba5ef476fe29741a9f9465641063474caccd4699b082d42b9", "payload_all_zero": false, "redacted": true}
+{"kind": "request", "address": 2110260, "length": 14, "packet": "cd010e00203334000000000000000063", "monotonic": 654278.885023166}
+{"kind": "reply", "address": 2110260, "length": 14, "packet": null, "monotonic": 654279.006100541, "packet_sha256": "33c036e1bc99e3eba5ef476fe29741a9f9465641063474caccd4699b082d42b9", "payload_all_zero": false, "redacted": true}
+{"kind": "request", "address": 2110274, "length": 14, "packet": "cd010e00203342000000000000000071", "monotonic": 654279.006174583}
+{"kind": "reply", "address": 2110274, "length": 14, "packet": null, "monotonic": 654279.139669708, "packet_sha256": "33c036e1bc99e3eba5ef476fe29741a9f9465641063474caccd4699b082d42b9", "payload_all_zero": false, "redacted": true}
+{"kind": "request", "address": 2110288, "length": 14, "packet": "cd010e0020335000000000000000007f", "monotonic": 654279.139742666}
+{"kind": "reply", "address": 2110288, "length": 14, "packet": null, "monotonic": 654279.275900875, "packet_sha256": "33c036e1bc99e3eba5ef476fe29741a9f9465641063474caccd4699b082d42b9", "payload_all_zero": false, "redacted": true}
+{"kind": "request", "address": 2110302, "length": 14, "packet": "cd010e0020335e00000000000000008d", "monotonic": 654279.275991875}
+{"kind": "reply", "address": 2110302, "length": 14, "packet": null, "monotonic": 654279.409822875, "packet_sha256": "33c036e1bc99e3eba5ef476fe29741a9f9465641063474caccd4699b082d42b9", "payload_all_zero": false, "redacted": true}
+{"kind": "request", "address": 2110316, "length": 14, "packet": "cd010e0020336c00000000000000009b", "monotonic": 654279.410139125}
+{"kind": "reply", "address": 2110316, "length": 14, "packet": null, "monotonic": 654279.55968325, "packet_sha256": "33c036e1bc99e3eba5ef476fe29741a9f9465641063474caccd4699b082d42b9", "payload_all_zero": false, "redacted": true}
+{"kind": "request", "address": 2110330, "length": 6, "packet": "cd01060020337a0000000000000000a1", "monotonic": 654279.559803375}
+{"kind": "reply", "address": 2110330, "length": 6, "packet": null, "monotonic": 654279.683015125, "packet_sha256": "f9b1e5821c696f169956ebe14afd8e051d57340ef0b1193ae549ec5ac92d6c82", "payload_all_zero": false, "redacted": true}
+{"kind": "request", "address": 2098048, "length": 14, "packet": "cd010e0020038000000000000000007f", "monotonic": 654279.683155291}
+{"kind": "reply", "address": 2098048, "length": 14, "packet": "cd007c200000700000007400007038f5", "monotonic": 654279.816811083}
+{"kind": "request", "address": 2098062, "length": 2, "packet": "cd01020020038e000000000000000081", "monotonic": 654279.816896583}
+{"kind": "reply", "address": 2098062, "length": 2, "packet": "cd0000000000000000000000000000cd", "monotonic": 654279.964552583}
+{"kind": "request", "address": 2098148, "length": 14, "packet": "cd010e002003e40000000000000000e3", "monotonic": 654279.964655291}
+{"kind": "reply", "address": 2098148, "length": 14, "packet": "cd002080000080040000a08400000015", "monotonic": 654280.086802125}
+{"kind": "request", "address": 2098162, "length": 14, "packet": "cd010e002003f20000000000000000f1", "monotonic": 654280.086893333}
+{"kind": "reply", "address": 2098162, "length": 14, "packet": "cd000000a084000040000000e0840095", "monotonic": 654280.219758041}
+{"kind": "request", "address": 2098176, "length": 14, "packet": "cd010e00200400000000000000000000", "monotonic": 654280.219858041}
+{"kind": "reply", "address": 2098176, "length": 14, "packet": "cd004002000000000100008000000090", "monotonic": 654280.341136333}
+{"kind": "request", "address": 2098190, "length": 6, "packet": "cd01060020040e000000000000000006", "monotonic": 654280.341248041}
+{"kind": "reply", "address": 2098190, "length": 6, "packet": "cd0000000000000000000000000000cd", "monotonic": 654280.474850458}
+{"kind": "request", "address": 2137260, "length": 1, "packet": "cd010100209cac000000000000000037", "monotonic": 654280.474935458}
+{"kind": "reply", "address": 2137260, "length": 1, "packet": "cd0000000000000000000000000000cd", "monotonic": 654280.609689041}
+{"kind": "stacks", "msp_all_paint_intact": true, "handles": 56, "pointer_following": false}
+{"kind": "disconnected", "confirmed": true}
+{"kind": "completed", "requests": 198, "flash_authorized": false, "capture_sha256": "9cc0038e7bd1233898acfad16f613ec7d20a5c14a37794716b4249c6b4b9ed9f"}

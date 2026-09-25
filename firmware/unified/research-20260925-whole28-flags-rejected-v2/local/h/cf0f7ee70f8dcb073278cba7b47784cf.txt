@@ -1,0 +1,17 @@
+0
+3917 19612486 1790303838886236147 d5a18db2be1017af7a87c9a2e014294e 0 /Users/akashanand/Claude_Whip/firmware/unified/control_owner.c
+3366 19612485 1790304066906659916 d00ba50efc1025a69b43acc669b2348a 0 /Users/akashanand/Claude_Whip/firmware/unified/control_owner.h
+3735 19585442 1790303743664040579 175543ec271a99667160f3fd8c6cfc35 0 /Users/akashanand/Claude_Whip/firmware/unified/control_mailbox.h
+1172 18581879 1760154798000000000 69b529ccb10bbb5d826c563cf9b929c1 1 include/stdbool.h
+31054 18581882 1760154798000000000 1df950c62cbc96dd5d9790733bbe6016 1 include/stdint.h
+2309 18632460 1790267119229203140 c4be219f66193f67be8b2834f34698fb 0 /Users/akashanand/Claude_Whip/firmware/unified/wire.h
+2562 18641843 1790151513010964878 8713c1d847ca3f69c5b58869a34b1da1 0 /Users/akashanand/Claude_Whip/firmware/unified/dispatch.h
+4837 18614101 1790157203404061923 9eecfa55a6826ed6a8956726cf6ef63f 0 /Users/akashanand/Claude_Whip/firmware/unified/adapter.h
+2787 18600618 1790145032800796642 88cb881ea3203454b5cca3e424d7e282 0 /Users/akashanand/Claude_Whip/firmware/unified/runtime.h
+1763 18519995 1790145032709819049 064a6c6649c7d24a09c69361626fc071 0 /Users/akashanand/Claude_Whip/firmware/unified/mode_controller.h
+2214 18578491 1790222394912196074 ecba69a244dbf9598c064f68e4906420 0 /Users/akashanand/Claude_Whip/firmware/unified/sample_tap.h
+4010 18611412 1790277054751789848 2af3f9bb70d23836cc329e50ffb8724e 0 /Users/akashanand/Claude_Whip/firmware/unified/health_adapter.h
+5764 18611883 1790269974821387763 7eef3a2bdce69ccad78434f78a2cc298 0 /Users/akashanand/Claude_Whip/firmware/unified/fresh_source.h
+4608 19432643 1790277522936288712 7fd0d2cb897748e758c0902bb6df02b1 0 /Users/akashanand/Claude_Whip/firmware/unified/stock_coordinator.h
+1348 18621153 1790149876599578694 e8a17b3b853b724c39b9c8da4f9f169a 0 /Users/akashanand/Claude_Whip/firmware/unified/stock_binding.h
+2334 19381493 1790270567954016214 ef24f6cc3e2bf480c5ca878ad3703e01 0 /Users/akashanand/Claude_Whip/firmware/unified/stock_health_commit.h

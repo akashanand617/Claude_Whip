@@ -1,0 +1,54 @@
+{
+  "schema": "whip.stack-gateway.capture.v1",
+  "evidence_kind": "device_capture",
+  "session_id": "stack-gateway",
+  "prerequisite_capture": {
+    "schema": "whip.capacity.capture.v1",
+    "evidence_kind": "device_capture",
+    "session_id": "stack-gateway",
+    "image_sha256": "0d18a0fa860d58ab8f984b5f542f45dac105241f47bf1c2af41321eb0431e14c",
+    "windows": [
+      {
+        "address": 2098048,
+        "data_hex": "007c2000007000000074000070380000",
+        "sha256": "d181b7378851e44b709578a730fdafcbcf658ee96e9a0ee2a199fba433d30099"
+      },
+      {
+        "address": 2098148,
+        "data_hex": "002080000080040000a084000000000000a084000040000000e084000040020000000001000080000000000000000000",
+        "sha256": "19f636dc558b3e0d11daebb254ecaaf76d5c3a8597e7219063bf55f3715bf32e"
+      },
+      {
+        "address": 8397208,
+        "data_hex": "00d08000001000000030800000a00000006082000040020000a084000000000000a084000000000000a084000000000000a084000000000000a084000000000000a084000000000000e0800000800100",
+        "sha256": "d74c3afddf382c36dd4c566c539d2dcff16a22e0c7f525a9c1a342875cc4e12f"
+      }
+    ]
+  },
+  "symbols_sha256": "6f5a59f6444c01328808ac148b9c60771410196ab3b57e08fc8ff90525934247",
+  "prior_stop_sha256": "4290a08b6703c6b3e2ddf262285a28100368253ccff6a46b9116d31df039f16d",
+  "app_rom_identifier": "f94c6b7e11c5eb118282f74a0c0cef5b",
+  "known_code_repeated_equal": true,
+  "windows": {
+    "gateway_entry_cap": {
+      "address": 18726,
+      "data_hex": "0fb410b5784803a90268002a01d00298904710bc08bc04b01847f7b5044684b0",
+      "sha256": "7f67ae203ee1252bbb7ff9c50d694f0b17ea31d90bdc44b807d8f88cd07f377b"
+    },
+    "upperstack_entry_slot": {
+      "address": 2101716,
+      "data_hex": "01e48000",
+      "sha256": "83ce321535edbf205c8337b34faef3b84e473ff54cb0b981cb36535c6fa523ee"
+    }
+  },
+  "repeated_equal": true,
+  "pointer_following": false,
+  "target_execution": false,
+  "keys_read": false,
+  "entry_pointer_semantics_verified": false,
+  "callback_drain_verified": false,
+  "complete_dispatch_verified": false,
+  "full_image_attestation": false,
+  "recovery_verified": false,
+  "flash_authorized": false
+}

@@ -1,0 +1,47 @@
+{"kind": "header", "started_wall": 1790114199.715858, "check_only": true, "flashing": false}
+{"kind": "connection", "cycle": 1, "device": {"address": "3C2FA77E-1BE3-A0C5-0DD5-DB6A3AD452B2", "name": "R02_CC07", "firmware": "RT02CR_3.12.07_260514", "hardware": "RT02CR_V3.1"}, "battery": [95, false]}
+{"cycle": 1, "phase": "identity", "kind": "code_read", "name": "raw_start_00", "address": "0x828186", "data": "5b480bf053fd0120c0020bf05cfd"}
+{"cycle": 1, "phase": "identity", "kind": "code_read", "name": "raw_start_0e", "address": "0x828194", "data": "04202de00120"}
+{"cycle": 1, "phase": "identity", "kind": "code_read", "name": "raw_period_00", "address": "0x8281f4", "data": "38703d4804220123d2003f491038"}
+{"cycle": 1, "phase": "identity", "kind": "code_read", "name": "raw_period_0e", "address": "0x828202", "data": "01f0"}
+{"cycle": 1, "phase": "identity", "kind": "code_read", "name": "disconnect_hook_00", "address": "0x82c8c8", "data": "7976b876787400f090fb2046ff38"}
+{"cycle": 1, "phase": "identity", "kind": "code_read", "name": "disconnect_hook_0e", "address": "0x82c8d6", "data": "143811d02046ff381738"}
+{"cycle": 1, "phase": "identity", "kind": "code_read", "name": "dfu_timer_00", "address": "0x82de80", "data": "c0070bd17d21c900e01ce5f703dc"}
+{"cycle": 1, "phase": "identity", "kind": "code_read", "name": "dfu_timer_0e", "address": "0x82de8e", "data": "002804d02078"}
+{"cycle": 1, "phase": "identity", "kind": "code_read", "name": "accel_range_00", "address": "0x831eb4", "data": "32200968884705210f20fff79afe"}
+{"cycle": 1, "phase": "identity", "kind": "code_read", "name": "accel_range_0e", "address": "0x831ec2", "data": "5e20"}
+{"cycle": 1, "phase": "identity", "kind": "code_read", "name": "idle_request_00", "address": "0x832a80", "data": "f8bda07900280ed0fff736fafff7"}
+{"cycle": 1, "phase": "identity", "kind": "code_read", "name": "idle_request_0e", "address": "0x832a8e", "data": "d4fe0028f5d0"}
+{"cycle": 1, "phase": "identity", "kind": "code_read", "name": "optical_enable_idle_guard_00", "address": "0x83563a", "data": "08bdf8b50446f4f70afb74490020"}
+{"cycle": 1, "phase": "identity", "kind": "code_read", "name": "optical_enable_idle_guard_0e", "address": "0x835648", "data": "0870724da021288827460f400126"}
+{"cycle": 1, "phase": "identity", "kind": "code_read", "name": "optical_enable_idle_guard_1c", "address": "0x835656", "data": "00281ad0420617d4002f12d00842"}
+{"cycle": 1, "phase": "identity", "kind": "code_read", "name": "optical_enable_idle_guard_2a", "address": "0x835664", "data": "10d16848ff21001f867091310180"}
+{"cycle": 1, "phase": "identity", "kind": "code_read", "name": "optical_enable_idle_guard_38", "address": "0x835672", "data": "09f0a9fc05f04bf86348001ffff7"}
+{"cycle": 1, "phase": "identity", "kind": "code_read", "name": "optical_enable_idle_guard_46", "address": "0x835680", "data": "93fc2e71002068732888"}
+{"cycle": 1, "phase": "identity", "kind": "code_read", "name": "optical_control_00", "address": "0x8382ae", "data": "08b500216a461170002805d00128"}
+{"cycle": 1, "phase": "identity", "kind": "code_read", "name": "optical_control_0e", "address": "0x8382bc", "data": "05d0022805d0012008bd117003e0"}
+{"cycle": 1, "phase": "identity", "kind": "code_read", "name": "optical_control_1c", "address": "0x8382ca", "data": "5a2000e0a5201070012269467b20"}
+{"cycle": 1, "phase": "identity", "kind": "code_read", "name": "optical_control_2a", "address": "0x8382d8", "data": "fcf7dbfc08bd"}
+{"cycle": 1, "phase": "identity", "kind": "identity", "classification": "original25Hz", "scope": "critical_code_sites_only_not_full_image"}
+{"kind": "packet", "cycle": 1, "phase": "identity", "t": 0.07536904199514538, "p": "cd5b480bf053fd0120c0020bf05cfdf2"}
+{"kind": "packet", "cycle": 1, "phase": "identity", "t": 0.10606916691176593, "p": "cd04202de0012000000000000000001f"}
+{"kind": "packet", "cycle": 1, "phase": "identity", "t": 0.13695054198615253, "p": "cd38703d4804220123d2003f491038e6"}
+{"kind": "packet", "cycle": 1, "phase": "identity", "t": 0.16732104192487895, "p": "cd01f0000000000000000000000000be"}
+{"kind": "packet", "cycle": 1, "phase": "identity", "t": 0.1974482499063015, "p": "cd7976b876787400f090fb2046ff38ee"}
+{"kind": "packet", "cycle": 1, "phase": "identity", "t": 0.22711445891764015, "p": "cd143811d02046ff38173800000000e6"}
+{"kind": "packet", "cycle": 1, "phase": "identity", "t": 0.25739945902023464, "p": "cdc0070bd17d21c900e01ce5f703dc8e"}
+{"kind": "packet", "cycle": 1, "phase": "identity", "t": 0.2873274589655921, "p": "cd002804d02078000000000000000061"}
+{"kind": "packet", "cycle": 1, "phase": "identity", "t": 0.3172354589914903, "p": "cd32200968884705210f20fff79afe42"}
+{"kind": "packet", "cycle": 1, "phase": "identity", "t": 0.34751124994363636, "p": "cd5e200000000000000000000000004b"}
+{"kind": "packet", "cycle": 1, "phase": "identity", "t": 0.3770717919105664, "p": "cdf8bda07900280ed0fff736fafff7bd"}
+{"kind": "packet", "cycle": 1, "phase": "identity", "t": 0.40594733401667327, "p": "cdd4fe0028f5d000000000000000008c"}
+{"kind": "packet", "cycle": 1, "phase": "identity", "t": 0.43604137492366135, "p": "cd08bdf8b50446f4f70afb7449002056"}
+{"kind": "packet", "cycle": 1, "phase": "identity", "t": 0.48039933398831636, "p": "cd0870724da021288827460f40012658"}
+{"kind": "packet", "cycle": 1, "phase": "identity", "t": 0.5099841669434682, "p": "cd00281ad0420617d4002f12d008426d"}
+{"kind": "packet", "cycle": 1, "phase": "identity", "t": 0.542298708925955, "p": "cd10d16848ff21001f867091310180d6"}
+{"kind": "packet", "cycle": 1, "phase": "identity", "t": 0.5854457089444622, "p": "cd09f0a9fc05f04bf86348001ffff763"}
+{"kind": "packet", "cycle": 1, "phase": "identity", "t": 0.6176175000146031, "p": "cd93fc2e7100206873288800000000a6"}
+{"kind": "packet", "cycle": 1, "phase": "identity", "t": 0.6472008749842644, "p": "cd08b500216a461170002805d0012802"}
+{"kind": "packet", "cycle": 1, "phase": "identity", "t": 0.6770012089982629, "p": "cd05d0022805d0012008bd117003e0eb"}
+{"kind": "packet", "cycle": 1, "phase": "identity", "t": 0.7061944589950144, "p": "cd5a2000e0a5201070012269467b20d9"}
+{"kind": "packet", "cycle": 1, "phase": "identity", "t": 0.7363628749735653, "p": "cdfcf7dbfc08bd00000000000000005c"}

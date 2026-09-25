@@ -1,0 +1,1147 @@
+{
+  "schema": 1,
+  "phase": "execution",
+  "valid": true,
+  "exitstatus": 0,
+  "collected": [
+    "tests/test_retired_stock_switch.py::test_persistent_retired_layout_runs_compiled_switch_and_original_health",
+    "tests/test_retired_stock_switch.py::test_retired_layout_stop_failures_keep_gesture_closed[take]",
+    "tests/test_retired_stock_switch.py::test_retired_layout_stop_failures_keep_gesture_closed[reset]",
+    "tests/test_retired_stock_switch.py::test_retired_layout_stop_failures_keep_gesture_closed[stop]",
+    "tests/test_retired_stock_switch.py::test_retired_layout_stop_failures_keep_gesture_closed[give]",
+    "tests/test_retired_stock_switch.py::test_retired_layout_stop_failures_keep_gesture_closed[physical]",
+    "tests/test_retired_stock_switch.py::test_retired_layout_stop_failures_keep_gesture_closed[retirement]",
+    "tests/test_retired_stock_switch.py::test_retired_layout_resume_rejects_stale_settings[new_revision]",
+    "tests/test_retired_stock_switch.py::test_retired_layout_resume_rejects_stale_settings[aba]",
+    "tests/test_retired_stock_switch.py::test_retired_layout_resume_rejects_stale_settings[unversioned_controls]",
+    "tests/test_retired_stock_switch.py::test_retired_layout_late_stop_receipt_never_advances_new_state[disconnect]",
+    "tests/test_retired_stock_switch.py::test_retired_layout_late_stop_receipt_never_advances_new_state[charging]",
+    "tests/test_retired_stock_switch.py::test_retired_layout_late_stop_receipt_never_advances_new_state[timeout]",
+    "tests/test_retired_stock_switch.py::test_retired_layout_keeps_code_and_data_boundaries_closed",
+    "tests/test_retired_stock_switch.py::test_retired_layout_retirement_mask_mutant_is_detected",
+    "tests/test_retired_stock_switch.py::test_unknown_inventory_stays_default_health_in_retired_layout",
+    "tests/test_unified_discovery.py::test_artificial_candidate_reproduces_and_never_passes_production_placement",
+    "tests/test_unified_discovery.py::test_encoder_exact_bytes_unaligned_output_and_unchanged_neighbors[0]",
+    "tests/test_unified_discovery.py::test_encoder_exact_bytes_unaligned_output_and_unchanged_neighbors[1]",
+    "tests/test_unified_discovery.py::test_encoder_exact_bytes_unaligned_output_and_unchanged_neighbors[2]",
+    "tests/test_unified_discovery.py::test_encoder_exact_bytes_unaligned_output_and_unchanged_neighbors[3]",
+    "tests/test_unified_discovery.py::test_zero_identifiers_do_not_publish_partial_value[0-1]",
+    "tests/test_unified_discovery.py::test_zero_identifiers_do_not_publish_partial_value[1-0]",
+    "tests/test_unified_discovery.py::test_zero_identifiers_do_not_publish_partial_value[0-0]",
+    "tests/test_unified_discovery.py::test_null_encoder_output_never_dereferences_null",
+    "tests/test_unified_discovery.py::test_read_view_full_width_offset_and_borrowed_lifetime_contract[0]",
+    "tests/test_unified_discovery.py::test_read_view_full_width_offset_and_borrowed_lifetime_contract[1]",
+    "tests/test_unified_discovery.py::test_read_view_full_width_offset_and_borrowed_lifetime_contract[19]",
+    "tests/test_unified_discovery.py::test_read_view_full_width_offset_and_borrowed_lifetime_contract[20]",
+    "tests/test_unified_discovery.py::test_read_view_full_width_offset_and_borrowed_lifetime_contract[21]",
+    "tests/test_unified_discovery.py::test_read_view_full_width_offset_and_borrowed_lifetime_contract[65536]",
+    "tests/test_unified_discovery.py::test_read_view_full_width_offset_and_borrowed_lifetime_contract[4294901760]",
+    "tests/test_unified_discovery.py::test_read_view_full_width_offset_and_borrowed_lifetime_contract[4294967295]",
+    "tests/test_unified_discovery.py::test_null_view_input_clears_fields_and_null_output_is_rejected",
+    "tests/test_unified_discovery.py::test_swift_decodes_actual_arm_values_and_rejects_malformed_identity",
+    "tests/test_discovery_budget.py::test_actual_link_preserves_all_objects_and_exact_interval_geometry",
+    "tests/test_discovery_budget.py::test_geometry_inventory_and_constant_mutants_fail_closed[entry]",
+    "tests/test_discovery_budget.py::test_geometry_inventory_and_constant_mutants_fail_closed[machine]",
+    "tests/test_discovery_budget.py::test_geometry_inventory_and_constant_mutants_fail_closed[moved_start]",
+    "tests/test_discovery_budget.py::test_geometry_inventory_and_constant_mutants_fail_closed[moved_size]",
+    "tests/test_discovery_budget.py::test_geometry_inventory_and_constant_mutants_fail_closed[append_bound]",
+    "tests/test_discovery_budget.py::test_geometry_inventory_and_constant_mutants_fail_closed[overlap]",
+    "tests/test_discovery_budget.py::test_geometry_inventory_and_constant_mutants_fail_closed[file_overlap]",
+    "tests/test_discovery_budget.py::test_geometry_inventory_and_constant_mutants_fail_closed[writable]",
+    "tests/test_discovery_budget.py::test_geometry_inventory_and_constant_mutants_fail_closed[relocation]",
+    "tests/test_discovery_budget.py::test_geometry_inventory_and_constant_mutants_fail_closed[load_gap]",
+    "tests/test_discovery_budget.py::test_geometry_inventory_and_constant_mutants_fail_closed[load_write]",
+    "tests/test_discovery_budget.py::test_geometry_inventory_and_constant_mutants_fail_closed[unwind_header]",
+    "tests/test_discovery_budget.py::test_geometry_inventory_and_constant_mutants_fail_closed[missing_old_function]",
+    "tests/test_discovery_budget.py::test_geometry_inventory_and_constant_mutants_fail_closed[missing_discovery]",
+    "tests/test_discovery_budget.py::test_geometry_inventory_and_constant_mutants_fail_closed[extra_function]",
+    "tests/test_discovery_budget.py::test_geometry_inventory_and_constant_mutants_fail_closed[missing_constant]",
+    "tests/test_discovery_budget.py::test_geometry_inventory_and_constant_mutants_fail_closed[service_bytes]",
+    "tests/test_discovery_budget.py::test_geometry_inventory_and_constant_mutants_fail_closed[undefined]",
+    "tests/test_discovery_budget.py::test_old_object_pin_mutation_is_rejected_before_output",
+    "tests/test_discovery_budget.py::test_old_source_and_tool_pins_are_checked_before_output[source]",
+    "tests/test_discovery_budget.py::test_old_source_and_tool_pins_are_checked_before_output[tool]",
+    "tests/test_discovery_budget.py::test_later_compile_cannot_rebaseline_earlier_discovery_opcode",
+    "tests/test_discovery_budget.py::test_failed_link_retains_logs_map_and_no_elf_or_margin",
+    "tests/test_discovery_budget.py::test_real_append_discovery_calls_preserve_bytes_and_mask[1311768464867721216-18364758542507835392-1-0]",
+    "tests/test_discovery_budget.py::test_real_append_discovery_calls_preserve_bytes_and_mask[1311768464867721216-18364758542507835392-1-1]",
+    "tests/test_discovery_budget.py::test_real_append_discovery_calls_preserve_bytes_and_mask[18446744073709551615-9223372036854775809-3-0]",
+    "tests/test_discovery_budget.py::test_real_append_discovery_calls_preserve_bytes_and_mask[18446744073709551615-9223372036854775809-3-1]"
+  ],
+  "deselected": [],
+  "collection_problems": [],
+  "reports": {
+    "tests/test_retired_stock_switch.py::test_persistent_retired_layout_runs_compiled_switch_and_original_health": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_retired_stock_switch.py::test_retired_layout_stop_failures_keep_gesture_closed[take]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_retired_stock_switch.py::test_retired_layout_stop_failures_keep_gesture_closed[reset]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_retired_stock_switch.py::test_retired_layout_stop_failures_keep_gesture_closed[stop]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_retired_stock_switch.py::test_retired_layout_stop_failures_keep_gesture_closed[give]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_retired_stock_switch.py::test_retired_layout_stop_failures_keep_gesture_closed[physical]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_retired_stock_switch.py::test_retired_layout_stop_failures_keep_gesture_closed[retirement]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_retired_stock_switch.py::test_retired_layout_resume_rejects_stale_settings[new_revision]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_retired_stock_switch.py::test_retired_layout_resume_rejects_stale_settings[aba]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_retired_stock_switch.py::test_retired_layout_resume_rejects_stale_settings[unversioned_controls]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_retired_stock_switch.py::test_retired_layout_late_stop_receipt_never_advances_new_state[disconnect]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_retired_stock_switch.py::test_retired_layout_late_stop_receipt_never_advances_new_state[charging]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_retired_stock_switch.py::test_retired_layout_late_stop_receipt_never_advances_new_state[timeout]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_retired_stock_switch.py::test_retired_layout_keeps_code_and_data_boundaries_closed": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_retired_stock_switch.py::test_retired_layout_retirement_mask_mutant_is_detected": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_retired_stock_switch.py::test_unknown_inventory_stays_default_health_in_retired_layout": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_unified_discovery.py::test_artificial_candidate_reproduces_and_never_passes_production_placement": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_unified_discovery.py::test_encoder_exact_bytes_unaligned_output_and_unchanged_neighbors[0]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_unified_discovery.py::test_encoder_exact_bytes_unaligned_output_and_unchanged_neighbors[1]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_unified_discovery.py::test_encoder_exact_bytes_unaligned_output_and_unchanged_neighbors[2]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_unified_discovery.py::test_encoder_exact_bytes_unaligned_output_and_unchanged_neighbors[3]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_unified_discovery.py::test_zero_identifiers_do_not_publish_partial_value[0-1]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_unified_discovery.py::test_zero_identifiers_do_not_publish_partial_value[1-0]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_unified_discovery.py::test_zero_identifiers_do_not_publish_partial_value[0-0]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_unified_discovery.py::test_null_encoder_output_never_dereferences_null": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_unified_discovery.py::test_read_view_full_width_offset_and_borrowed_lifetime_contract[0]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_unified_discovery.py::test_read_view_full_width_offset_and_borrowed_lifetime_contract[1]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_unified_discovery.py::test_read_view_full_width_offset_and_borrowed_lifetime_contract[19]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_unified_discovery.py::test_read_view_full_width_offset_and_borrowed_lifetime_contract[20]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_unified_discovery.py::test_read_view_full_width_offset_and_borrowed_lifetime_contract[21]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_unified_discovery.py::test_read_view_full_width_offset_and_borrowed_lifetime_contract[65536]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_unified_discovery.py::test_read_view_full_width_offset_and_borrowed_lifetime_contract[4294901760]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_unified_discovery.py::test_read_view_full_width_offset_and_borrowed_lifetime_contract[4294967295]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_unified_discovery.py::test_null_view_input_clears_fields_and_null_output_is_rejected": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_unified_discovery.py::test_swift_decodes_actual_arm_values_and_rejects_malformed_identity": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_discovery_budget.py::test_actual_link_preserves_all_objects_and_exact_interval_geometry": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_discovery_budget.py::test_geometry_inventory_and_constant_mutants_fail_closed[entry]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_discovery_budget.py::test_geometry_inventory_and_constant_mutants_fail_closed[machine]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_discovery_budget.py::test_geometry_inventory_and_constant_mutants_fail_closed[moved_start]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_discovery_budget.py::test_geometry_inventory_and_constant_mutants_fail_closed[moved_size]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_discovery_budget.py::test_geometry_inventory_and_constant_mutants_fail_closed[append_bound]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_discovery_budget.py::test_geometry_inventory_and_constant_mutants_fail_closed[overlap]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_discovery_budget.py::test_geometry_inventory_and_constant_mutants_fail_closed[file_overlap]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_discovery_budget.py::test_geometry_inventory_and_constant_mutants_fail_closed[writable]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_discovery_budget.py::test_geometry_inventory_and_constant_mutants_fail_closed[relocation]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_discovery_budget.py::test_geometry_inventory_and_constant_mutants_fail_closed[load_gap]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_discovery_budget.py::test_geometry_inventory_and_constant_mutants_fail_closed[load_write]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_discovery_budget.py::test_geometry_inventory_and_constant_mutants_fail_closed[unwind_header]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_discovery_budget.py::test_geometry_inventory_and_constant_mutants_fail_closed[missing_old_function]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_discovery_budget.py::test_geometry_inventory_and_constant_mutants_fail_closed[missing_discovery]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_discovery_budget.py::test_geometry_inventory_and_constant_mutants_fail_closed[extra_function]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_discovery_budget.py::test_geometry_inventory_and_constant_mutants_fail_closed[missing_constant]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_discovery_budget.py::test_geometry_inventory_and_constant_mutants_fail_closed[service_bytes]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_discovery_budget.py::test_geometry_inventory_and_constant_mutants_fail_closed[undefined]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_discovery_budget.py::test_old_object_pin_mutation_is_rejected_before_output": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_discovery_budget.py::test_old_source_and_tool_pins_are_checked_before_output[source]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_discovery_budget.py::test_old_source_and_tool_pins_are_checked_before_output[tool]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_discovery_budget.py::test_later_compile_cannot_rebaseline_earlier_discovery_opcode": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_discovery_budget.py::test_failed_link_retains_logs_map_and_no_elf_or_margin": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_discovery_budget.py::test_real_append_discovery_calls_preserve_bytes_and_mask[1311768464867721216-18364758542507835392-1-0]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_discovery_budget.py::test_real_append_discovery_calls_preserve_bytes_and_mask[1311768464867721216-18364758542507835392-1-1]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_discovery_budget.py::test_real_append_discovery_calls_preserve_bytes_and_mask[18446744073709551615-9223372036854775809-3-0]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_discovery_budget.py::test_real_append_discovery_calls_preserve_bytes_and_mask[18446744073709551615-9223372036854775809-3-1]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ]
+  },
+  "violations": []
+}

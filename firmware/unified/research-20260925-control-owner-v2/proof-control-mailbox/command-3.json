@@ -1,0 +1,26 @@
+{
+  "command": [
+    "/usr/bin/clang",
+    "--target=armv6m-none-eabi",
+    "-mcpu=cortex-m0plus",
+    "-mthumb",
+    "-ffreestanding",
+    "-fno-builtin",
+    "-Oz",
+    "-std=c11",
+    "-Wall",
+    "-Wextra",
+    "-Werror",
+    "-fstack-usage",
+    "-I",
+    "/Users/akashanand/Claude_Whip/firmware/unified",
+    "-c",
+    "/Users/akashanand/Claude_Whip/firmware/unified/compiler_runtime.c",
+    "-o",
+    "/private/tmp/whip-control-owner-proof.46Zyej/pytest-output-v2/control-mailbox0/compiler_runtime-repeat.o"
+  ],
+  "stdin_sha256": null,
+  "returncode": 0,
+  "stdout": "",
+  "stderr": ""
+}

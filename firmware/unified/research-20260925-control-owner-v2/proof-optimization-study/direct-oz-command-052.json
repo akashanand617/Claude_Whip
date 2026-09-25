@@ -1,0 +1,22 @@
+{
+  "command": [
+    "/tmp/whip-unified-build.m1E9lk/zig-aarch64-macos-0.15.2/zig",
+    "ld.lld",
+    "-T",
+    "/tmp/whip-owner-lto.vFb7OT/UNCHANGED-nine-holes.ld",
+    "-e",
+    "wd_init",
+    "--no-undefined",
+    "--no-gc-sections",
+    "--build-id=none",
+    "-z",
+    "max-page-size=4",
+    "-Map=/tmp/whip-owner-lto.vFb7OT/direct-oz-all25-FAILED-NOT-FIT.map",
+    "-o",
+    "/tmp/whip-owner-lto.vFb7OT/direct-oz-all25-REFUSED.elf",
+    "/tmp/whip-owner-lto.vFb7OT/direct-oz-all25-LTO-NOT-FIRMWARE.o"
+  ],
+  "exit": 1,
+  "stdout": "",
+  "stderr": "ld.lld: error: undefined symbol: wco_monotonic_ms\n>>> referenced by ld-temp.o\n>>>               /tmp/whip-owner-lto.vFb7OT/direct-oz-all25-LTO-NOT-FIRMWARE.o:(wco_service)\n>>> referenced by ld-temp.o\n>>>               /tmp/whip-owner-lto.vFb7OT/direct-oz-all25-LTO-NOT-FIRMWARE.o:(wco_service)\n\nld.lld: error: undefined symbol: wco_bound_owner\n>>> referenced by ld-temp.o\n>>>               /tmp/whip-owner-lto.vFb7OT/direct-oz-all25-LTO-NOT-FIRMWARE.o:(wuw_supervise)\n\nld.lld: error: undefined symbol: wco_bound_stock\n>>> referenced by ld-temp.o\n>>>               /tmp/whip-owner-lto.vFb7OT/direct-oz-all25-LTO-NOT-FIRMWARE.o:(wuw_supervise)\n\nld.lld: error: whole text changed\nld.lld: error: whole text changed\nld.lld: error: whole text changed\nld.lld: error: whole text changed\nld.lld: error: whole text changed\nld.lld: error: whole text changed\nld.lld: error: whole text changed\nld.lld: error: whole text changed\nld.lld: error: whole text changed\nld.lld: error: whole text changed\nld.lld: error: whole text changed\nld.lld: error: whole text changed\nld.lld: error: whole text changed\nld.lld: error: whole text changed\nld.lld: error: whole text changed\nld.lld: error: whole text changed\nld.lld: error: whole text changed\nld.lld: error: too many errors emitted, stopping now (use --error-limit=0 to see all errors)\n"
+}

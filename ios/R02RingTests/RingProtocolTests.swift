@@ -2,11 +2,73 @@ import XCTest
 @testable import R02Ring
 
 final class RingProtocolTests: XCTestCase {
+    func testConnectedRecoveryRejectsUnrelatedAndUnnamedHIDDevices() {
+        let airPods = RingRecoveryCandidate(
+            id: UUID(), name: "AirPods", matchedRingSpecificService: false
+        )
+        let unnamedHID = RingRecoveryCandidate(
+            id: UUID(), name: nil, matchedRingSpecificService: false
+        )
+        XCTAssertNil(RingRecoverySelector.select([airPods, unnamedHID], preferredID: nil))
+    }
+
+    func testConnectedRecoveryAcceptsOneNamedR02FromHID() {
+        let ring = RingRecoveryCandidate(
+            id: UUID(), name: "R02_CC07", matchedRingSpecificService: false
+        )
+        let unrelated = RingRecoveryCandidate(
+            id: UUID(), name: "AirPods", matchedRingSpecificService: false
+        )
+        XCTAssertEqual(RingRecoverySelector.select([unrelated, ring], preferredID: nil), ring.id)
+    }
+
+    func testConnectedRecoveryAcceptsUnnamedRingSpecificServiceAndDeduplicatesIt() {
+        let id = UUID()
+        let hid = RingRecoveryCandidate(id: id, name: nil, matchedRingSpecificService: false)
+        let uart = RingRecoveryCandidate(id: id, name: nil, matchedRingSpecificService: true)
+        XCTAssertEqual(RingRecoverySelector.select([hid, uart], preferredID: nil), id)
+    }
+
+    func testConnectedRecoveryDoesNotGuessBetweenTwoRings() {
+        let first = RingRecoveryCandidate(
+            id: UUID(), name: "R02_CC07", matchedRingSpecificService: false
+        )
+        let second = RingRecoveryCandidate(
+            id: UUID(), name: nil, matchedRingSpecificService: true
+        )
+        XCTAssertNil(RingRecoverySelector.select([first, second], preferredID: nil))
+        XCTAssertEqual(RingRecoverySelector.select([first, second], preferredID: second.id), second.id)
+    }
+
+    func testHistoricalRecoveryAcceptsOnlyExactPerRingKeys() {
+        let id = UUID()
+        let keys = [
+            "lastHealthSync.\(id.uuidString)",
+            "ringFirmwareMode.\(id.uuidString)",
+            "ringFirmwareMode.unpaired",
+            "lastHealthSync.not-a-uuid",
+            "unrelated.\(UUID().uuidString)",
+        ]
+        XCTAssertEqual(RingRecoverySelector.historicalIdentifiers(from: keys), [id])
+    }
+
+    func testRevokedUnifiedFirmwareCannotBeInstalled() {
+        XCTAssertFalse(BundledFirmware.unifiedInstallEnabled)
+    }
+
     func testPacketHasSixteenBytesAndChecksum() {
         let packet = ColmiR02Protocol.packet(command: 0x16, payload: [2, 1, 5])
         XCTAssertEqual(packet.count, 16)
         XCTAssertEqual(Array(packet.prefix(4)), [0x16, 2, 1, 5])
         XCTAssertTrue(ColmiR02Protocol.isValidPacket(packet))
+    }
+
+    func testUnifiedModeUsesOnlyAuditedRawControlPackets() {
+        XCTAssertEqual(Array(ColmiR02Protocol.startRawMotionPacket.prefix(2)), [0xa1, 0x04])
+        XCTAssertEqual(ColmiR02Protocol.stopRawMotionPackets.map { Array($0.prefix(2)) },
+                       [[0xa1, 0x05], [0xa1, 0x02]])
+        XCTAssertTrue(ColmiR02Protocol.isValidPacket(ColmiR02Protocol.startRawMotionPacket))
+        XCTAssertTrue(ColmiR02Protocol.stopRawMotionPackets.allSatisfy(ColmiR02Protocol.isValidPacket))
     }
 
     func testHeartRateRequestEncodesEpochLittleEndian() {
@@ -39,7 +101,13 @@ final class RingProtocolTests: XCTestCase {
         terminal[0] = 0x15
         terminal[1] = 23
         terminal[15] = ColmiR02Protocol.checksum(terminal.prefix(15))
-        XCTAssertTrue(parser.ingest(Data(terminal)))
+        XCTAssertFalse(parser.ingest(Data(terminal)))
+        XCTAssertThrowsError(try parser.result(from: []))
+        // The terminal index must not hide missing packets. Fill every hole.
+        for index in 1...22 where index != 7 {
+            let packet = ColmiR02Protocol.packet(command: 0x15, payload: [UInt8(index)])
+            XCTAssertEqual(parser.ingest(packet), index == 22)
+        }
 
         let log = try parser.result(from: [])
         let packetSevenOffset = 9 + (7 - 2) * 13
@@ -104,4 +172,64 @@ final class RingProtocolTests: XCTestCase {
             }
         }
     }
+
+    func testSleepRejectsEveryTruncationBeforeReplacingHistory() throws {
+        let payload = Data([1, 0, 8, 0xe2, 0xff, 0xa4, 0x01, 2, 45, 3, 90])
+        for end in 0..<payload.count { XCTAssertThrowsError(try SleepPayloadParser.parse(payload.prefix(end))) }
+        XCTAssertThrowsError(try SleepPayloadParser.parse(payload + Data([0])))
+        XCTAssertThrowsError(try SleepPayloadParser.parse(Data([2]) + payload.dropFirst()))
+    }
+
+    func testStepTerminalCannotCompleteMissingIndices() throws {
+        let parser = StepLogParser()
+        let header = ColmiR02Protocol.packet(command: 0x43, payload: [0xf0])
+        let last = ColmiR02Protocol.packet(command: 0x43, payload: [0x26, 0x09, 0x22, 1, 1, 2])
+        XCTAssertFalse(parser.ingest(header))
+        XCTAssertFalse(parser.ingest(last))
+        XCTAssertFalse(parser.ingest(last))
+        XCTAssertThrowsError(try parser.result(from: []))
+        let first = ColmiR02Protocol.packet(command: 0x43, payload: [0x26, 0x09, 0x22, 0, 0, 2])
+        XCTAssertTrue(parser.ingest(first))
+        XCTAssertEqual(try parser.result(from: []).count, 2)
+    }
+
+    func testDFUFramesMatchValidatedPythonImplementation() throws {
+        let firmware = Data("abc".utf8)
+        XCTAssertEqual(R02DFU.frame(command: 1).hex, "bc010000ffff")
+        XCTAssertEqual(try R02DFU.initFrame(firmware: firmware, type: 4).hex,
+                       "bc0209000409040300000049572601")
+        XCTAssertEqual(try R02DFU.dataFrame(firmware: firmware, index: 0).hex,
+                       "bc03050021570100616263")
+        XCTAssertEqual(R02DFU.frame(command: 4).hex, "bc040000ffff")
+        XCTAssertEqual(R02DFU.frame(command: 5).hex, "bc050000ffff")
+    }
+
+    func testFirmwareFingerprintUsesOnlyReviewedReadSites() {
+        XCTAssertEqual(FirmwareIdentity.sites.count, 22)
+        XCTAssertEqual(FirmwareIdentity.sites.reduce(0) { $0 + $1.length }, 244)
+        XCTAssertEqual(FirmwareIdentity.unifiedSites.count, 9)
+        XCTAssertEqual(FirmwareIdentity.unifiedSites.reduce(0) { $0 + $1.length }, 72)
+        for site in FirmwareIdentity.sites + FirmwareIdentity.unifiedSites {
+            let packet = FirmwareIdentity.readPacket(site)
+            XCTAssertEqual(packet[0], 0xcd)
+            XCTAssertEqual(packet[1], 1)
+            XCTAssertTrue(ColmiR02Protocol.isValidPacket(packet))
+        }
+    }
+
+    func testBundledFirmwareImagesArePinnedAndCompatible() throws {
+        let gesture = try BundledFirmware.gesture.load()
+        let stock = try BundledFirmware.health.load()
+        let unified = try BundledFirmware.unified.load()
+        XCTAssertEqual(gesture.count, 137_540)
+        XCTAssertEqual(stock.count, 138_016)
+        XCTAssertEqual(unified.count, 137_540)
+        XCTAssertEqual(try BundledFirmware.gesture.declaredHardware(in: gesture), "RT02CR_V3.1")
+        XCTAssertEqual(try BundledFirmware.health.declaredHardware(in: stock), "RT02CR_V3.1")
+        XCTAssertEqual(try BundledFirmware.unified.declaredHardware(in: unified), "RT02CR_V3.1")
+    }
+}
+
+private extension Data {
+    var hex: String { map { String(format: "%02x", $0) }.joined() }
 }

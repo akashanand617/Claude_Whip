@@ -1,0 +1,44 @@
+{
+  "schema": "whip.rom-timers.capture.v1",
+  "evidence_kind": "device_capture",
+  "session_id": "new-rom",
+  "prerequisite_capture": {
+    "schema": "whip.capacity.capture.v1",
+    "evidence_kind": "device_capture",
+    "session_id": "new-rom",
+    "image_sha256": "0d18a0fa860d58ab8f984b5f542f45dac105241f47bf1c2af41321eb0431e14c",
+    "windows": [
+      {
+        "address": 2098048,
+        "data_hex": "007c2000007000000074000070380000",
+        "sha256": "d181b7378851e44b709578a730fdafcbcf658ee96e9a0ee2a199fba433d30099"
+      },
+      {
+        "address": 2098148,
+        "data_hex": "002080000080040000a084000000000000a084000040000000e084000040020000000001000080000000000000000000",
+        "sha256": "19f636dc558b3e0d11daebb254ecaaf76d5c3a8597e7219063bf55f3715bf32e"
+      },
+      {
+        "address": 8397208,
+        "data_hex": "00d08000001000000030800000a00000006082000040020000a084000000000000a084000000000000a084000000000000a084000000000000a084000000000000a084000000000000e0800000800100",
+        "sha256": "d74c3afddf382c36dd4c566c539d2dcff16a22e0c7f525a9c1a342875cc4e12f"
+      }
+    ]
+  },
+  "app_rom_identifier": {
+    "address": 8544268,
+    "data_hex": "f94c6b7e11c5eb118282f74a0c0cef5b",
+    "sha256": "e8ba1c25f4faf46abe7c2d6e1e7e61a074298dd07181652bfc82ea89c94ff5d9"
+  },
+  "timer_code": {
+    "address": 79548,
+    "data_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f4041424344454647",
+    "sha256": "107de2bc788e11029f7851f8e1b0b5afb4e34379c709fc840689ebd3d1f51b5b"
+  },
+  "repeated_equal": true,
+  "symbols_sha256": "6f5a59f6444c01328808ac148b9c60771410196ab3b57e08fc8ff90525934247",
+  "full_image_attestation": false,
+  "callback_drain_verified": false,
+  "recovery_verified": false,
+  "flash_authorized": false
+}

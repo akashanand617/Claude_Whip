@@ -1,0 +1,24 @@
+{
+  "command": [
+    "/tmp/whip-unified-build.m1E9lk/zig-aarch64-macos-0.15.2/zig",
+    "cc",
+    "-target",
+    "thumb-freestanding-eabi",
+    "-mcpu=cortex_m0plus",
+    "-nostdlib",
+    "-Wl,-T,/Users/akashanand/Claude_Whip/tests/native/arm_proof.ld",
+    "-Wl,-e,wr_init",
+    "-Wl,--build-id=none",
+    "-Wl,--no-undefined",
+    "-o",
+    "/Users/akashanand/Claude_Whip/firmware/unified/research-20260925-runtime-stamp16-v1/reference/repeat.elf",
+    "/Users/akashanand/Claude_Whip/firmware/unified/research-20260925-runtime-stamp16-v1/reference/runtime.o",
+    "/Users/akashanand/Claude_Whip/firmware/unified/build-20260924-raw-ingress-v1/mode_controller.o",
+    "/Users/akashanand/Claude_Whip/firmware/unified/build-20260924-raw-ingress-v1/sample_tap.o",
+    "/Users/akashanand/Claude_Whip/firmware/unified/build-20260924-raw-ingress-v1/stock-address/compiler_runtime.o",
+    "/Users/akashanand/Claude_Whip/firmware/unified/research-20260925-runtime-stamp16-v1/reference/proof_abi.o"
+  ],
+  "exit": 0,
+  "stdout": "",
+  "stderr": ""
+}

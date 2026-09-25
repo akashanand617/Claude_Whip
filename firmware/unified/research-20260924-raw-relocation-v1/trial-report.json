@@ -1,0 +1,1808 @@
+{
+  "schema": "whip.raw-relocation-trial.v1",
+  "elf_sha256": "0d86ddec5c56c28b4d34ab3517c7fea32894ab04d5239a4a3d2b3641f4ee012d",
+  "sections": [
+    {
+      "name": ".trial_stock_health_commit",
+      "address": 8551936,
+      "bytes": 196
+    },
+    {
+      "name": ".trial_stock_timer_fence",
+      "address": 8552224,
+      "bytes": 390
+    },
+    {
+      "name": ".trial_mode_controller",
+      "address": 8552632,
+      "bytes": 544
+    },
+    {
+      "name": ".trial_stock_result_commit",
+      "address": 8559224,
+      "bytes": 80
+    },
+    {
+      "name": ".trial_stock_schedule_settings",
+      "address": 8559312,
+      "bytes": 48
+    },
+    {
+      "name": ".trial_compiler_runtime",
+      "address": 8559408,
+      "bytes": 152
+    },
+    {
+      "name": ".trial_stock_binding",
+      "address": 8559564,
+      "bytes": 128
+    },
+    {
+      "name": ".trial_stock_health_timers",
+      "address": 8563384,
+      "bytes": 292
+    },
+    {
+      "name": ".trial_stock_legacy_gate",
+      "address": 8563692,
+      "bytes": 56
+    },
+    {
+      "name": ".text",
+      "address": 8682192,
+      "bytes": 9116
+    },
+    {
+      "name": ".ARM.exidx",
+      "address": 8691308,
+      "bytes": 16
+    }
+  ],
+  "functions": [
+    {
+      "name": "leave",
+      "address": 8552691,
+      "bytes": 26,
+      "section": ".trial_mode_controller"
+    },
+    {
+      "name": "issue",
+      "address": 8552873,
+      "bytes": 32,
+      "section": ".trial_mode_controller"
+    },
+    {
+      "name": "discard_if_not_gesture",
+      "address": 8682587,
+      "bytes": 32,
+      "section": ".text"
+    },
+    {
+      "name": "drained",
+      "address": 8683507,
+      "bytes": 32,
+      "section": ".text"
+    },
+    {
+      "name": "quiet",
+      "address": 8683649,
+      "bytes": 30,
+      "section": ".text"
+    },
+    {
+      "name": "ticket_matches",
+      "address": 8684147,
+      "bytes": 36,
+      "section": ".text"
+    },
+    {
+      "name": "inventory",
+      "address": 8685447,
+      "bytes": 28,
+      "section": ".text"
+    },
+    {
+      "name": "source_failed",
+      "address": 8685657,
+      "bytes": 26,
+      "section": ".text"
+    },
+    {
+      "name": "stop_unless_observing",
+      "address": 8685683,
+      "bytes": 36,
+      "section": ".text"
+    },
+    {
+      "name": "health_receipt",
+      "address": 8685939,
+      "bytes": 68,
+      "section": ".text"
+    },
+    {
+      "name": "action_matches",
+      "address": 8686365,
+      "bytes": 36,
+      "section": ".text"
+    },
+    {
+      "name": "seal",
+      "address": 8687629,
+      "bytes": 18,
+      "section": ".text"
+    },
+    {
+      "name": "reject",
+      "address": 8687743,
+      "bytes": 20,
+      "section": ".text"
+    },
+    {
+      "name": "close_current",
+      "address": 8688211,
+      "bytes": 70,
+      "section": ".text"
+    },
+    {
+      "name": "ready",
+      "address": 8688537,
+      "bytes": 136,
+      "section": ".text"
+    },
+    {
+      "name": "timer_passed",
+      "address": 8552465,
+      "bytes": 30,
+      "section": ".trial_stock_timer_fence"
+    },
+    {
+      "name": "ram_span",
+      "address": 8563621,
+      "bytes": 40,
+      "section": ".trial_stock_health_timers"
+    },
+    {
+      "name": "enter",
+      "address": 8689629,
+      "bytes": 60,
+      "section": ".text"
+    },
+    {
+      "name": "context",
+      "address": 8690453,
+      "bytes": 34,
+      "section": ".text"
+    },
+    {
+      "name": "closing",
+      "address": 8690535,
+      "bytes": 66,
+      "section": ".text"
+    },
+    {
+      "name": "retired_pause",
+      "address": 8690487,
+      "bytes": 48,
+      "section": ".text"
+    },
+    {
+      "name": "failed",
+      "address": 8690601,
+      "bytes": 24,
+      "section": ".text"
+    },
+    {
+      "name": "wm_init",
+      "address": 8552633,
+      "bytes": 14,
+      "section": ".trial_mode_controller"
+    },
+    {
+      "name": "__aeabi_memclr4",
+      "address": 8559409,
+      "bytes": 16,
+      "section": ".trial_compiler_runtime"
+    },
+    {
+      "name": "wm_link",
+      "address": 8552647,
+      "bytes": 44,
+      "section": ".trial_mode_controller"
+    },
+    {
+      "name": "wm_request",
+      "address": 8552717,
+      "bytes": 96,
+      "section": ".trial_mode_controller"
+    },
+    {
+      "name": "wm_tick",
+      "address": 8552813,
+      "bytes": 60,
+      "section": ".trial_mode_controller"
+    },
+    {
+      "name": "wm_complete",
+      "address": 8552905,
+      "bytes": 144,
+      "section": ".trial_mode_controller"
+    },
+    {
+      "name": "wm_renew",
+      "address": 8553049,
+      "bytes": 80,
+      "section": ".trial_mode_controller"
+    },
+    {
+      "name": "wm_optics_allowed",
+      "address": 8553129,
+      "bytes": 8,
+      "section": ".trial_mode_controller"
+    },
+    {
+      "name": "wm_stream_failed",
+      "address": 8553137,
+      "bytes": 30,
+      "section": ".trial_mode_controller"
+    },
+    {
+      "name": "wm_optical_start_allowed",
+      "address": 8553167,
+      "bytes": 10,
+      "section": ".trial_mode_controller"
+    },
+    {
+      "name": "wt_init",
+      "address": 8682193,
+      "bytes": 10,
+      "section": ".text"
+    },
+    {
+      "name": "wt_start",
+      "address": 8682203,
+      "bytes": 42,
+      "section": ".text"
+    },
+    {
+      "name": "wt_stop",
+      "address": 8682245,
+      "bytes": 18,
+      "section": ".text"
+    },
+    {
+      "name": "wt_offer",
+      "address": 8682263,
+      "bytes": 172,
+      "section": ".text"
+    },
+    {
+      "name": "__aeabi_memcpy",
+      "address": 8559425,
+      "bytes": 18,
+      "section": ".trial_compiler_runtime"
+    },
+    {
+      "name": "wt_take",
+      "address": 8682435,
+      "bytes": 76,
+      "section": ".text"
+    },
+    {
+      "name": "wr_init",
+      "address": 8682513,
+      "bytes": 30,
+      "section": ".text"
+    },
+    {
+      "name": "wr_tick",
+      "address": 8682543,
+      "bytes": 44,
+      "section": ".text"
+    },
+    {
+      "name": "wr_link",
+      "address": 8682619,
+      "bytes": 20,
+      "section": ".text"
+    },
+    {
+      "name": "wr_request",
+      "address": 8682639,
+      "bytes": 20,
+      "section": ".text"
+    },
+    {
+      "name": "wr_complete",
+      "address": 8682659,
+      "bytes": 108,
+      "section": ".text"
+    },
+    {
+      "name": "wr_offer",
+      "address": 8682767,
+      "bytes": 200,
+      "section": ".text"
+    },
+    {
+      "name": "wr_next",
+      "address": 8682967,
+      "bytes": 140,
+      "section": ".text"
+    },
+    {
+      "name": "wr_sent",
+      "address": 8683107,
+      "bytes": 104,
+      "section": ".text"
+    },
+    {
+      "name": "wr_renew",
+      "address": 8683211,
+      "bytes": 54,
+      "section": ".text"
+    },
+    {
+      "name": "wh_fail",
+      "address": 8683265,
+      "bytes": 16,
+      "section": ".text"
+    },
+    {
+      "name": "wh_init",
+      "address": 8683281,
+      "bytes": 50,
+      "section": ".text"
+    },
+    {
+      "name": "wh_begin_quiesce",
+      "address": 8683331,
+      "bytes": 64,
+      "section": ".text"
+    },
+    {
+      "name": "wh_cancelled",
+      "address": 8683395,
+      "bytes": 60,
+      "section": ".text"
+    },
+    {
+      "name": "wh_fenced",
+      "address": 8683455,
+      "bytes": 52,
+      "section": ".text"
+    },
+    {
+      "name": "wh_stopped",
+      "address": 8683539,
+      "bytes": 84,
+      "section": ".text"
+    },
+    {
+      "name": "wh_quiesced",
+      "address": 8683623,
+      "bytes": 26,
+      "section": ".text"
+    },
+    {
+      "name": "wh_retirement_allowed",
+      "address": 8683679,
+      "bytes": 34,
+      "section": ".text"
+    },
+    {
+      "name": "wh_begin_resume",
+      "address": 8683713,
+      "bytes": 100,
+      "section": ".text"
+    },
+    {
+      "name": "wh_resume_ready",
+      "address": 8683813,
+      "bytes": 80,
+      "section": ".text"
+    },
+    {
+      "name": "wh_can_commit",
+      "address": 8683893,
+      "bytes": 46,
+      "section": ".text"
+    },
+    {
+      "name": "wh_commit_health",
+      "address": 8683939,
+      "bytes": 72,
+      "section": ".text"
+    },
+    {
+      "name": "wh_job_begin",
+      "address": 8684011,
+      "bytes": 88,
+      "section": ".text"
+    },
+    {
+      "name": "wh_run_begin",
+      "address": 8684099,
+      "bytes": 48,
+      "section": ".text"
+    },
+    {
+      "name": "wh_run_end",
+      "address": 8684183,
+      "bytes": 50,
+      "section": ".text"
+    },
+    {
+      "name": "wh_result_allowed",
+      "address": 8684233,
+      "bytes": 26,
+      "section": ".text"
+    },
+    {
+      "name": "wh_job_end",
+      "address": 8684259,
+      "bytes": 42,
+      "section": ".text"
+    },
+    {
+      "name": "ws_set_bounds",
+      "address": 8684301,
+      "bytes": 50,
+      "section": ".text"
+    },
+    {
+      "name": "ws_profile_valid",
+      "address": 8684353,
+      "bytes": 144,
+      "section": ".text"
+    },
+    {
+      "name": "ws_init",
+      "address": 8684497,
+      "bytes": 10,
+      "section": ".text"
+    },
+    {
+      "name": "ws_start",
+      "address": 8684507,
+      "bytes": 82,
+      "section": ".text"
+    },
+    {
+      "name": "__aeabi_memmove4",
+      "address": 8559451,
+      "bytes": 38,
+      "section": ".trial_compiler_runtime"
+    },
+    {
+      "name": "ws_stop",
+      "address": 8684589,
+      "bytes": 18,
+      "section": ".text"
+    },
+    {
+      "name": "ws_tick",
+      "address": 8684607,
+      "bytes": 56,
+      "section": ".text"
+    },
+    {
+      "name": "ws_observe",
+      "address": 8684663,
+      "bytes": 642,
+      "section": ".text"
+    },
+    {
+      "name": "__aeabi_uidiv",
+      "address": 8559489,
+      "bytes": 72,
+      "section": ".trial_compiler_runtime"
+    },
+    {
+      "name": "wa_init",
+      "address": 8685305,
+      "bytes": 50,
+      "section": ".text"
+    },
+    {
+      "name": "wa_prepare",
+      "address": 8685355,
+      "bytes": 68,
+      "section": ".text"
+    },
+    {
+      "name": "wa_health_passthrough",
+      "address": 8685423,
+      "bytes": 24,
+      "section": ".text"
+    },
+    {
+      "name": "wa_health_allowed",
+      "address": 8685475,
+      "bytes": 42,
+      "section": ".text"
+    },
+    {
+      "name": "wa_tick",
+      "address": 8685517,
+      "bytes": 140,
+      "section": ".text"
+    },
+    {
+      "name": "wa_link",
+      "address": 8685719,
+      "bytes": 20,
+      "section": ".text"
+    },
+    {
+      "name": "wa_request",
+      "address": 8685739,
+      "bytes": 158,
+      "section": ".text"
+    },
+    {
+      "name": "wa_cancelled",
+      "address": 8685897,
+      "bytes": 42,
+      "section": ".text"
+    },
+    {
+      "name": "wa_fenced",
+      "address": 8686007,
+      "bytes": 36,
+      "section": ".text"
+    },
+    {
+      "name": "wa_optics_stopped",
+      "address": 8686043,
+      "bytes": 124,
+      "section": ".text"
+    },
+    {
+      "name": "wa_physical_done",
+      "address": 8686167,
+      "bytes": 198,
+      "section": ".text"
+    },
+    {
+      "name": "wa_action_failed",
+      "address": 8686401,
+      "bytes": 48,
+      "section": ".text"
+    },
+    {
+      "name": "wa_observe",
+      "address": 8686449,
+      "bytes": 172,
+      "section": ".text"
+    },
+    {
+      "name": "wa_begin_resume",
+      "address": 8686621,
+      "bytes": 66,
+      "section": ".text"
+    },
+    {
+      "name": "wa_resume_ready",
+      "address": 8686687,
+      "bytes": 72,
+      "section": ".text"
+    },
+    {
+      "name": "wa_commit_health",
+      "address": 8686759,
+      "bytes": 168,
+      "section": ".text"
+    },
+    {
+      "name": "wa_next",
+      "address": 8686927,
+      "bytes": 52,
+      "section": ".text"
+    },
+    {
+      "name": "wa_sent",
+      "address": 8686979,
+      "bytes": 56,
+      "section": ".text"
+    },
+    {
+      "name": "wa_renew",
+      "address": 8687035,
+      "bytes": 52,
+      "section": ".text"
+    },
+    {
+      "name": "wb_stock_stop_writes",
+      "address": 8559565,
+      "bytes": 128,
+      "section": ".trial_stock_binding"
+    },
+    {
+      "name": "ww_get32",
+      "address": 8687089,
+      "bytes": 22,
+      "section": ".text"
+    },
+    {
+      "name": "ww_put32",
+      "address": 8687111,
+      "bytes": 20,
+      "section": ".text"
+    },
+    {
+      "name": "ww_crc",
+      "address": 8687133,
+      "bytes": 56,
+      "section": ".text"
+    },
+    {
+      "name": "ww_body_valid",
+      "address": 8687189,
+      "bytes": 280,
+      "section": ".text"
+    },
+    {
+      "name": "ww_pack_control",
+      "address": 8687469,
+      "bytes": 160,
+      "section": ".text"
+    },
+    {
+      "name": "ww_rx_begin",
+      "address": 8687647,
+      "bytes": 96,
+      "section": ".text"
+    },
+    {
+      "name": "ww_rx_feed",
+      "address": 8687763,
+      "bytes": 188,
+      "section": ".text"
+    },
+    {
+      "name": "ww_pack_motion",
+      "address": 8687951,
+      "bytes": 110,
+      "section": ".text"
+    },
+    {
+      "name": "wd_init",
+      "address": 8688061,
+      "bytes": 54,
+      "section": ".text"
+    },
+    {
+      "name": "wd_open",
+      "address": 8688115,
+      "bytes": 56,
+      "section": ".text"
+    },
+    {
+      "name": "wd_close",
+      "address": 8688171,
+      "bytes": 40,
+      "section": ".text"
+    },
+    {
+      "name": "wd_charging",
+      "address": 8688281,
+      "bytes": 54,
+      "section": ".text"
+    },
+    {
+      "name": "wd_tick",
+      "address": 8688337,
+      "bytes": 200,
+      "section": ".text"
+    },
+    {
+      "name": "wd_receive",
+      "address": 8688673,
+      "bytes": 344,
+      "section": ".text"
+    },
+    {
+      "name": "wd_reply_next",
+      "address": 8689017,
+      "bytes": 106,
+      "section": ".text"
+    },
+    {
+      "name": "wd_reply_sent",
+      "address": 8689123,
+      "bytes": 140,
+      "section": ".text"
+    },
+    {
+      "name": "wg_stock_add",
+      "address": 8689265,
+      "bytes": 128,
+      "section": ".text"
+    },
+    {
+      "name": "wg_stock_notify20",
+      "address": 8689393,
+      "bytes": 48,
+      "section": ".text"
+    },
+    {
+      "name": "wf_init",
+      "address": 8552225,
+      "bytes": 56,
+      "section": ".trial_stock_timer_fence"
+    },
+    {
+      "name": "wf_request",
+      "address": 8552281,
+      "bytes": 184,
+      "section": ".trial_stock_timer_fence"
+    },
+    {
+      "name": "wf_complete",
+      "address": 8552495,
+      "bytes": 70,
+      "section": ".trial_stock_timer_fence"
+    },
+    {
+      "name": "wf_abandon",
+      "address": 8552565,
+      "bytes": 50,
+      "section": ".trial_stock_timer_fence"
+    },
+    {
+      "name": "wht_stop_reviewed",
+      "address": 8563385,
+      "bytes": 236,
+      "section": ".trial_stock_health_timers"
+    },
+    {
+      "name": "wht_stop_scheduled",
+      "address": 8563661,
+      "bytes": 16,
+      "section": ".trial_stock_health_timers"
+    },
+    {
+      "name": "wss_read_controls",
+      "address": 8559313,
+      "bytes": 48,
+      "section": ".trial_stock_schedule_settings"
+    },
+    {
+      "name": "wrc_commit_hr",
+      "address": 8559225,
+      "bytes": 80,
+      "section": ".trial_stock_result_commit"
+    },
+    {
+      "name": "wop_read",
+      "address": 8689441,
+      "bytes": 188,
+      "section": ".text"
+    },
+    {
+      "name": "wop_retire",
+      "address": 8689689,
+      "bytes": 76,
+      "section": ".text"
+    },
+    {
+      "name": "woi_samples_io",
+      "address": 8689765,
+      "bytes": 148,
+      "section": ".text"
+    },
+    {
+      "name": "wsc_commit_health",
+      "address": 8551937,
+      "bytes": 196,
+      "section": ".trial_stock_health_commit"
+    },
+    {
+      "name": "wc_init",
+      "address": 8689913,
+      "bytes": 28,
+      "section": ".text"
+    },
+    {
+      "name": "wc_pump",
+      "address": 8689941,
+      "bytes": 512,
+      "section": ".text"
+    },
+    {
+      "name": "wc_optics_stopped",
+      "address": 8690625,
+      "bytes": 196,
+      "section": ".text"
+    },
+    {
+      "name": "wc_resume_prepared",
+      "address": 8690821,
+      "bytes": 138,
+      "section": ".text"
+    },
+    {
+      "name": "wc_physical_done",
+      "address": 8690959,
+      "bytes": 60,
+      "section": ".text"
+    },
+    {
+      "name": "wlg_receive",
+      "address": 8563693,
+      "bytes": 56,
+      "section": ".trial_stock_legacy_gate"
+    },
+    {
+      "name": "__aeabi_memcpy4",
+      "address": 8559443,
+      "bytes": 8,
+      "section": ".trial_compiler_runtime"
+    }
+  ],
+  "function_count": 130,
+  "required_function_inventory": [
+    [
+      "__aeabi_memclr4",
+      16,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "__aeabi_memcpy",
+      18,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "__aeabi_memcpy4",
+      8,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "__aeabi_memmove4",
+      38,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "__aeabi_uidiv",
+      72,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "action_matches",
+      36,
+      "STB_LOCAL",
+      1
+    ],
+    [
+      "close_current",
+      70,
+      "STB_LOCAL",
+      1
+    ],
+    [
+      "closing",
+      66,
+      "STB_LOCAL",
+      1
+    ],
+    [
+      "context",
+      34,
+      "STB_LOCAL",
+      1
+    ],
+    [
+      "discard_if_not_gesture",
+      32,
+      "STB_LOCAL",
+      1
+    ],
+    [
+      "drained",
+      32,
+      "STB_LOCAL",
+      1
+    ],
+    [
+      "enter",
+      60,
+      "STB_LOCAL",
+      1
+    ],
+    [
+      "failed",
+      24,
+      "STB_LOCAL",
+      1
+    ],
+    [
+      "health_receipt",
+      68,
+      "STB_LOCAL",
+      1
+    ],
+    [
+      "inventory",
+      28,
+      "STB_LOCAL",
+      1
+    ],
+    [
+      "issue",
+      32,
+      "STB_LOCAL",
+      1
+    ],
+    [
+      "leave",
+      26,
+      "STB_LOCAL",
+      1
+    ],
+    [
+      "quiet",
+      30,
+      "STB_LOCAL",
+      1
+    ],
+    [
+      "ram_span",
+      40,
+      "STB_LOCAL",
+      1
+    ],
+    [
+      "ready",
+      136,
+      "STB_LOCAL",
+      1
+    ],
+    [
+      "reject",
+      20,
+      "STB_LOCAL",
+      1
+    ],
+    [
+      "retired_pause",
+      48,
+      "STB_LOCAL",
+      1
+    ],
+    [
+      "seal",
+      18,
+      "STB_LOCAL",
+      1
+    ],
+    [
+      "source_failed",
+      26,
+      "STB_LOCAL",
+      1
+    ],
+    [
+      "stop_unless_observing",
+      36,
+      "STB_LOCAL",
+      1
+    ],
+    [
+      "ticket_matches",
+      36,
+      "STB_LOCAL",
+      1
+    ],
+    [
+      "timer_passed",
+      30,
+      "STB_LOCAL",
+      1
+    ],
+    [
+      "wa_action_failed",
+      48,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wa_begin_resume",
+      66,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wa_cancelled",
+      42,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wa_commit_health",
+      168,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wa_fenced",
+      36,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wa_health_allowed",
+      42,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wa_health_passthrough",
+      24,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wa_init",
+      50,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wa_link",
+      20,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wa_next",
+      52,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wa_observe",
+      172,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wa_optics_stopped",
+      124,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wa_physical_done",
+      198,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wa_prepare",
+      68,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wa_renew",
+      52,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wa_request",
+      158,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wa_resume_ready",
+      72,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wa_sent",
+      56,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wa_tick",
+      140,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wb_stock_stop_writes",
+      128,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wc_init",
+      28,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wc_optics_stopped",
+      196,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wc_physical_done",
+      60,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wc_pump",
+      512,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wc_resume_prepared",
+      138,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wd_charging",
+      54,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wd_close",
+      40,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wd_init",
+      54,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wd_open",
+      56,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wd_receive",
+      344,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wd_reply_next",
+      106,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wd_reply_sent",
+      140,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wd_tick",
+      200,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wf_abandon",
+      50,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wf_complete",
+      70,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wf_init",
+      56,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wf_request",
+      184,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wg_stock_add",
+      128,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wg_stock_notify20",
+      48,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wh_begin_quiesce",
+      64,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wh_begin_resume",
+      100,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wh_can_commit",
+      46,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wh_cancelled",
+      60,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wh_commit_health",
+      72,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wh_fail",
+      16,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wh_fenced",
+      52,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wh_init",
+      50,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wh_job_begin",
+      88,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wh_job_end",
+      42,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wh_quiesced",
+      26,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wh_result_allowed",
+      26,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wh_resume_ready",
+      80,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wh_retirement_allowed",
+      34,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wh_run_begin",
+      48,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wh_run_end",
+      50,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wh_stopped",
+      84,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wht_stop_reviewed",
+      236,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wht_stop_scheduled",
+      16,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wlg_receive",
+      56,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wm_complete",
+      144,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wm_init",
+      14,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wm_link",
+      44,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wm_optical_start_allowed",
+      10,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wm_optics_allowed",
+      8,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wm_renew",
+      80,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wm_request",
+      96,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wm_stream_failed",
+      30,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wm_tick",
+      60,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "woi_samples_io",
+      148,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wop_read",
+      188,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wop_retire",
+      76,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wr_complete",
+      108,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wr_init",
+      30,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wr_link",
+      20,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wr_next",
+      140,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wr_offer",
+      200,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wr_renew",
+      54,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wr_request",
+      20,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wr_sent",
+      104,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wr_tick",
+      44,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wrc_commit_hr",
+      80,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "ws_init",
+      10,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "ws_observe",
+      642,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "ws_profile_valid",
+      144,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "ws_set_bounds",
+      50,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "ws_start",
+      82,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "ws_stop",
+      18,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "ws_tick",
+      56,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wsc_commit_health",
+      196,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wss_read_controls",
+      48,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wt_init",
+      10,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wt_offer",
+      172,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wt_start",
+      42,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wt_stop",
+      18,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "wt_take",
+      76,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "ww_body_valid",
+      280,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "ww_crc",
+      56,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "ww_get32",
+      22,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "ww_pack_control",
+      160,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "ww_pack_motion",
+      110,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "ww_put32",
+      20,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "ww_rx_begin",
+      96,
+      "STB_GLOBAL",
+      1
+    ],
+    [
+      "ww_rx_feed",
+      188,
+      "STB_GLOBAL",
+      1
+    ]
+  ],
+  "input_unwind_bytes": 1040,
+  "linked_unwind_bytes": 16,
+  "hypothetical_stock_text_bytes": 1886,
+  "occupied_append_bytes": 9132,
+  "configured_remaining_bytes": 388,
+  "configured_end": 8691712,
+  "append_end": 8691324,
+  "total_allocated_bytes": 11018,
+  "component_count": 16,
+  "unlinked_candidate_count": 4,
+  "object_count": 21,
+  "stock_bytes_written": 0,
+  "production_rejection": "unexpected/writable allocated section",
+  "flashable": false,
+  "holes_owned": false,
+  "reference_closure_verified": false,
+  "whole_integration_complete": false,
+  "hardware_hooks_attached": false,
+  "ram_ownership_verified": false,
+  "recovery_verified": false,
+  "entry_retirement_implemented": false,
+  "physical_health_continuity_verified": false,
+  "link_succeeded": true,
+  "identical_second_link": true,
+  "mapped_link_identical": true,
+  "inputs_sha256": {
+    "pinned/mode_controller": "8a7ba2ff0044622110fe314ec17374fdf5751a9b40a3ddf098963dcffeb066fc",
+    "pinned/sample_tap": "e88ab06550ec9483683ed572d992e24dd744fb7de19b6ae8bddaa63861ae360a",
+    "pinned/runtime": "ea0af301a270a6dcaae3523d4e273fadacb286b7c18330a030b64fc44f599fd9",
+    "pinned/health_adapter": "a75a9477ad00afc71bf05abeef66888dd6d530ebdd163f7b429a6387897a53f2",
+    "pinned/fresh_source": "d7b9da70a52bc6c70bdbe2ac32361fb4586c3e43505b09a16ae711318fb0093c",
+    "pinned/adapter": "6234a3f5128632cab7ea83580f90f705eab6fd066eef15bf985f58b7e5103048",
+    "pinned/stock_binding": "e12c8c700f768b16f41a26c5d5234fe0c65d6e34e59ca41e8d708530b7839c96",
+    "pinned/wire": "bc03c770ba4360eb4ad295cd9561b6fd6c447074ec329069c93b271ac8faee4f",
+    "pinned/dispatch": "613bfe77dfe9076eae37250d6f6fea55c936693ee8b569515d2159a582eef210",
+    "pinned/stock_transport": "72717bdbea56e9589db837f32aa5e58f9a5c9899b52987200d6ff968627fc396",
+    "pinned/stock_timer_fence": "0102100d2b8f397ea0453a2066a8a8138bf89f818d94749073166b2598215708",
+    "pinned/stock_health_timers": "c453e63c1fdec93fd8029fdda39223406c84276196c470c08e9063ea2a76b1a7",
+    "pinned/stock_schedule_settings": "15a2677a0105b05123bb499e669f5bfafb6b27d8f3559b85d99dbf65848f7faa",
+    "pinned/stock_result_commit": "d2ada34a2b7fb846be8c984ecb71de29b247c7d17099a59c2f76a5e254aeea7e",
+    "pinned/stock_optical_work": "be016ec4485bad10f3928c7845dfe2376f87bc369ef46674a57df9415fa53c87",
+    "pinned/stock_optical_io": "c7fb154217423ff473b0306de2846a4e86b48878484be2702468bfd42c6778db",
+    "pinned/stock_health_commit": "a9d781b9257a905ff0f0a015bd7737f7471b76ba13822aa7ffc0cb932412dd7c",
+    "pinned/stock_service": "95d0f4514b47dd87964513a65b794e418439cec7c63be9b33dc39a2ecba9e0ff",
+    "pinned/stock_coordinator": "9fad922bdeca22f5e724f815e2361f370f5270138594b6452b17834e6a5bc5ce",
+    "pinned/stock_legacy_gate": "08be187ce3fc5e80daa6cfec727544592716b72c0e1da9fec5ce8a9e83b544cc",
+    "pinned/compiler_runtime": "14beafe8aebd3fa687aa9ca50d2727c122d04643cf6a268eae0786dc9671235d",
+    "firmware/rt02cr-stock-3.12.02.bin": "b58fd30355d9c88ff7a8331c83e4c3d2808fa0463d8f03f27f4d7191a5b750b0",
+    "firmware/research/2026-09-23/bank0-descriptor/configuration.json": "ba6f56f927bae69ad8144673b878970ea0279a9e96ad89b986f0e76891e58dd7",
+    "firmware/unified/build-20260924-legacy-gate-v1/manifest.json": "cbfd74c0eb2218b5f2e6d5f10570b5dceb811a1c817087fd4c04bd6bf60e3467",
+    "whip/fwraw_relocation_trial.py": "32f6fb7657df7de63ff5ad954ede3dc8f8d075e9d436edeeb512a44b33babf12",
+    "tests/test_raw_relocation_trial.py": "aaff0ebc4b7de4ffbeaa7823358d4b359115841b538e2eaf2fa34357a2d20203",
+    "requirements-firmware-proof.txt": "b7bdeecf71d27d98a9b20285eefd34171ce3c116818b3e9ee5d27f8605a5f9cd",
+    "docs/UNIFIED_RAW_RETIREMENT.md": "164ed28595f742b8d3370eb2af87b6beb00e9c8b5f11c8055756ff0be6ebab50",
+    "docs/UNIFIED_DIAGNOSTIC_RETIREMENT.md": "09f6add060c908e7f488df9ba04ad7788f260c3f459124a16cb4c3fb5f10d196",
+    "docs/UNIFIED_INDICATOR_RETIREMENT.md": "5b30443a87ab0d74bed80a4d85ae865a1dfbbaeac0c89226ad51ba8a3de14359",
+    "firmware/unified/mode_controller.c": "9b2d0f6b8f08c634404ed41b0175062c4ea2c3f61f40e6b20f92d8f7bb0e4758",
+    "firmware/unified/mode_controller.h": "19831d1ddb2cfe2b2cdcef3a9e5af85a3192be255e16710394172bbc5e2c152b",
+    "firmware/unified/sample_tap.c": "6c717130c56edb778b2166abfcb62d1c4701bc85d2d90ca4606f4ff66af061ef",
+    "firmware/unified/sample_tap.h": "3ba5bbb3beb0c8b0855b45142fd354728abc979ddded2f289948f2f1afcc6a59",
+    "firmware/unified/runtime.c": "642fbd3f56ea421ab42a3087aaa6d62d1e5f2b06879eefed4b8d4f3509eab918",
+    "firmware/unified/runtime.h": "1c3559345bc4c895f9f4a25e8f799cb1f3f17527efdeef0a4f8e3886ce93455d",
+    "firmware/unified/health_adapter.c": "0d1edfdb6ebf65309e09c6aa3f9f31b88ed58a810788acf7fda848a202b26b96",
+    "firmware/unified/health_adapter.h": "f1b70ff1eab3e465e4100400f7787b740a5c3cb1408ca849a352c69e9214aa7d",
+    "firmware/unified/fresh_source.c": "56af8595bc24f15464178210b07863e1afa84f6891630f7eaba6ec12ffc3dcbf",
+    "firmware/unified/fresh_source.h": "d298923d0c066ce86a17eb4a326d7207d4f36b8920d17fb6071d8beb2a826bc6",
+    "firmware/unified/adapter.c": "d15a1c89562ac00f0c6585f868c9941d0b8efdd2c4ceb6cba8b72f7cca57d205",
+    "firmware/unified/adapter.h": "5d4ae873bee1467eaa46d80fd1e5fbb6ccce77f181a035d3ae818923ae1a5b86",
+    "firmware/unified/stock_binding.c": "24411f998d33b2247df6de9eda320eedd6bf67b1d1950353832e77a34204d222",
+    "firmware/unified/stock_binding.h": "3c9d6729ed9e509e623926703eb3eccef02899eae5fdabecd50a811d9d7e7fab",
+    "firmware/unified/wire.c": "57129812020a96cb1b08304631e38ff15b30fb1dbc4d0ade5346dfe522f94577",
+    "firmware/unified/wire.h": "c399a26440de68e220212a834e3a30c3da7b2bf66d9c39b5e74968361c0f2689",
+    "firmware/unified/dispatch.c": "6472b64e84559626a284ff26f48d2dfab88094678560c071c17cc710dbd2ae00",
+    "firmware/unified/dispatch.h": "46465813d9a44a210902b9dc953d3c8df93912f946418c568b5293e502385ace",
+    "firmware/unified/stock_transport.c": "6868130bfb7ccf956b3cf496165497037f215ec43ebbffe92311c1e8329732e6",
+    "firmware/unified/stock_transport.h": "b7b7bf617b8cf8508cf1f05745717ada53033de3bebb5c1b10e11cf217e39fe7",
+    "firmware/unified/stock_timer_fence.c": "8df3c978d1dc4731b372d925b0dee1523e8f3d10fd5e17b59e685eb931cb4656",
+    "firmware/unified/stock_timer_fence.h": "c3938b59aa66f6b12a2deb12ec9a82d80394ed64d706a1c05b6535fa4658f070",
+    "firmware/unified/stock_health_timers.c": "4db604f82223cb30b4b7ed51fed0198de72addb770ed6e5cde03282e12c77326",
+    "firmware/unified/stock_health_timers.h": "d0dd28f5a563b2a33faf1474c11bf2f765d4e4fd49a8224f5baffe349995303e",
+    "firmware/unified/stock_schedule_settings.c": "ae8017c52f5554db1b3f5fe5a8bd619367ef2a8cee40a198fb750f3707b226f1",
+    "firmware/unified/stock_schedule_settings.h": "a2c378f1f61f1eb1dc8512a8f1841359a5fd376e275c307cac023944b6ceb93b",
+    "firmware/unified/stock_result_commit.c": "d172730ac1ae1a159541730666e2a153ee9b8957a0a1b400d2fc6f9228fb6962",
+    "firmware/unified/stock_result_commit.h": "810f0c3d7c3b2860f98ed188ab5f4e923e90240bc2f54b3c39162523e1d00250",
+    "firmware/unified/stock_optical_work.c": "9bbdbd8086810c84008ed901656b0b63541d4bd8527a0c2aeb9aaa0eedad492f",
+    "firmware/unified/stock_optical_work.h": "b7657b818fcf5b6f09c3e22eb8c0fcbbc53f57ebc908432666b0cdcd933f317f",
+    "firmware/unified/stock_optical_io.c": "3a8bb6efeeae3f06d10b0e4789fca6876b188d238a2f4a2b019301027db7aef9",
+    "firmware/unified/stock_optical_io.h": "0899ff3d451dc1efd7ce62abd4d45cfb1a02cfff725390d1a545ac78236d100f",
+    "firmware/unified/stock_health_commit.c": "e19a7bb8db193ad20932c0e8e605ae577bf1ceaec7921b8fb148b844b99eebfd",
+    "firmware/unified/stock_health_commit.h": "b2e2047f30c1bc2f98f6e884dfc4f8db9289bcbacf6a0a67ce4ffe4b5476a77b",
+    "firmware/unified/stock_service.c": "8e18369c085cd68768ce5016e6be6513a3a4f49ba65e63c534140c3433880cbf",
+    "firmware/unified/stock_service.h": "bc4fb34176482b55e850191dcffa83f5deb08f4eda7352d206290a602ae59055",
+    "firmware/unified/stock_coordinator.c": "feb193c85995f69bc2831e2ee5d56cb9c5f30ce810463775323f05f2d2edbb62",
+    "firmware/unified/stock_coordinator.h": "b52d856bdac047d65fccc36f13ee2693cf9f0aab64875fc5d623866d6caf1f6f",
+    "firmware/unified/stock_legacy_gate.c": "6094bfedca8208ae1936192d9c70fad516cfcaa27c573771d5757ce3ad3de498",
+    "firmware/unified/stock_legacy_gate.h": "a9029e4a6b2832f842b85832761c21a94ab7882a8157363bab637da65e79f7da",
+    "firmware/unified/compiler_runtime.c": "519d02bd669fa39e4793bfa18f5baa867c533e43e133b13ccb3408576881f207",
+    "whip/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "whip/fwproof_guard.py": "c1229d88bfbfb28a3a50a96ababab3671c29ce924c7057ab2276d2d14ae0c508",
+    "whip/fwbuild.py": "3573365bac23c2274d2d9219371d56d1d217649c706244b11fb80f8cc7c82648",
+    "whip/fwunified.py": "bf618d127a5ce078208148148925af938389c4fd68b5eaedd1ef0926b05c9ff5",
+    "whip/fwcapacity.py": "73c78a2f82a7b2ca8a62f2f6fba9f6da18626f7c1240d2862307bcfcaca44bab",
+    "whip/fwplacement.py": "d9f366c31715b9ad86e56e6301eaa894fb2fbe9876f8888b9ce826979301d450",
+    "whip/fwthumb.py": "ed170d3e7028c2d00cf43961c3c7096cc3b66b1c5557626d25d5a893fd407972",
+    "whip/fwstock_link.py": "be938e88727349b3bd843e7e5142af40ba67e3577877cd7d01ecc771b4280b16",
+    "probe/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "whip/fwlayout.py": "7b505bf3d9779a88b20b8db6a21457690900c7c4503838e650685576bde42927",
+    "whip/fwcontinuity.py": "cec65e0e66c643c2575eeaf55e759d339beafc4e2f380a417554d032c5811a28",
+    "whip/fwindicator.py": "5d93cb77a65603494311f8643a4669ee4a9672cf1cda069d1ad4dd1930d7baf1",
+    "whip/fwfifo_trace.py": "6221441eae54eabece34488da5730c51e3b9abd225298984075b90ac4cbd029c",
+    "probe/unified_build.py": "c38f9af59d21690f5252ea12ee5c9caab4f1d37f03a6dcb2c6c4a43d6b9cc0ad"
+  },
+  "tools_sha256": {
+    "clang": "b8763cf250e607a778bb4603cecb5b90338814d0a3dfcba0d57b1de242f610e9",
+    "zig": "c65cd34917923f575448cc0603dd7c2326da0af0e5c323043d090662dcdf351c",
+    "python": "b874063062531b7ac73b400141e9ce95184945f86fa1bda91bab5c6671a55149"
+  },
+  "artifacts_sha256": {
+    "mode_controller.o": "8a7ba2ff0044622110fe314ec17374fdf5751a9b40a3ddf098963dcffeb066fc",
+    "sample_tap.o": "e88ab06550ec9483683ed572d992e24dd744fb7de19b6ae8bddaa63861ae360a",
+    "runtime.o": "ea0af301a270a6dcaae3523d4e273fadacb286b7c18330a030b64fc44f599fd9",
+    "health_adapter.o": "a75a9477ad00afc71bf05abeef66888dd6d530ebdd163f7b429a6387897a53f2",
+    "fresh_source.o": "d7b9da70a52bc6c70bdbe2ac32361fb4586c3e43505b09a16ae711318fb0093c",
+    "adapter.o": "6234a3f5128632cab7ea83580f90f705eab6fd066eef15bf985f58b7e5103048",
+    "stock_binding.o": "e12c8c700f768b16f41a26c5d5234fe0c65d6e34e59ca41e8d708530b7839c96",
+    "wire.o": "bc03c770ba4360eb4ad295cd9561b6fd6c447074ec329069c93b271ac8faee4f",
+    "dispatch.o": "613bfe77dfe9076eae37250d6f6fea55c936693ee8b569515d2159a582eef210",
+    "stock_transport.o": "72717bdbea56e9589db837f32aa5e58f9a5c9899b52987200d6ff968627fc396",
+    "stock_timer_fence.o": "0102100d2b8f397ea0453a2066a8a8138bf89f818d94749073166b2598215708",
+    "stock_health_timers.o": "c453e63c1fdec93fd8029fdda39223406c84276196c470c08e9063ea2a76b1a7",
+    "stock_schedule_settings.o": "15a2677a0105b05123bb499e669f5bfafb6b27d8f3559b85d99dbf65848f7faa",
+    "stock_result_commit.o": "d2ada34a2b7fb846be8c984ecb71de29b247c7d17099a59c2f76a5e254aeea7e",
+    "stock_optical_work.o": "be016ec4485bad10f3928c7845dfe2376f87bc369ef46674a57df9415fa53c87",
+    "stock_optical_io.o": "c7fb154217423ff473b0306de2846a4e86b48878484be2702468bfd42c6778db",
+    "stock_health_commit.o": "a9d781b9257a905ff0f0a015bd7737f7471b76ba13822aa7ffc0cb932412dd7c",
+    "stock_service.o": "95d0f4514b47dd87964513a65b794e418439cec7c63be9b33dc39a2ecba9e0ff",
+    "stock_coordinator.o": "9fad922bdeca22f5e724f815e2361f370f5270138594b6452b17834e6a5bc5ce",
+    "stock_legacy_gate.o": "08be187ce3fc5e80daa6cfec727544592716b72c0e1da9fec5ce8a9e83b544cc",
+    "compiler_runtime.o": "14beafe8aebd3fa687aa9ca50d2727c122d04643cf6a268eae0786dc9671235d",
+    "mode_controller.su": "462a428375d61f4d6866d181876db6ccc6556b8b7497fb982f37ada847d33654",
+    "sample_tap.su": "430d36ce6c65887b56ac429d4eaeef6f5471204621315034223e6e26a99ec23e",
+    "runtime.su": "fe30b2c6d75c0db36fbca1f0a560110ef48fb2014650fa4182445875cc6bd4a0",
+    "health_adapter.su": "35e3a728ef60730ae2881003f2d798d0fef2bd39ed74f4e7b6bf7f605ad58f4c",
+    "fresh_source.su": "c16672a03d1078e25fb292d52ce2e02932f77d6eda15911e151270ec4b238de9",
+    "adapter.su": "9b4c1e724e89dd11b5ac2015a8ef120bad15a69bb520c9e20376a961aa2db326",
+    "stock_binding.su": "f90217cd93c92e7c6855ebe7ac3a7ad4f3896eb94eb9b2cf3dd07200a440b4b8",
+    "wire.su": "f124c2cc7556fdf8b202cb64cf3abfb6bc90c787eafc19c0be06e4ee1e50d435",
+    "dispatch.su": "fd807e93ca48f50d8fea545206cda82f062137a1f44872226f2f92ce0476e4d7",
+    "stock_transport.su": "ccf0ceef60c9f6a23640a867d055b4ca5169f42390158ef1af85fe0abec30e3f",
+    "stock_timer_fence.su": "1a5da89f01c95b1d6da0d08ff25902432089ce1df64feabae938bbda3178324e",
+    "stock_health_timers.su": "e051142c862e5887b34b3fa8a0008b2305eb0e53afea3a32374da3c03d202b34",
+    "stock_schedule_settings.su": "6ae8c5cbf7f9baa2ec97d808a89276ea1bed748169625195edc0b58c50ed23be",
+    "stock_result_commit.su": "349cb8303749f53ef6b284f267adfef9dc23640a597088d01e8a305a98e8e84f",
+    "stock_optical_work.su": "0d49fac10174a0ab1487c4fae3a3ae41cd6919ce5372a2f68b4692825f7402d7",
+    "stock_optical_io.su": "b6ca41933b5c26081da9d4b0d0883a485fcd7d6ef1fc86b67c4bbbb57752e864",
+    "stock_health_commit.su": "c0497f1f8c6bf35e9c283dca1a3c7a32a30208945525be898b1c90f45168250f",
+    "stock_coordinator.su": "fab81234e2e5ea00175d049304bacd1b9ea9c63e5c35d8776eb0bb7952eb37d6",
+    "stock_legacy_gate.su": "ac250cba73359d3b52ebe5b68503b3ec7056ef656608db8366e4d0ed8f8e5660",
+    "compiler_runtime.su": "acd45ced48464731699068328c0f69387bd5869e8b170330270ebbd1c75af084",
+    "UNOWNED-raw-diagnostic-indicator.ld": "ccff4c2fe8b8be08f721813461a212e14d9d71810cc41c5034d17f9e1f2eff92",
+    "UNOWNED-raw-relocation-NOT-INSTALLABLE.elf": "0d86ddec5c56c28b4d34ab3517c7fea32894ab04d5239a4a3d2b3641f4ee012d",
+    "repeat-NOT-INSTALLABLE.elf": "0d86ddec5c56c28b4d34ab3517c7fea32894ab04d5239a4a3d2b3641f4ee012d",
+    "actual-link.map": "019086dfcb0573f3cb43ece6f9d6e28d84eed2291be43ef0331936f2ef05f540",
+    "mapped-NOT-INSTALLABLE.elf": "0d86ddec5c56c28b4d34ab3517c7fea32894ab04d5239a4a3d2b3641f4ee012d"
+  },
+  "compiler_flags": [
+    "--target=armv6m-none-eabi",
+    "-mcpu=cortex-m0plus",
+    "-mthumb",
+    "-ffreestanding",
+    "-fno-builtin",
+    "-Oz",
+    "-std=c11",
+    "-Wall",
+    "-Wextra",
+    "-Werror",
+    "-fstack-usage",
+    "-I",
+    "/Users/akashanand/Claude_Whip/firmware/unified"
+  ],
+  "tests_run": false,
+  "warning": "UNOWNED layout only; raw/diagnostic/indicator roots NOT retired; NEVER INSTALL"
+}

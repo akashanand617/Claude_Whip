@@ -23,6 +23,17 @@ GESTURE_WINDOW_S = 1.5
 GATE_MIN_RATE_HZ = 25.0
 GATE_MAX_LOSS = 0.02
 
+# A run of byte-identical consecutive accelerometer frames at least this long
+# is counted as frozen. The STK8321 driver drops into a low-power any-motion
+# mode after a quiet spell (firmware sub_0cd08 -> sub_0ca60 -> sub_0c888) and
+# the raw producer then repeats the last cached sample every tick
+# (sub_0cbda), so the stream keeps its rate while carrying no motion at all.
+# Sensor noise toggles the low bits every few frames; a second of identical
+# bytes from a worn ring is the cached sample, not stillness. Measured
+# 2026-09-22 on the archived captures: the two ambient hours were frozen for
+# 28% and 39% of their length, in runs up to 84 s.
+FROZEN_RUN_S = 1.0
+
 
 @dataclass
 class SubtypeStats:
@@ -50,6 +61,15 @@ class StreamStats:
     windows_total: int = 0
     windows_contaminated: int = 0
     unknown_packets: int = 0
+    # Frozen-sample audit (see FROZEN_RUN_S).
+    frozen_runs: int = 0
+    frozen_s: float = 0.0
+    longest_frozen_s: float = 0.0
+    distinct_fraction: float = 0.0
+
+    @property
+    def frozen_fraction(self) -> float:
+        return self.frozen_s / self.duration_s if self.duration_s else 0.0
 
     @property
     def passes_rate(self) -> bool:
@@ -135,7 +155,46 @@ def analyze(records: list[tuple[float, bytes]], duration_s: float | None = None)
             broken_window_starts.add(int(times[i] / GESTURE_WINDOW_S))
     stats.windows_contaminated = len(broken_window_starts)
 
+    frozen_runs, frozen_s, longest, distinct = frozen_sample_audit(accel_records)
+    stats.frozen_runs = frozen_runs
+    stats.frozen_s = frozen_s
+    stats.longest_frozen_s = longest
+    stats.distinct_fraction = distinct
+
     return stats
+
+
+def frozen_sample_audit(
+    accel_records: list[tuple[float, bytes]], min_run_s: float = FROZEN_RUN_S
+) -> tuple[int, float, float, float]:
+    """
+    Runs of byte-identical consecutive accelerometer frames.
+
+    Returns (runs at least min_run_s long, their total seconds, the longest
+    run in seconds, fraction of frames whose XYZ bytes are distinct). The
+    sample bytes are payload[2:8]; timestamps are the arrival times, so a run's
+    length is the time from its first frame to its last.
+    """
+    if len(accel_records) < 2:
+        return 0, 0.0, 0.0, 1.0 if accel_records else 0.0
+    samples = [payload[2:8] for _, payload in accel_records]
+    times = [t for t, _ in accel_records]
+    runs: list[float] = []
+    start = 0
+    for i in range(1, len(samples)):
+        if samples[i] != samples[i - 1]:
+            if i - start > 1:
+                runs.append(times[i - 1] - times[start])
+            start = i
+    if len(samples) - start > 1:
+        runs.append(times[-1] - times[start])
+    long_runs = [d for d in runs if d >= min_run_s]
+    return (
+        len(long_runs),
+        sum(long_runs),
+        max(runs, default=0.0),
+        len(set(samples)) / len(samples),
+    )
 
 
 def format_report(stats: StreamStats, header: dict | None = None, payloads: list[bytes] | None = None) -> str:
@@ -174,6 +233,9 @@ def format_report(stats: StreamStats, header: dict | None = None, payloads: list
     add(f"    gap p95         {stats.gap_p95_ms:8.2f} ms")
     add(f"    gap max         {stats.gap_max_ms:8.2f} ms")
     add(f"    implied loss    {stats.implied_loss * 100:8.2f} %")
+    add(f"    distinct XYZ    {stats.distinct_fraction * 100:8.1f} %")
+    add(f"    frozen runs     {stats.frozen_runs:8d}    (>= {FROZEN_RUN_S:.0f} s of identical frames; "
+        f"{stats.frozen_s:.1f} s total, {stats.frozen_fraction * 100:.1f} %, longest {stats.longest_frozen_s:.1f} s)")
     add(f"    windows hit     {stats.windows_contaminated} of {stats.windows_total} " "(1.5s windows containing a stall)")
     add("")
 

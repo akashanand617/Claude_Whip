@@ -1,0 +1,11 @@
+/tmp/whip-owner-structural.a7K79Z/dispatch.c:22:wd_init	24	static
+/tmp/whip-owner-structural.a7K79Z/dispatch.c:26:wd_open	24	static
+/tmp/whip-owner-structural.a7K79Z/dispatch.c:35:wd_close	16	static
+/tmp/whip-owner-structural.a7K79Z/dispatch.c:14:close_current	16	static
+/tmp/whip-owner-structural.a7K79Z/dispatch.c:40:wd_charging	16	static
+/tmp/whip-owner-structural.a7K79Z/dispatch.c:65:wd_tick	16	static
+/tmp/whip-owner-structural.a7K79Z/dispatch.c:46:ready	32	static
+/tmp/whip-owner-structural.a7K79Z/dispatch.c:119:wd_receive	56	static
+/tmp/whip-owner-structural.a7K79Z/dispatch.c:142:wd_reply_next	32	static
+/tmp/whip-owner-structural.a7K79Z/dispatch.c:153:wd_reply_sent	32	static
+/tmp/whip-owner-structural.a7K79Z/dispatch.c:10:clear_exchange	8	static

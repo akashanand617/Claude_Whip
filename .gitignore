@@ -75,6 +75,12 @@ __pycache__/
 venv/
 .pytest_cache/
 *.egg-info/
+.Rhistory
+
+# Local assistant exports and reproducible compiler caches
+Claude outputs/
+**/cache/
+**/zig-cache/
 
 # Whip data: captures, labels, datasets
 data/*

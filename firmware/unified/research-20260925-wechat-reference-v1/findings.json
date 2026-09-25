@@ -1,0 +1,61 @@
+{
+  "schema": "whip.fee7-checked-findings.v1",
+  "survey_sha256": "9ef0bfe3a30ad84de3bd8981268574424eb7b564ef0535d69ee4b05f7a16aa6a",
+  "script_sha256": "b4cbadf7f3c2903b250d640eb2ad829fde64dd48df7246c951cb6f1c407d2de6",
+  "stock_sha256": "b58fd30355d9c88ff7a8331c83e4c3d2808fa0463d8f03f27f4d7191a5b750b0",
+  "decoder_version": "5.0.7",
+  "setup_old_id": 2137630,
+  "shared_callback_selectors": [
+    2137591,
+    2137592
+  ],
+  "selectors_are_setup_slot": false,
+  "selector_copy_relationship_proven": false,
+  "fee7_application_callback_slot": 2137680,
+  "known_setup_entry_call": 30430,
+  "callback_table_entries": [
+    128012,
+    128016,
+    128020
+  ],
+  "rejected_branch_candidate": {
+    "site": 32400,
+    "actual_instruction_start": 32398,
+    "actual_target": 78150,
+    "reason": "second halfword of retained UART delay BL"
+  },
+  "advertisement_builder": {
+    "file_span": [
+      29848,
+      29864
+    ],
+    "ram_start": 2137633,
+    "first_four_bytes": [
+      3,
+      3,
+      231,
+      254
+    ],
+    "service_removed_does_not_remove_advertising": true
+  },
+  "gross_candidate_instruction_bytes": 526,
+  "gross_database_bytes": 252,
+  "gross_callback_table_bytes": 12,
+  "gross_survey_total_bytes": 790,
+  "approved_reclaimed_bytes": 0,
+  "preserve": [
+    "shared callback0x6f28..0x7042",
+    "literal pool0x7da2..0x7dc4",
+    "stock Stack/ROM wrappers",
+    "Health, UART, DFU, DIS and HID paths"
+  ],
+  "arithmetic_only": {
+    "accepted26_input_excess": 1154,
+    "pending_callback_constant_bytes": 12,
+    "optimistic_remaining_excess_even_if_all790_usable": 376,
+    "limits": "No actual placement; excludes final alignment/unwind and remaining binding code. New table240 already in26-object lower bound."
+  },
+  "reference_closure_verified": false,
+  "hardware_access": false,
+  "flashable": false
+}

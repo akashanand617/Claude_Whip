@@ -1,0 +1,20 @@
+{
+  "command": [
+    "/tmp/whip-unified-build.m1E9lk/zig-aarch64-macos-0.15.2/zig",
+    "cc",
+    "-target",
+    "thumb-freestanding-eabi",
+    "-mcpu=cortex_m0plus",
+    "-nostdlib",
+    "-Wl,-T,/Users/akashanand/Claude_Whip/tests/native/arm_proof.ld",
+    "-Wl,--build-id=none",
+    "-Wl,--no-undefined",
+    "-Wl,-e,wge_common",
+    "-o",
+    "/private/tmp/whip-wechat-routing-proof.eW8vOz/pytest-final/stock-event-gate0/NO-OWNED-ID-REFUSED.elf",
+    "/private/tmp/whip-wechat-routing-proof.eW8vOz/pytest-final/stock-event-gate0/stock_event_gate.o"
+  ],
+  "exit": 1,
+  "stdout": "",
+  "stderr": "ld.lld: error: undefined symbol: wgs_service_id\n>>> referenced by stock_event_gate.c\n>>>               /private/tmp/whip-wechat-routing-proof.eW8vOz/pytest-final/stock-event-gate0/stock_event_gate.o:(wge_common)\n"
+}

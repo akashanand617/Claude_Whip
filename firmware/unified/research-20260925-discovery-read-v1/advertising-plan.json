@@ -1,0 +1,82 @@
+{
+  "schema": "whip.wechat-advertising-plan.v1",
+  "stock_sha256": "b58fd30355d9c88ff7a8331c83e4c3d2808fa0463d8f03f27f4d7191a5b750b0",
+  "edits": [
+    {
+      "file_offset": 29852,
+      "before_hex": "2070",
+      "after_hex": "00bf"
+    },
+    {
+      "file_offset": 29854,
+      "before_hex": "6070",
+      "after_hex": "00bf"
+    },
+    {
+      "file_offset": 29858,
+      "before_hex": "a570",
+      "after_hex": "00bf"
+    },
+    {
+      "file_offset": 29862,
+      "before_hex": "e670",
+      "after_hex": "00bf"
+    },
+    {
+      "file_offset": 29878,
+      "before_hex": "2071",
+      "after_hex": "2070"
+    },
+    {
+      "file_offset": 29882,
+      "before_hex": "6071",
+      "after_hex": "6070"
+    },
+    {
+      "file_offset": 29886,
+      "before_hex": "a071",
+      "after_hex": "a070"
+    },
+    {
+      "file_offset": 29890,
+      "before_hex": "e071",
+      "after_hex": "e070"
+    },
+    {
+      "file_offset": 29894,
+      "before_hex": "2672",
+      "after_hex": "2671"
+    },
+    {
+      "file_offset": 29896,
+      "before_hex": "0a21",
+      "after_hex": "0621"
+    },
+    {
+      "file_offset": 29898,
+      "before_hex": "6572",
+      "after_hex": "6571"
+    },
+    {
+      "file_offset": 29926,
+      "before_hex": "1f21",
+      "after_hex": "0c21"
+    },
+    {
+      "file_offset": 30206,
+      "before_hex": "1f21",
+      "after_hex": "0c21"
+    }
+  ],
+  "instruction_edit_bytes": 26,
+  "added_flash_bytes": 0,
+  "added_ram_bytes": 0,
+  "gap_parameter": 610,
+  "buffer_address": 2137633,
+  "submitted_length": 12,
+  "manufacturer_data_preserved": true,
+  "stock_file_modified": false,
+  "stock_hooks_attached": false,
+  "flashable": false,
+  "limits": "Fixed builder and two submission slices only; source MAC, other boot work and ROM GAP result are explicit fixtures. No full path closure, physical advertising, app discovery, Health continuity, resource ownership or recovery proof."
+}

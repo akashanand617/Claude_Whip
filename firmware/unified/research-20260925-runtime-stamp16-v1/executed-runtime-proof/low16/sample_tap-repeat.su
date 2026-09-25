@@ -1,0 +1,5 @@
+firmware/unified/sample_tap.c:3:wt_init	8	static
+firmware/unified/sample_tap.c:5:wt_start	8	static
+firmware/unified/sample_tap.c:16:wt_stop	0	static
+firmware/unified/sample_tap.c:28:wt_offer	40	static
+firmware/unified/sample_tap.c:46:wt_take	16	static

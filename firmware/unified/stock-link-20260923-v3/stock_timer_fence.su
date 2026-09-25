@@ -1,0 +1,5 @@
+firmware/unified/stock_timer_fence.c:21:wf_init	24	static
+firmware/unified/stock_timer_fence.c:24:wf_request	24	static
+firmware/unified/stock_timer_fence.c:14:timer_passed	0	static
+firmware/unified/stock_timer_fence.c:55:wf_complete	8	static
+firmware/unified/stock_timer_fence.c:68:wf_abandon	8	static

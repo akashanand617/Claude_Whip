@@ -1,0 +1,7 @@
+INCOMPLETE FIRST RUN — NOT EVIDENCE
+
+The first guarded measurement stopped before writing measurements.json because
+an expected LTO layout constant came from an earlier scratch ordering/entry.
+Its partial artifacts are retained for failure provenance only. The script was
+corrected to choose an already-retained external root as the measurement entry.
+Use research-20260925-whole28-flags-rejected-v2 and its report instead.

@@ -1,0 +1,805 @@
+{
+  "schema": 1,
+  "phase": "execution",
+  "valid": true,
+  "exitstatus": 0,
+  "collected": [
+    "tests/test_runtime_stamp16.py::test_generated_build_preserves_whole_inventory_and_refuses_production",
+    "tests/test_runtime_stamp16.py::test_all_bounded_ages_reconstruct_losslessly_at_both_wraps",
+    "tests/test_runtime_stamp16.py::test_full32_capacity_and_249_250_boundaries_across_clock_wrap[0]",
+    "tests/test_runtime_stamp16.py::test_full32_capacity_and_249_250_boundaries_across_clock_wrap[65520]",
+    "tests/test_runtime_stamp16.py::test_full32_capacity_and_249_250_boundaries_across_clock_wrap[4294967280]",
+    "tests/test_runtime_stamp16.py::test_maximal_live_backlog_7968_age_is_not_modular_alias[0]",
+    "tests/test_runtime_stamp16.py::test_maximal_live_backlog_7968_age_is_not_modular_alias[65520]",
+    "tests/test_runtime_stamp16.py::test_maximal_live_backlog_7968_age_is_not_modular_alias[4294967280]",
+    "tests/test_runtime_stamp16.py::test_every_physical_queue_head_retains_full_capacity_and_order",
+    "tests/test_runtime_stamp16.py::test_pending_retains_full_timestamp_while_fresh_source_advances[0]",
+    "tests/test_runtime_stamp16.py::test_pending_retains_full_timestamp_while_fresh_source_advances[65520]",
+    "tests/test_runtime_stamp16.py::test_pending_retains_full_timestamp_while_fresh_source_advances[4294967280]",
+    "tests/test_runtime_stamp16.py::test_bad_acquisition_preserves_cleanup_and_drops_whole_backlog[overflow]",
+    "tests/test_runtime_stamp16.py::test_bad_acquisition_preserves_cleanup_and_drops_whole_backlog[zero]",
+    "tests/test_runtime_stamp16.py::test_bad_acquisition_preserves_cleanup_and_drops_whole_backlog[large]",
+    "tests/test_runtime_stamp16.py::test_bad_acquisition_preserves_cleanup_and_drops_whole_backlog[null]",
+    "tests/test_runtime_stamp16.py::test_bad_acquisition_preserves_cleanup_and_drops_whole_backlog[unverified]",
+    "tests/test_runtime_stamp16.py::test_bad_acquisition_preserves_cleanup_and_drops_whole_backlog[replay]",
+    "tests/test_runtime_stamp16.py::test_bad_acquisition_preserves_cleanup_and_drops_whole_backlog[missing]",
+    "tests/test_runtime_stamp16.py::test_idle_action_and_stream_cleanup_precedes_old_stamp_access[entering]",
+    "tests/test_runtime_stamp16.py::test_idle_action_and_stream_cleanup_precedes_old_stamp_access[gesture]",
+    "tests/test_runtime_stamp16.py::test_idle_action_and_stream_cleanup_precedes_old_stamp_access[returning]",
+    "tests/test_runtime_stamp16.py::test_link_cleanup_and_stale_send_never_restore_old_queue[False]",
+    "tests/test_runtime_stamp16.py::test_link_cleanup_and_stale_send_never_restore_old_queue[True]",
+    "tests/test_runtime_stamp16.py::test_empty_pending_scratch_is_not_a_live_timestamp",
+    "tests/test_runtime_stamp16.py::test_counter_wrap_and_sequence_exhaustion_keep_original_failure",
+    "tests/test_runtime_stamp16.py::test_seeded_persistent_runtime_traces_match_all_live_state[0]",
+    "tests/test_runtime_stamp16.py::test_seeded_persistent_runtime_traces_match_all_live_state[1]",
+    "tests/test_runtime_stamp16.py::test_seeded_persistent_runtime_traces_match_all_live_state[2]",
+    "tests/test_runtime_stamp16.py::test_seeded_persistent_runtime_traces_match_all_live_state[3]",
+    "tests/test_runtime_stamp16.py::test_seeded_persistent_runtime_traces_match_all_live_state[4]",
+    "tests/test_runtime_stamp16.py::test_seeded_persistent_runtime_traces_match_all_live_state[5]",
+    "tests/test_runtime_stamp16.py::test_seeded_persistent_runtime_traces_match_all_live_state[6]",
+    "tests/test_runtime_stamp16.py::test_seeded_persistent_runtime_traces_match_all_live_state[7]",
+    "tests/test_runtime_stamp16.py::test_naive_low8_mutant_actually_delivers_expired_head",
+    "tests/test_runtime_stamp16.py::test_generator_refuses_unreviewed_stamp_width[0]",
+    "tests/test_runtime_stamp16.py::test_generator_refuses_unreviewed_stamp_width[32]",
+    "tests/test_runtime_stamp16.py::test_generator_refuses_missing_or_repeated_source_anchor[missing]",
+    "tests/test_runtime_stamp16.py::test_generator_refuses_missing_or_repeated_source_anchor[anchor anchor]",
+    "tests/test_runtime_stamp_budget.py::test_only_functionless_objects_may_lack_matching_stack_reports[functionless]",
+    "tests/test_runtime_stamp_budget.py::test_only_functionless_objects_may_lack_matching_stack_reports[executable_missing]",
+    "tests/test_runtime_stamp_budget.py::test_only_functionless_objects_may_lack_matching_stack_reports[one_missing]",
+    "tests/test_runtime_stamp_budget.py::test_only_functionless_objects_may_lack_matching_stack_reports[different]",
+    "tests/test_runtime_stamp_budget.py::test_only_functionless_objects_may_lack_matching_stack_reports[object_drift]"
+  ],
+  "deselected": [],
+  "collection_problems": [],
+  "reports": {
+    "tests/test_runtime_stamp16.py::test_generated_build_preserves_whole_inventory_and_refuses_production": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_runtime_stamp16.py::test_all_bounded_ages_reconstruct_losslessly_at_both_wraps": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_runtime_stamp16.py::test_full32_capacity_and_249_250_boundaries_across_clock_wrap[0]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_runtime_stamp16.py::test_full32_capacity_and_249_250_boundaries_across_clock_wrap[65520]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_runtime_stamp16.py::test_full32_capacity_and_249_250_boundaries_across_clock_wrap[4294967280]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_runtime_stamp16.py::test_maximal_live_backlog_7968_age_is_not_modular_alias[0]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_runtime_stamp16.py::test_maximal_live_backlog_7968_age_is_not_modular_alias[65520]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_runtime_stamp16.py::test_maximal_live_backlog_7968_age_is_not_modular_alias[4294967280]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_runtime_stamp16.py::test_every_physical_queue_head_retains_full_capacity_and_order": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_runtime_stamp16.py::test_pending_retains_full_timestamp_while_fresh_source_advances[0]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_runtime_stamp16.py::test_pending_retains_full_timestamp_while_fresh_source_advances[65520]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_runtime_stamp16.py::test_pending_retains_full_timestamp_while_fresh_source_advances[4294967280]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_runtime_stamp16.py::test_bad_acquisition_preserves_cleanup_and_drops_whole_backlog[overflow]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_runtime_stamp16.py::test_bad_acquisition_preserves_cleanup_and_drops_whole_backlog[zero]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_runtime_stamp16.py::test_bad_acquisition_preserves_cleanup_and_drops_whole_backlog[large]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_runtime_stamp16.py::test_bad_acquisition_preserves_cleanup_and_drops_whole_backlog[null]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_runtime_stamp16.py::test_bad_acquisition_preserves_cleanup_and_drops_whole_backlog[unverified]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_runtime_stamp16.py::test_bad_acquisition_preserves_cleanup_and_drops_whole_backlog[replay]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_runtime_stamp16.py::test_bad_acquisition_preserves_cleanup_and_drops_whole_backlog[missing]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_runtime_stamp16.py::test_idle_action_and_stream_cleanup_precedes_old_stamp_access[entering]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_runtime_stamp16.py::test_idle_action_and_stream_cleanup_precedes_old_stamp_access[gesture]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_runtime_stamp16.py::test_idle_action_and_stream_cleanup_precedes_old_stamp_access[returning]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_runtime_stamp16.py::test_link_cleanup_and_stale_send_never_restore_old_queue[False]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_runtime_stamp16.py::test_link_cleanup_and_stale_send_never_restore_old_queue[True]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_runtime_stamp16.py::test_empty_pending_scratch_is_not_a_live_timestamp": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_runtime_stamp16.py::test_counter_wrap_and_sequence_exhaustion_keep_original_failure": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_runtime_stamp16.py::test_seeded_persistent_runtime_traces_match_all_live_state[0]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_runtime_stamp16.py::test_seeded_persistent_runtime_traces_match_all_live_state[1]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_runtime_stamp16.py::test_seeded_persistent_runtime_traces_match_all_live_state[2]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_runtime_stamp16.py::test_seeded_persistent_runtime_traces_match_all_live_state[3]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_runtime_stamp16.py::test_seeded_persistent_runtime_traces_match_all_live_state[4]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_runtime_stamp16.py::test_seeded_persistent_runtime_traces_match_all_live_state[5]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_runtime_stamp16.py::test_seeded_persistent_runtime_traces_match_all_live_state[6]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_runtime_stamp16.py::test_seeded_persistent_runtime_traces_match_all_live_state[7]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_runtime_stamp16.py::test_naive_low8_mutant_actually_delivers_expired_head": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_runtime_stamp16.py::test_generator_refuses_unreviewed_stamp_width[0]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_runtime_stamp16.py::test_generator_refuses_unreviewed_stamp_width[32]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_runtime_stamp16.py::test_generator_refuses_missing_or_repeated_source_anchor[missing]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_runtime_stamp16.py::test_generator_refuses_missing_or_repeated_source_anchor[anchor anchor]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_runtime_stamp_budget.py::test_only_functionless_objects_may_lack_matching_stack_reports[functionless]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_runtime_stamp_budget.py::test_only_functionless_objects_may_lack_matching_stack_reports[executable_missing]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_runtime_stamp_budget.py::test_only_functionless_objects_may_lack_matching_stack_reports[one_missing]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_runtime_stamp_budget.py::test_only_functionless_objects_may_lack_matching_stack_reports[different]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ],
+    "tests/test_runtime_stamp_budget.py::test_only_functionless_objects_may_lack_matching_stack_reports[object_drift]": [
+      {
+        "when": "setup",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "call",
+        "outcome": "passed",
+        "xfail": false
+      },
+      {
+        "when": "teardown",
+        "outcome": "passed",
+        "xfail": false
+      }
+    ]
+  },
+  "violations": []
+}

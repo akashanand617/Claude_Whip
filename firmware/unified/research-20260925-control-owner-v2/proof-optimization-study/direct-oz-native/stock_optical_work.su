@@ -1,0 +1,3 @@
+firmware/unified/stock_optical_work.c:19:wop_read	48	static
+firmware/unified/stock_optical_work.c:7:enter	8	static
+firmware/unified/stock_optical_work.c:38:wop_retire	24	static

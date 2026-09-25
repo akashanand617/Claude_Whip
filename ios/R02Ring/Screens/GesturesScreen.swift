@@ -16,13 +16,24 @@ struct GesturesScreen: View {
                     BatteryPill(percent: model.ring.batteryPercent)
                 }
 
+                GestureSessionControl(coordinator: model.modes) { enabled in
+                    await model.setGestureSession(enabled)
+                }
+                .padding(.horizontal, Tok.side)
+                Text(model.gestureStatus).font(.mono(10)).foregroundStyle(Tok.muted)
+                    .padding(.horizontal, Tok.side).padding(.vertical, 8)
+                if let event = model.recentGestures.last {
+                    Text("Detected: \(event.name) \(event.direction == "none" ? "" : event.direction)")
+                        .font(.mono(11)).foregroundStyle(Tok.accent)
+                }
+
                 VStack(spacing: 0) {
                     Hairline()
                     ScrollView {
                         LazyVGrid(columns: columns, spacing: 0) {
                             ForEach(Array(GestureID.allCases.enumerated()), id: \.element.id) { i, id in
                                 GestureCell(id: id,
-                                            action: model.gestureMappings[id]?.name ?? "Unassigned",
+                                            action: "Preview · actions disabled",
                                             showsRightRule: i.isMultiple(of: 2))
                             }
                         }
@@ -33,19 +44,38 @@ struct GesturesScreen: View {
 
                 HStack {
                     Spacer()
-                    Button {} label: {
-                        Text("Test gestures ›")
+                    Text("Mappings are previews; no system actions run.")
                             .font(.mono(10))
                             .foregroundStyle(Tok.muted)
-                    }
-                    .buttonStyle(.plain)
                 }
                 .padding(.horizontal, Tok.side)
                 .padding(.top, 8)
 
-                OutlineButton(title: "Health")
+                OutlineButton(title: "Health dashboard") { tab = .today }
                     .padding(.top, 8)
             }
+        }
+    }
+}
+
+private struct GestureSessionControl: View {
+    @ObservedObject var coordinator: UnifiedModeCoordinator
+    let change: (Bool) async -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            let gesture = coordinator.status?.mode == .gesture || coordinator.status?.mode == .enteringGesture
+            Button(gesture ? "Return to Health" : "Start Gesture session") {
+                Task { await change(!gesture) }
+            }
+            .font(.mono(13))
+            .foregroundStyle(coordinator.available ? Tok.accent : Tok.muted)
+            .frame(maxWidth: .infinity, minHeight: Tok.tapTarget, alignment: .leading)
+            .buttonStyle(.plain)
+            .disabled(!coordinator.available || coordinator.status?.mode == .returningHealth)
+            Text(coordinator.available ? "Health returns when the session ends, data becomes stale, the app backgrounds, or the ring disconnects."
+                 : "Runtime toggle is available only on the verified unified image. Firmware maintenance remains under Settings.")
+                .font(.mono(10)).foregroundStyle(Tok.muted)
         }
     }
 }

@@ -1,0 +1,2 @@
+firmware/unified/stock_transport.c:7:wg_stock_add	40	static
+firmware/unified/stock_transport.c:23:wg_stock_notify20	24	static

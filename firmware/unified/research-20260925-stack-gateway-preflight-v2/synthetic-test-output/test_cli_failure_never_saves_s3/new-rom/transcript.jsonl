@@ -1,0 +1,3 @@
+{"kind": "header", "wall": 1790310207.565571, "plan": "stack-gateway-v1", "max_transactions": 122, "flashing": false, "sensor_commands": false, "target_execution": false, "pointer_following": false, "warning": "CD bookkeeping side effects; sampled identity is not full attestation"}
+{"kind": "device", "name": "R02_CC07", "hardware": "RT02CR_V3.1", "firmware": "other", "address": "fake-device"}
+{"kind": "aborted", "error": "unexpected device/firmware; no diagnostic command sent", "retry": false, "error_type": "RuntimeError", "disconnect_completed": true, "disconnect_confirmed": true}

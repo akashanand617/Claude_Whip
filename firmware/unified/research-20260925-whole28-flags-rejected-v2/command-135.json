@@ -1,0 +1,27 @@
+{
+  "command": [
+    "/tmp/whip-unified-build.m1E9lk/zig-aarch64-macos-0.15.2/zig",
+    "cc",
+    "-target",
+    "thumb-freestanding-eabi",
+    "-mcpu=cortex_m0plus",
+    "-mthumb",
+    "-ffreestanding",
+    "-fno-builtin",
+    "-Oz",
+    "-std=c11",
+    "-Wall",
+    "-Wextra",
+    "-Werror",
+    "-I",
+    "/Users/akashanand/Claude_Whip/firmware/unified",
+    "-flto",
+    "-c",
+    "/Users/akashanand/Claude_Whip/firmware/unified/stock_discovery_read.c",
+    "-o",
+    "/Users/akashanand/Claude_Whip/firmware/unified/research-20260925-whole28-flags-rejected-v2/lto/stock_discovery_read.o"
+  ],
+  "exit": 0,
+  "stdout": "",
+  "stderr": ""
+}

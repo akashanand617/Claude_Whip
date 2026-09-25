@@ -1,0 +1,5192 @@
+{
+  "schema": "scratch.retired-descendants.v1",
+  "inputs_sha256": {
+    "firmware/rt02cr-stock-3.12.02.bin": "b58fd30355d9c88ff7a8331c83e4c3d2808fa0463d8f03f27f4d7191a5b750b0",
+    "whip/fwindicator.py": "5d93cb77a65603494311f8643a4669ee4a9672cf1cda069d1ad4dd1930d7baf1",
+    "whip/fwretirement.py": "e99bf3ca10d2cbe1bb62d68f569635126124a56b76c7e533d56bb8cb78aa58ad",
+    "whip/fwraw_relocation_trial.py": "92776ad7745d48cdaa398c44e03aee9a5c5442f8e86c6bcf9fe7f256325932a6",
+    "docs/UNIFIED_RAW_RETIREMENT.md": "164ed28595f742b8d3370eb2af87b6beb00e9c8b5f11c8055756ff0be6ebab50",
+    "docs/UNIFIED_DIAGNOSTIC_RETIREMENT.md": "09f6add060c908e7f488df9ba04ad7788f260c3f459124a16cb4c3fb5f10d196",
+    "docs/UNIFIED_INDICATOR_RETIREMENT.md": "5b30443a87ab0d74bed80a4d85ae865a1dfbbaeac0c89226ad51ba8a3de14359",
+    "docs/UNIFIED_STOCK_RETIREMENT.md": "21766f6ad06cd264df599a1b53b786869a2745cc66f6b92d6f9b39c568ec7100"
+  },
+  "decoder_version": "5.0.7",
+  "script_sha256": "8909f84ab553831734e287c6043575acfc4e61d1238effebe34c66d814a1d62a",
+  "mapped_scan_regions": [
+    [
+      1104,
+      134344,
+      8545280
+    ],
+    [
+      134344,
+      136568,
+      2128896
+    ],
+    [
+      137816,
+      138016,
+      2156340
+    ]
+  ],
+  "halfword_branch_and_pc_relative_candidate_positions": 67832,
+  "whole_image_unaligned_le32_positions": 138013,
+  "new_descendant_spans": [
+    {
+      "name": "indicator_brightness_wrapper",
+      "file_start": 63506,
+      "file_end_exclusive": 63524,
+      "bytes": 18,
+      "sha256": "fd16738de2e4d7a002bfc36499f706f5aa18976e070695a30668de84292d58e7",
+      "instructions": 8,
+      "incoming_candidates": [
+        {
+          "site": 15092,
+          "kind": "bl",
+          "runtime_target": 8607682,
+          "target_file": 63506
+        },
+        {
+          "site": 15110,
+          "kind": "bl",
+          "runtime_target": 8607682,
+          "target_file": 63506
+        },
+        {
+          "site": 15172,
+          "kind": "bl",
+          "runtime_target": 8607682,
+          "target_file": 63506
+        }
+      ],
+      "stored_pointer_candidates": [],
+      "external_pc_relative_users": [],
+      "calls": [
+        {
+          "site": 63518,
+          "runtime_target": 8614390,
+          "target_file": 70214,
+          "other_immediate_entry_candidates": []
+        }
+      ],
+      "external_branches": [],
+      "literal_loads_and_adr": []
+    },
+    {
+      "name": "indicator_busy_getter",
+      "file_start": 63790,
+      "file_end_exclusive": 63796,
+      "bytes": 6,
+      "sha256": "92ceb878df452da93fe9df1794125ab40f3590c9685ec4a81e766b486d6861b2",
+      "instructions": 3,
+      "incoming_candidates": [
+        {
+          "site": 15394,
+          "kind": "bl",
+          "runtime_target": 8607966,
+          "target_file": 63790
+        },
+        {
+          "site": 15678,
+          "kind": "bl",
+          "runtime_target": 8607966,
+          "target_file": 63790
+        }
+      ],
+      "stored_pointer_candidates": [],
+      "external_pc_relative_users": [],
+      "calls": [],
+      "external_branches": [],
+      "literal_loads_and_adr": [
+        {
+          "site": 63790,
+          "kind": "ldr-literal",
+          "runtime_target": 8608148,
+          "target_file": 63972,
+          "word": 2146332
+        }
+      ]
+    },
+    {
+      "name": "indicator_driver_entry",
+      "file_start": 70214,
+      "file_end_exclusive": 70500,
+      "bytes": 286,
+      "sha256": "17a79c9dc13838d038fdae1091efb8713793364471a9b923e0dfdecac3b9ab1c",
+      "instructions": 133,
+      "incoming_candidates": [
+        {
+          "site": 63518,
+          "kind": "bl",
+          "runtime_target": 8614390,
+          "target_file": 70214
+        }
+      ],
+      "stored_pointer_candidates": [],
+      "external_pc_relative_users": [],
+      "calls": [
+        {
+          "site": 70234,
+          "runtime_target": 8615638,
+          "target_file": 71462,
+          "other_immediate_entry_candidates": [
+            {
+              "site": 69194,
+              "kind": "bl",
+              "runtime_target": 8615638
+            },
+            {
+              "site": 69282,
+              "kind": "bl",
+              "runtime_target": 8615638
+            }
+          ]
+        },
+        {
+          "site": 70304,
+          "runtime_target": 8619078,
+          "target_file": 74902,
+          "other_immediate_entry_candidates": [
+            {
+              "site": 66034,
+              "kind": "bl",
+              "runtime_target": 8619078
+            },
+            {
+              "site": 66096,
+              "kind": "bl",
+              "runtime_target": 8619078
+            },
+            {
+              "site": 69294,
+              "kind": "bl",
+              "runtime_target": 8619078
+            },
+            {
+              "site": 69300,
+              "kind": "bl",
+              "runtime_target": 8619078
+            },
+            {
+              "site": 70626,
+              "kind": "bl",
+              "runtime_target": 8619078
+            },
+            {
+              "site": 71194,
+              "kind": "bl",
+              "runtime_target": 8619078
+            },
+            {
+              "site": 71200,
+              "kind": "bl",
+              "runtime_target": 8619078
+            },
+            {
+              "site": 71220,
+              "kind": "bl",
+              "runtime_target": 8619078
+            }
+          ]
+        },
+        {
+          "site": 70310,
+          "runtime_target": 8619078,
+          "target_file": 74902,
+          "other_immediate_entry_candidates": [
+            {
+              "site": 66034,
+              "kind": "bl",
+              "runtime_target": 8619078
+            },
+            {
+              "site": 66096,
+              "kind": "bl",
+              "runtime_target": 8619078
+            },
+            {
+              "site": 69294,
+              "kind": "bl",
+              "runtime_target": 8619078
+            },
+            {
+              "site": 69300,
+              "kind": "bl",
+              "runtime_target": 8619078
+            },
+            {
+              "site": 70626,
+              "kind": "bl",
+              "runtime_target": 8619078
+            },
+            {
+              "site": 71194,
+              "kind": "bl",
+              "runtime_target": 8619078
+            },
+            {
+              "site": 71200,
+              "kind": "bl",
+              "runtime_target": 8619078
+            },
+            {
+              "site": 71220,
+              "kind": "bl",
+              "runtime_target": 8619078
+            }
+          ]
+        },
+        {
+          "site": 70348,
+          "runtime_target": 8614792,
+          "target_file": 70616,
+          "other_immediate_entry_candidates": [
+            {
+              "site": 64680,
+              "kind": "bl",
+              "runtime_target": 8614792
+            },
+            {
+              "site": 68830,
+              "kind": "bl",
+              "runtime_target": 8614792
+            },
+            {
+              "site": 71248,
+              "kind": "bl",
+              "runtime_target": 8614792
+            }
+          ]
+        },
+        {
+          "site": 70360,
+          "runtime_target": 8641770,
+          "target_file": 97594,
+          "other_immediate_entry_candidates": [
+            {
+              "site": 4654,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 4684,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 4690,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 4714,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 4800,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 6488,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 6630,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 6848,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 6894,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 9132,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 9148,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 9388,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 9486,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 9498,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 9508,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 9704,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 9716,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 9726,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 9836,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 9846,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 9856,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 9886,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 9902,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 9910,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 9926,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 9934,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 9946,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 9954,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 10034,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 11026,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 11068,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 14426,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 14856,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 14866,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 14876,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 15760,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 18920,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 18932,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 25510,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 29760,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 33958,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 34926,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 35710,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 39518,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 39528,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 43422,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 43438,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 44014,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 44028,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 44072,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 44236,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 44752,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 45962,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 45976,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 46058,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 46072,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 46120,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 46244,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 46274,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 46302,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 46318,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 46418,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 46426,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 46470,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 46484,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 46508,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 46860,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 47248,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 47540,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 57564,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 58096,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 58108,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 58152,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 59346,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 59746,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 60310,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 61038,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 61804,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 61904,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 62664,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 68686,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 72266,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 72350,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 72996,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 73016,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 76042,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 78992,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 79006,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 79022,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 79092,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 79106,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 79120,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 79134,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 79150,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 79158,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 79172,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 79188,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 79212,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 79226,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 79244,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 81224,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 81512,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 95418,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 109720,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 109728,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 109744,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 120492,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 120516,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 120534,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 120818,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 120880,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 121372,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 121716,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 121792,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 122466,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 122476,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 123422,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 123450,
+              "kind": "bl",
+              "runtime_target": 8641770
+            }
+          ]
+        },
+        {
+          "site": 70368,
+          "runtime_target": 8618392,
+          "target_file": 74216,
+          "other_immediate_entry_candidates": []
+        },
+        {
+          "site": 70374,
+          "runtime_target": 8614756,
+          "target_file": 70580,
+          "other_immediate_entry_candidates": [
+            {
+              "site": 65770,
+              "kind": "bl",
+              "runtime_target": 8614756
+            },
+            {
+              "site": 65908,
+              "kind": "bl",
+              "runtime_target": 8614756
+            },
+            {
+              "site": 68944,
+              "kind": "bl",
+              "runtime_target": 8614756
+            },
+            {
+              "site": 70896,
+              "kind": "b",
+              "runtime_target": 8614756
+            },
+            {
+              "site": 70936,
+              "kind": "bl",
+              "runtime_target": 8614756
+            }
+          ]
+        },
+        {
+          "site": 70430,
+          "runtime_target": 8608320,
+          "target_file": 64144,
+          "other_immediate_entry_candidates": [
+            {
+              "site": 65282,
+              "kind": "bl",
+              "runtime_target": 8608320
+            },
+            {
+              "site": 65386,
+              "kind": "bl",
+              "runtime_target": 8608320
+            },
+            {
+              "site": 65526,
+              "kind": "bl",
+              "runtime_target": 8608320
+            },
+            {
+              "site": 65686,
+              "kind": "bl",
+              "runtime_target": 8608320
+            },
+            {
+              "site": 65824,
+              "kind": "bl",
+              "runtime_target": 8608320
+            }
+          ]
+        },
+        {
+          "site": 70478,
+          "runtime_target": 8608402,
+          "target_file": 64226,
+          "other_immediate_entry_candidates": [
+            {
+              "site": 65420,
+              "kind": "bl",
+              "runtime_target": 8608402
+            },
+            {
+              "site": 65718,
+              "kind": "bl",
+              "runtime_target": 8608402
+            },
+            {
+              "site": 65856,
+              "kind": "bl",
+              "runtime_target": 8608402
+            }
+          ]
+        },
+        {
+          "site": 70492,
+          "runtime_target": 8619078,
+          "target_file": 74902,
+          "other_immediate_entry_candidates": [
+            {
+              "site": 66034,
+              "kind": "bl",
+              "runtime_target": 8619078
+            },
+            {
+              "site": 66096,
+              "kind": "bl",
+              "runtime_target": 8619078
+            },
+            {
+              "site": 69294,
+              "kind": "bl",
+              "runtime_target": 8619078
+            },
+            {
+              "site": 69300,
+              "kind": "bl",
+              "runtime_target": 8619078
+            },
+            {
+              "site": 70626,
+              "kind": "bl",
+              "runtime_target": 8619078
+            },
+            {
+              "site": 71194,
+              "kind": "bl",
+              "runtime_target": 8619078
+            },
+            {
+              "site": 71200,
+              "kind": "bl",
+              "runtime_target": 8619078
+            },
+            {
+              "site": 71220,
+              "kind": "bl",
+              "runtime_target": 8619078
+            }
+          ]
+        }
+      ],
+      "external_branches": [
+        {
+          "site": 70290,
+          "runtime_target": 8613434,
+          "target_file": 69258
+        },
+        {
+          "site": 70498,
+          "runtime_target": 8613434,
+          "target_file": 69258
+        }
+      ],
+      "literal_loads_and_adr": [
+        {
+          "site": 70242,
+          "kind": "ldr-literal",
+          "runtime_target": 8614904,
+          "target_file": 70728,
+          "word": 2131340
+        },
+        {
+          "site": 70356,
+          "kind": "ldr-literal",
+          "runtime_target": 8614908,
+          "target_file": 70732,
+          "word": 20000
+        }
+      ]
+    },
+    {
+      "name": "indicator_register_programmer",
+      "file_start": 74216,
+      "file_end_exclusive": 74284,
+      "bytes": 68,
+      "sha256": "acb04f3e02971dd2df7e383dd9bcf0d6084712c38c6bac7d0403490371734b27",
+      "instructions": 33,
+      "incoming_candidates": [
+        {
+          "site": 70368,
+          "kind": "bl",
+          "runtime_target": 8618392,
+          "target_file": 74216
+        }
+      ],
+      "stored_pointer_candidates": [],
+      "external_pc_relative_users": [],
+      "calls": [
+        {
+          "site": 74268,
+          "runtime_target": 8605122,
+          "target_file": 60946,
+          "other_immediate_entry_candidates": [
+            {
+              "site": 71214,
+              "kind": "bl",
+              "runtime_target": 8605122
+            },
+            {
+              "site": 72320,
+              "kind": "bl",
+              "runtime_target": 8605122
+            },
+            {
+              "site": 73092,
+              "kind": "bl",
+              "runtime_target": 8605122
+            },
+            {
+              "site": 73380,
+              "kind": "bl",
+              "runtime_target": 8605122
+            },
+            {
+              "site": 73462,
+              "kind": "bl",
+              "runtime_target": 8605122
+            },
+            {
+              "site": 73510,
+              "kind": "bl",
+              "runtime_target": 8605122
+            },
+            {
+              "site": 73738,
+              "kind": "bl",
+              "runtime_target": 8605122
+            },
+            {
+              "site": 73780,
+              "kind": "bl",
+              "runtime_target": 8605122
+            },
+            {
+              "site": 74008,
+              "kind": "bl",
+              "runtime_target": 8605122
+            },
+            {
+              "site": 74018,
+              "kind": "bl",
+              "runtime_target": 8605122
+            },
+            {
+              "site": 74136,
+              "kind": "bl",
+              "runtime_target": 8605122
+            },
+            {
+              "site": 74200,
+              "kind": "bl",
+              "runtime_target": 8605122
+            },
+            {
+              "site": 74338,
+              "kind": "bl",
+              "runtime_target": 8605122
+            },
+            {
+              "site": 74438,
+              "kind": "bl",
+              "runtime_target": 8605122
+            },
+            {
+              "site": 74576,
+              "kind": "bl",
+              "runtime_target": 8605122
+            },
+            {
+              "site": 74586,
+              "kind": "bl",
+              "runtime_target": 8605122
+            },
+            {
+              "site": 74636,
+              "kind": "bl",
+              "runtime_target": 8605122
+            },
+            {
+              "site": 74716,
+              "kind": "bl",
+              "runtime_target": 8605122
+            },
+            {
+              "site": 74740,
+              "kind": "bl",
+              "runtime_target": 8605122
+            },
+            {
+              "site": 74896,
+              "kind": "bl",
+              "runtime_target": 8605122
+            },
+            {
+              "site": 74944,
+              "kind": "bl",
+              "runtime_target": 8605122
+            }
+          ]
+        }
+      ],
+      "external_branches": [],
+      "literal_loads_and_adr": []
+    }
+  ],
+  "old_root_unoccupied_body_spans": [
+    {
+      "name": "brightness_body_tail",
+      "file_start": 15184,
+      "file_end_exclusive": 15224,
+      "bytes": 40,
+      "sha256": "4be1fae60858ef3e7a49b4413e7a5db3e61e6800b81c3a240d836b408861ceeb",
+      "instructions": 19,
+      "incoming_candidates": [
+        {
+          "site": 15148,
+          "kind": "bcc",
+          "runtime_target": 8559362,
+          "target_file": 15186
+        },
+        {
+          "site": 15152,
+          "kind": "bcc",
+          "runtime_target": 8559372,
+          "target_file": 15196
+        },
+        {
+          "site": 15156,
+          "kind": "bcc",
+          "runtime_target": 8559372,
+          "target_file": 15196
+        }
+      ],
+      "stored_pointer_candidates": [],
+      "external_pc_relative_users": [],
+      "calls": [
+        {
+          "site": 15220,
+          "runtime_target": 8560052,
+          "target_file": 15876,
+          "other_immediate_entry_candidates": [
+            {
+              "site": 7138,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 8868,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 8898,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 9070,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 11500,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 13330,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 13516,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 15524,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 15734,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 20096,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 27160,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 37928,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 38174,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 38564,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 52110,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 54522,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 54920,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 56996,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 57766,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 58472,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 58726,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 59664,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 60064,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 60680,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 75024,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 75502,
+              "kind": "bl",
+              "runtime_target": 8560052
+            }
+          ]
+        }
+      ],
+      "external_branches": [
+        {
+          "site": 15184,
+          "runtime_target": 8559352,
+          "target_file": 15176
+        },
+        {
+          "site": 15194,
+          "runtime_target": 8559348,
+          "target_file": 15172
+        }
+      ],
+      "literal_loads_and_adr": [
+        {
+          "site": 15196,
+          "kind": "ldr-literal",
+          "runtime_target": 8560024,
+          "target_file": 15848,
+          "word": 2137356
+        },
+        {
+          "site": 15210,
+          "kind": "ldr-literal",
+          "runtime_target": 8560024,
+          "target_file": 15848,
+          "word": 2137356
+        },
+        {
+          "site": 15216,
+          "kind": "ldr-literal",
+          "runtime_target": 8560032,
+          "target_file": 15856,
+          "word": 8559221
+        }
+      ]
+    },
+    {
+      "name": "pattern_request_tail",
+      "file_start": 15516,
+      "file_end_exclusive": 15528,
+      "bytes": 12,
+      "sha256": "1d06674ce2b0909dd6556da9e512cc9d20ec480d4f1717b91864f806d40e1653",
+      "instructions": 5,
+      "incoming_candidates": [],
+      "stored_pointer_candidates": [],
+      "external_pc_relative_users": [],
+      "calls": [
+        {
+          "site": 15524,
+          "runtime_target": 8560052,
+          "target_file": 15876,
+          "other_immediate_entry_candidates": [
+            {
+              "site": 7138,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 8868,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 8898,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 9070,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 11500,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 13330,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 13516,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 15220,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 15734,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 20096,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 27160,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 37928,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 38174,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 38564,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 52110,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 54522,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 54920,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 56996,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 57766,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 58472,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 58726,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 59664,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 60064,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 60680,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 75024,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 75502,
+              "kind": "bl",
+              "runtime_target": 8560052
+            }
+          ]
+        }
+      ],
+      "external_branches": [],
+      "literal_loads_and_adr": [
+        {
+          "site": 15520,
+          "kind": "ldr-literal",
+          "runtime_target": 8560040,
+          "target_file": 15864,
+          "word": 8559403
+        }
+      ]
+    },
+    {
+      "name": "indicator_cancel_body",
+      "file_start": 15536,
+      "file_end_exclusive": 15568,
+      "bytes": 32,
+      "sha256": "1393072b77d08b9e221706a45bcb97d891d79e475013d0b6ea826b40c5357029",
+      "instructions": 14,
+      "incoming_candidates": [],
+      "stored_pointer_candidates": [],
+      "external_pc_relative_users": [],
+      "calls": [
+        {
+          "site": 15548,
+          "runtime_target": 8560096,
+          "target_file": 15920,
+          "other_immediate_entry_candidates": [
+            {
+              "site": 7378,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 8206,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 8304,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 8356,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 8446,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 8776,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 8950,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 9086,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 13532,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 13570,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 15138,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 15262,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 15290,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 15428,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 15720,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 15832,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 20116,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 38594,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 38770,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 54396,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 54672,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 54712,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 54748,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 54786,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 56882,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 57634,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 57664,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 58760,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 59520,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 59910,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 60538,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 75352,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 75630,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 75646,
+              "kind": "bl",
+              "runtime_target": 8560096
+            }
+          ]
+        },
+        {
+          "site": 15560,
+          "runtime_target": 8559306,
+          "target_file": 15130,
+          "other_immediate_entry_candidates": [
+            {
+              "site": 15254,
+              "kind": "bl",
+              "runtime_target": 8559306
+            },
+            {
+              "site": 15282,
+              "kind": "bl",
+              "runtime_target": 8559306
+            },
+            {
+              "site": 15378,
+              "kind": "bl",
+              "runtime_target": 8559306
+            },
+            {
+              "site": 15420,
+              "kind": "bl",
+              "runtime_target": 8559306
+            },
+            {
+              "site": 15506,
+              "kind": "bl",
+              "runtime_target": 8559306
+            },
+            {
+              "site": 15740,
+              "kind": "bl",
+              "runtime_target": 8559306
+            }
+          ]
+        }
+      ],
+      "external_branches": [
+        {
+          "site": 15542,
+          "runtime_target": 8559744,
+          "target_file": 15568
+        }
+      ],
+      "literal_loads_and_adr": [
+        {
+          "site": 15564,
+          "kind": "ldr-literal",
+          "runtime_target": 8560024,
+          "target_file": 15848,
+          "word": 2137356
+        }
+      ]
+    },
+    {
+      "name": "custom_pattern_body",
+      "file_start": 15576,
+      "file_end_exclusive": 15668,
+      "bytes": 92,
+      "sha256": "d7045ffc5fb4a8b0fada8f425a64955d3af498b3d301db43ed3f90c18912e844",
+      "instructions": 43,
+      "incoming_candidates": [
+        {
+          "site": 15668,
+          "kind": "b",
+          "runtime_target": 8559806,
+          "target_file": 15630
+        }
+      ],
+      "stored_pointer_candidates": [],
+      "external_pc_relative_users": [],
+      "calls": [
+        {
+          "site": 15630,
+          "runtime_target": 8559708,
+          "target_file": 15532,
+          "other_immediate_entry_candidates": [
+            {
+              "site": 63528,
+              "kind": "bl",
+              "runtime_target": 8559708
+            }
+          ]
+        },
+        {
+          "site": 15650,
+          "runtime_target": 8559560,
+          "target_file": 15384,
+          "other_immediate_entry_candidates": [
+            {
+              "site": 4932,
+              "kind": "bl",
+              "runtime_target": 8559560
+            },
+            {
+              "site": 5712,
+              "kind": "bl",
+              "runtime_target": 8559560
+            },
+            {
+              "site": 18430,
+              "kind": "bl",
+              "runtime_target": 8559560
+            },
+            {
+              "site": 22586,
+              "kind": "bl",
+              "runtime_target": 8559560
+            },
+            {
+              "site": 23300,
+              "kind": "bl",
+              "runtime_target": 8559560
+            }
+          ]
+        },
+        {
+          "site": 15656,
+          "runtime_target": 8559708,
+          "target_file": 15532,
+          "other_immediate_entry_candidates": [
+            {
+              "site": 63528,
+              "kind": "bl",
+              "runtime_target": 8559708
+            }
+          ]
+        }
+      ],
+      "external_branches": [
+        {
+          "site": 15588,
+          "runtime_target": 8559704,
+          "target_file": 15528
+        },
+        {
+          "site": 15600,
+          "runtime_target": 8559704,
+          "target_file": 15528
+        },
+        {
+          "site": 15606,
+          "runtime_target": 8559704,
+          "target_file": 15528
+        },
+        {
+          "site": 15610,
+          "runtime_target": 8559704,
+          "target_file": 15528
+        },
+        {
+          "site": 15614,
+          "runtime_target": 8559704,
+          "target_file": 15528
+        },
+        {
+          "site": 15624,
+          "runtime_target": 8559704,
+          "target_file": 15528
+        },
+        {
+          "site": 15654,
+          "runtime_target": 8559704,
+          "target_file": 15528
+        },
+        {
+          "site": 15660,
+          "runtime_target": 8559704,
+          "target_file": 15528
+        }
+      ],
+      "literal_loads_and_adr": [
+        {
+          "site": 15634,
+          "kind": "ldr-literal",
+          "runtime_target": 8560028,
+          "target_file": 15852,
+          "word": 2131231
+        }
+      ]
+    },
+    {
+      "name": "timed_pattern_body",
+      "file_start": 15676,
+      "file_end_exclusive": 15772,
+      "bytes": 96,
+      "sha256": "523ff82c08b170a35141b2729813d815ba147bc62e91e1ff3f43fcef8f6ce881",
+      "instructions": 43,
+      "incoming_candidates": [],
+      "stored_pointer_candidates": [],
+      "external_pc_relative_users": [
+        {
+          "site": 15034,
+          "kind": "adr",
+          "runtime_target": 8559924
+        }
+      ],
+      "calls": [
+        {
+          "site": 15678,
+          "runtime_target": 8607966,
+          "target_file": 63790,
+          "other_immediate_entry_candidates": [
+            {
+              "site": 15394,
+              "kind": "bl",
+              "runtime_target": 8607966
+            }
+          ]
+        },
+        {
+          "site": 15720,
+          "runtime_target": 8560096,
+          "target_file": 15920,
+          "other_immediate_entry_candidates": [
+            {
+              "site": 7378,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 8206,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 8304,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 8356,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 8446,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 8776,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 8950,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 9086,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 13532,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 13570,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 15138,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 15262,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 15290,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 15428,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 15548,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 15832,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 20116,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 38594,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 38770,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 54396,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 54672,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 54712,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 54748,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 54786,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 56882,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 57634,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 57664,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 58760,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 59520,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 59910,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 60538,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 75352,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 75630,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 75646,
+              "kind": "bl",
+              "runtime_target": 8560096
+            }
+          ]
+        },
+        {
+          "site": 15734,
+          "runtime_target": 8560052,
+          "target_file": 15876,
+          "other_immediate_entry_candidates": [
+            {
+              "site": 7138,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 8868,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 8898,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 9070,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 11500,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 13330,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 13516,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 15220,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 15524,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 20096,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 27160,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 37928,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 38174,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 38564,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 52110,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 54522,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 54920,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 56996,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 57766,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 58472,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 58726,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 59664,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 60064,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 60680,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 75024,
+              "kind": "bl",
+              "runtime_target": 8560052
+            },
+            {
+              "site": 75502,
+              "kind": "bl",
+              "runtime_target": 8560052
+            }
+          ]
+        },
+        {
+          "site": 15740,
+          "runtime_target": 8559306,
+          "target_file": 15130,
+          "other_immediate_entry_candidates": [
+            {
+              "site": 15254,
+              "kind": "bl",
+              "runtime_target": 8559306
+            },
+            {
+              "site": 15282,
+              "kind": "bl",
+              "runtime_target": 8559306
+            },
+            {
+              "site": 15378,
+              "kind": "bl",
+              "runtime_target": 8559306
+            },
+            {
+              "site": 15420,
+              "kind": "bl",
+              "runtime_target": 8559306
+            },
+            {
+              "site": 15506,
+              "kind": "bl",
+              "runtime_target": 8559306
+            },
+            {
+              "site": 15560,
+              "kind": "bl",
+              "runtime_target": 8559306
+            }
+          ]
+        },
+        {
+          "site": 15760,
+          "runtime_target": 8641770,
+          "target_file": 97594,
+          "other_immediate_entry_candidates": [
+            {
+              "site": 4654,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 4684,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 4690,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 4714,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 4800,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 6488,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 6630,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 6848,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 6894,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 9132,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 9148,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 9388,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 9486,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 9498,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 9508,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 9704,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 9716,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 9726,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 9836,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 9846,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 9856,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 9886,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 9902,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 9910,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 9926,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 9934,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 9946,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 9954,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 10034,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 11026,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 11068,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 14426,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 14856,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 14866,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 14876,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 18920,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 18932,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 25510,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 29760,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 33958,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 34926,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 35710,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 39518,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 39528,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 43422,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 43438,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 44014,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 44028,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 44072,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 44236,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 44752,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 45962,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 45976,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 46058,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 46072,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 46120,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 46244,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 46274,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 46302,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 46318,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 46418,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 46426,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 46470,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 46484,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 46508,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 46860,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 47248,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 47540,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 57564,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 58096,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 58108,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 58152,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 59346,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 59746,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 60310,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 61038,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 61804,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 61904,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 62664,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 68686,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 70360,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 72266,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 72350,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 72996,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 73016,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 76042,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 78992,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 79006,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 79022,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 79092,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 79106,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 79120,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 79134,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 79150,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 79158,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 79172,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 79188,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 79212,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 79226,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 79244,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 81224,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 81512,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 95418,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 109720,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 109728,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 109744,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 120492,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 120516,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 120534,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 120818,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 120880,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 121372,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 121716,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 121792,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 122466,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 122476,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 123422,
+              "kind": "bl",
+              "runtime_target": 8641770
+            },
+            {
+              "site": 123450,
+              "kind": "bl",
+              "runtime_target": 8641770
+            }
+          ]
+        }
+      ],
+      "external_branches": [
+        {
+          "site": 15684,
+          "runtime_target": 8559948,
+          "target_file": 15772
+        },
+        {
+          "site": 15700,
+          "runtime_target": 8559948,
+          "target_file": 15772
+        }
+      ],
+      "literal_loads_and_adr": [
+        {
+          "site": 15686,
+          "kind": "ldr-literal",
+          "runtime_target": 8560024,
+          "target_file": 15848,
+          "word": 2137356
+        },
+        {
+          "site": 15710,
+          "kind": "ldr-literal",
+          "runtime_target": 8560024,
+          "target_file": 15848,
+          "word": 2137356
+        },
+        {
+          "site": 15716,
+          "kind": "ldr-literal",
+          "runtime_target": 8560024,
+          "target_file": 15848,
+          "word": 2137356
+        },
+        {
+          "site": 15724,
+          "kind": "ldr-literal",
+          "runtime_target": 8560024,
+          "target_file": 15848,
+          "word": 2137356
+        },
+        {
+          "site": 15730,
+          "kind": "ldr-literal",
+          "runtime_target": 8560040,
+          "target_file": 15864,
+          "word": 8559403
+        },
+        {
+          "site": 15766,
+          "kind": "ldr-literal",
+          "runtime_target": 8560028,
+          "target_file": 15852,
+          "word": 2131231
+        }
+      ]
+    },
+    {
+      "name": "brightness_request_body",
+      "file_start": 15780,
+      "file_end_exclusive": 15808,
+      "bytes": 28,
+      "sha256": "a95e306d9309af0db5f0030c3c0ddaccd027af8a617bfa80a723cdb58ecb02f7",
+      "instructions": 13,
+      "incoming_candidates": [],
+      "stored_pointer_candidates": [],
+      "external_pc_relative_users": [],
+      "calls": [
+        {
+          "site": 15780,
+          "runtime_target": 8559846,
+          "target_file": 15670,
+          "other_immediate_entry_candidates": [
+            {
+              "site": 13416,
+              "kind": "bl",
+              "runtime_target": 8559846
+            },
+            {
+              "site": 13784,
+              "kind": "bl",
+              "runtime_target": 8559846
+            },
+            {
+              "site": 13796,
+              "kind": "bl",
+              "runtime_target": 8559846
+            },
+            {
+              "site": 13810,
+              "kind": "bl",
+              "runtime_target": 8559846
+            },
+            {
+              "site": 55168,
+              "kind": "bl",
+              "runtime_target": 8559846
+            }
+          ]
+        }
+      ],
+      "external_branches": [],
+      "literal_loads_and_adr": [
+        {
+          "site": 15784,
+          "kind": "ldr-literal",
+          "runtime_target": 8560028,
+          "target_file": 15852,
+          "word": 2131231
+        }
+      ]
+    },
+    {
+      "name": "active_query_tail",
+      "file_start": 15812,
+      "file_end_exclusive": 15816,
+      "bytes": 4,
+      "sha256": "50941f1f9b2ba5a78100ac5d334c0bef76dae542fb3d41350de7764900b02d0a",
+      "instructions": 2,
+      "incoming_candidates": [],
+      "stored_pointer_candidates": [],
+      "external_pc_relative_users": [],
+      "calls": [],
+      "external_branches": [],
+      "literal_loads_and_adr": []
+    },
+    {
+      "name": "pattern_cancel_body",
+      "file_start": 15820,
+      "file_end_exclusive": 15848,
+      "bytes": 28,
+      "sha256": "2ba7a2d450f9fda62b708aa92f8d726a6ef86a018bab1ffe3e2d0ba8e2df0ae2",
+      "instructions": 13,
+      "incoming_candidates": [],
+      "stored_pointer_candidates": [],
+      "external_pc_relative_users": [],
+      "calls": [
+        {
+          "site": 15832,
+          "runtime_target": 8560096,
+          "target_file": 15920,
+          "other_immediate_entry_candidates": [
+            {
+              "site": 7378,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 8206,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 8304,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 8356,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 8446,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 8776,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 8950,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 9086,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 13532,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 13570,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 15138,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 15262,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 15290,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 15428,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 15548,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 15720,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 20116,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 38594,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 38770,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 54396,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 54672,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 54712,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 54748,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 54786,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 56882,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 57634,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 57664,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 58760,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 59520,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 59910,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 60538,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 75352,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 75630,
+              "kind": "bl",
+              "runtime_target": 8560096
+            },
+            {
+              "site": 75646,
+              "kind": "bl",
+              "runtime_target": 8560096
+            }
+          ]
+        }
+      ],
+      "external_branches": [],
+      "literal_loads_and_adr": [
+        {
+          "site": 15840,
+          "kind": "ldr-literal",
+          "runtime_target": 8560024,
+          "target_file": 15848,
+          "word": 2137356
+        }
+      ]
+    },
+    {
+      "name": "bf_prefix_existing_unused_allowance",
+      "file_start": 18636,
+      "file_end_exclusive": 18664,
+      "bytes": 28,
+      "sha256": "68091711636140f24b5d391c3155daf259cf18e5f9e9a07d09ff3b385b7caa94",
+      "instructions": 14,
+      "incoming_candidates": [],
+      "stored_pointer_candidates": [],
+      "external_pc_relative_users": [],
+      "calls": [],
+      "external_branches": [
+        {
+          "site": 18658,
+          "runtime_target": 8562880,
+          "target_file": 18704
+        },
+        {
+          "site": 18662,
+          "runtime_target": 8562884,
+          "target_file": 18708
+        }
+      ],
+      "literal_loads_and_adr": []
+    },
+    {
+      "name": "bf_tail_existing_unused_allowance",
+      "file_start": 18704,
+      "file_end_exclusive": 18724,
+      "bytes": 20,
+      "sha256": "1e3035e6b16048f808b21acb0abeddbbc92e6cf45b74b8c80d98100be81fa98c",
+      "instructions": 8,
+      "incoming_candidates": [
+        {
+          "site": 18658,
+          "kind": "bcc",
+          "runtime_target": 8562880,
+          "target_file": 18704
+        },
+        {
+          "site": 18662,
+          "kind": "b",
+          "runtime_target": 8562884,
+          "target_file": 18708
+        }
+      ],
+      "stored_pointer_candidates": [],
+      "external_pc_relative_users": [],
+      "calls": [
+        {
+          "site": 18710,
+          "runtime_target": 260168,
+          "target_file": -8284008,
+          "other_immediate_entry_candidates": [
+            {
+              "site": 1192,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 1202,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 1224,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 1234,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 2650,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 2660,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 2678,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 7502,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 7584,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 9538,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 14578,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 14972,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 18322,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 19240,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 19484,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 19592,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 19660,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 20194,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 20588,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 21986,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 22034,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 22254,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 22396,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 22434,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 22474,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 23676,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 24228,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 24682,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 24738,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 24780,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 24824,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 25358,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 25892,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 25974,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 26944,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 29822,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 30038,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 30322,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 30378,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 30858,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 30968,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 32332,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 32620,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 32652,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 32728,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 32962,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 33418,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 33482,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 34070,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 34152,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 34218,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 34268,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 34682,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 34712,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 34806,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 35166,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 35752,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 35832,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 36028,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 36080,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 36126,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 36164,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 36196,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 36226,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 36258,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 37190,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 37246,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 38270,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 38316,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 38410,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 38472,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 38502,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 39180,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 44444,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 44674,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 44808,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 44872,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 44930,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 45276,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 46742,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 49936,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 49964,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 49988,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 50106,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 50208,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 50352,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 50400,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 51042,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 51088,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 51124,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 51224,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 51270,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 51304,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 56294,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 57984,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 60858,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 60876,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 75698,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 75794,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 76264,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 81648,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 82566,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 83408,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 83488,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 85954,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 87286,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 97524,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 102206,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 102224,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 107248,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 107820,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 107832,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 108574,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 108646,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 108658,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 108692,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 108708,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 108722,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 109696,
+              "kind": "bl",
+              "runtime_target": 260168
+            },
+            {
+              "site": 122732,
+              "kind": "bl",
+              "runtime_target": 260168
+            }
+          ]
+        },
+        {
+          "site": 18718,
+          "runtime_target": 8562532,
+          "target_file": 18356,
+          "other_immediate_entry_candidates": [
+            {
+              "site": 18438,
+              "kind": "bl",
+              "runtime_target": 8562532
+            },
+            {
+              "site": 20176,
+              "kind": "bl",
+              "runtime_target": 8562532
+            },
+            {
+              "site": 20468,
+              "kind": "bl",
+              "runtime_target": 8562532
+            },
+            {
+              "site": 21884,
+              "kind": "bl",
+              "runtime_target": 8562532
+            },
+            {
+              "site": 22332,
+              "kind": "bl",
+              "runtime_target": 8562532
+            },
+            {
+              "site": 22346,
+              "kind": "bl",
+              "runtime_target": 8562532
+            },
+            {
+              "site": 26208,
+              "kind": "bl",
+              "runtime_target": 8562532
+            }
+          ]
+        }
+      ],
+      "external_branches": [],
+      "literal_loads_and_adr": []
+    }
+  ],
+  "previously_known_raw_helpers": [
+    {
+      "name": "raw_accumulator_clear",
+      "file_start": 57152,
+      "file_end_exclusive": 57176,
+      "bytes": 24,
+      "sha256": "93c0693c860faf37dc2cb34c0645927a287fc6191f5987531d601e4f0472e49d",
+      "instructions": 10,
+      "incoming_candidates": [
+        {
+          "site": 8632,
+          "kind": "bl",
+          "runtime_target": 8601328,
+          "target_file": 57152
+        },
+        {
+          "site": 8836,
+          "kind": "bl",
+          "runtime_target": 8601328,
+          "target_file": 57152
+        }
+      ],
+      "stored_pointer_candidates": [],
+      "external_pc_relative_users": [],
+      "calls": [
+        {
+          "site": 57160,
+          "runtime_target": 260376,
+          "target_file": -8283800,
+          "other_immediate_entry_candidates": [
+            {
+              "site": 2404,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 7452,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 10720,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 14200,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 14276,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 14300,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 14394,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 23728,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 23932,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 24080,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 24556,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 24886,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 24926,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 25466,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 28782,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 29440,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 30680,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 30688,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 34168,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 34576,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 35684,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 36292,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 37388,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 37594,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 37866,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 38256,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 43168,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 46498,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 46684,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 46822,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 46958,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 47066,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 47220,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 47228,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 47490,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 50056,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 57838,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 58166,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 58236,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 61050,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 61442,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 63456,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 66070,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 70194,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 71164,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 71828,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 72110,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 84284,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 84292,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 84302,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 84310,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 84472,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 84480,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 84490,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 84498,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 86762,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 92530,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 92538,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 92546,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 94206,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 114334,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 121628,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 122166,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 123188,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 124874,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 124884,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 125016,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 125620,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 125642,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 125668,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 125690,
+              "kind": "bl",
+              "runtime_target": 260376
+            }
+          ]
+        },
+        {
+          "site": 57170,
+          "runtime_target": 260376,
+          "target_file": -8283800,
+          "other_immediate_entry_candidates": [
+            {
+              "site": 2404,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 7452,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 10720,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 14200,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 14276,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 14300,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 14394,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 23728,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 23932,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 24080,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 24556,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 24886,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 24926,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 25466,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 28782,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 29440,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 30680,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 30688,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 34168,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 34576,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 35684,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 36292,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 37388,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 37594,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 37866,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 38256,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 43168,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 46498,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 46684,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 46822,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 46958,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 47066,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 47220,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 47228,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 47490,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 50056,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 57838,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 58166,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 58236,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 61050,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 61442,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 63456,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 66070,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 70194,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 71164,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 71828,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 72110,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 84284,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 84292,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 84302,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 84310,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 84472,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 84480,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 84490,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 84498,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 86762,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 92530,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 92538,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 92546,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 94206,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 114334,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 121628,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 122166,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 123188,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 124874,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 124884,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 125016,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 125620,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 125642,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 125668,
+              "kind": "bl",
+              "runtime_target": 260376
+            },
+            {
+              "site": 125690,
+              "kind": "bl",
+              "runtime_target": 260376
+            }
+          ]
+        }
+      ],
+      "external_branches": [],
+      "literal_loads_and_adr": [
+        {
+          "site": 57152,
+          "kind": "ldr-literal",
+          "runtime_target": 8601528,
+          "target_file": 57352,
+          "word": 2146320
+        },
+        {
+          "site": 57164,
+          "kind": "ldr-literal",
+          "runtime_target": 8601528,
+          "target_file": 57352,
+          "word": 2146320
+        }
+      ]
+    },
+    {
+      "name": "raw_accumulator_second_get",
+      "file_start": 57176,
+      "file_end_exclusive": 57184,
+      "bytes": 8,
+      "sha256": "48ee7f4a85ac4f74435d0a7a78b70a3742a6a332c97013685e3181e1b429def8",
+      "instructions": 4,
+      "incoming_candidates": [
+        {
+          "site": 7848,
+          "kind": "bl",
+          "runtime_target": 8601352,
+          "target_file": 57176
+        }
+      ],
+      "stored_pointer_candidates": [],
+      "external_pc_relative_users": [],
+      "calls": [],
+      "external_branches": [],
+      "literal_loads_and_adr": [
+        {
+          "site": 57176,
+          "kind": "ldr-literal",
+          "runtime_target": 8601528,
+          "target_file": 57352,
+          "word": 2146320
+        }
+      ]
+    },
+    {
+      "name": "raw_accumulator_first_get",
+      "file_start": 57184,
+      "file_end_exclusive": 57192,
+      "bytes": 8,
+      "sha256": "7734682aef7292538c11acf13c3093f7bf38c324052343011c85655215176810",
+      "instructions": 4,
+      "incoming_candidates": [
+        {
+          "site": 7776,
+          "kind": "bl",
+          "runtime_target": 8601360,
+          "target_file": 57184
+        }
+      ],
+      "stored_pointer_candidates": [],
+      "external_pc_relative_users": [],
+      "calls": [],
+      "external_branches": [],
+      "literal_loads_and_adr": [
+        {
+          "site": 57184,
+          "kind": "ldr-literal",
+          "runtime_target": 8601528,
+          "target_file": 57352,
+          "word": 2146320
+        }
+      ]
+    },
+    {
+      "name": "raw_halfword_get",
+      "file_start": 57294,
+      "file_end_exclusive": 57300,
+      "bytes": 6,
+      "sha256": "5b251ec96355581dfd8051d295325aee2a80de0062408e77b01857035fa8bf3f",
+      "instructions": 3,
+      "incoming_candidates": [
+        {
+          "site": 8064,
+          "kind": "bl",
+          "runtime_target": 8601470,
+          "target_file": 57294
+        },
+        {
+          "site": 8238,
+          "kind": "bl",
+          "runtime_target": 8601470,
+          "target_file": 57294
+        },
+        {
+          "site": 8264,
+          "kind": "bl",
+          "runtime_target": 8601470,
+          "target_file": 57294
+        },
+        {
+          "site": 8308,
+          "kind": "bl",
+          "runtime_target": 8601470,
+          "target_file": 57294
+        },
+        {
+          "site": 8360,
+          "kind": "bl",
+          "runtime_target": 8601470,
+          "target_file": 57294
+        }
+      ],
+      "stored_pointer_candidates": [],
+      "external_pc_relative_users": [],
+      "calls": [],
+      "external_branches": [],
+      "literal_loads_and_adr": [
+        {
+          "site": 57294,
+          "kind": "ldr-literal",
+          "runtime_target": 8601528,
+          "target_file": 57352,
+          "word": 2146320
+        }
+      ]
+    },
+    {
+      "name": "raw_halfword_clear",
+      "file_start": 57300,
+      "file_end_exclusive": 57308,
+      "bytes": 8,
+      "sha256": "5be640891be6b459b1ea89ae7dba8ae680272bda8e2577ad0994c71fecaedf75",
+      "instructions": 4,
+      "incoming_candidates": [
+        {
+          "site": 8930,
+          "kind": "bl",
+          "runtime_target": 8601476,
+          "target_file": 57300
+        }
+      ],
+      "stored_pointer_candidates": [],
+      "external_pc_relative_users": [],
+      "calls": [],
+      "external_branches": [],
+      "literal_loads_and_adr": [
+        {
+          "site": 57300,
+          "kind": "ldr-literal",
+          "runtime_target": 8601528,
+          "target_file": 57352,
+          "word": 2146320
+        }
+      ]
+    }
+  ],
+  "reviewed_pc_relative_false_candidate": {
+    "site": 15034,
+    "apparent_target_file": 15748,
+    "classification": "ADR-like upper halfword of literal data, not a reviewed instruction",
+    "literal_word_file": 15032,
+    "literal_word_value": 2712847333,
+    "confirmed_literal_load_sites": [
+      14342,
+      14362
+    ],
+    "preceding_function_return": 15012,
+    "literal_pool_preserved": true
+  },
+  "excluded_shared_examples": [
+    {
+      "name": "shared_indicator_stop",
+      "file_start": 63418,
+      "file_end_exclusive": 63438,
+      "bytes": 20,
+      "sha256": "96a8e5b4d48e5d6bb084b29456763b0fd59cd3e4e8241b190dc849854fa5914c",
+      "instructions": 9,
+      "incoming_candidates": [
+        {
+          "site": 15180,
+          "kind": "bl",
+          "runtime_target": 8607594,
+          "target_file": 63418
+        },
+        {
+          "site": 63820,
+          "kind": "b",
+          "runtime_target": 8607594,
+          "target_file": 63418
+        }
+      ],
+      "stored_pointer_candidates": [],
+      "external_pc_relative_users": [],
+      "calls": [
+        {
+          "site": 63432,
+          "runtime_target": 8613466,
+          "target_file": 69290,
+          "other_immediate_entry_candidates": [
+            {
+              "site": 63746,
+              "kind": "bl",
+              "runtime_target": 8613466
+            },
+            {
+              "site": 63762,
+              "kind": "bl",
+              "runtime_target": 8613466
+            },
+            {
+              "site": 63802,
+              "kind": "bl",
+              "runtime_target": 8613466
+            }
+          ]
+        }
+      ],
+      "external_branches": [],
+      "literal_loads_and_adr": [
+        {
+          "site": 63418,
+          "kind": "ldr-literal",
+          "runtime_target": 8608144,
+          "target_file": 63968,
+          "word": 2146588
+        },
+        {
+          "site": 63428,
+          "kind": "ldr-literal",
+          "runtime_target": 8608148,
+          "target_file": 63972,
+          "word": 2146332
+        }
+      ]
+    },
+    {
+      "name": "retained_stop_alias",
+      "file_start": 63820,
+      "file_end_exclusive": 63822,
+      "bytes": 2,
+      "sha256": "05fdecd803b33ca1c69513f4f3fa9d7fa9da76c8dfea888abb8a6a20352a38d8",
+      "instructions": 1,
+      "incoming_candidates": [
+        {
+          "site": 5394,
+          "kind": "bl",
+          "runtime_target": 8607996,
+          "target_file": 63820
+        },
+        {
+          "site": 5762,
+          "kind": "bl",
+          "runtime_target": 8607996,
+          "target_file": 63820
+        }
+      ],
+      "stored_pointer_candidates": [],
+      "external_pc_relative_users": [],
+      "calls": [],
+      "external_branches": [
+        {
+          "site": 63820,
+          "runtime_target": 8607594,
+          "target_file": 63418
+        }
+      ],
+      "literal_loads_and_adr": []
+    },
+    {
+      "name": "shared_driver_epilogue",
+      "file_start": 69258,
+      "file_end_exclusive": 69262,
+      "bytes": 4,
+      "sha256": "ebe29a4bc9face8ad9be1027640336aff20d922db1321a3f52c1bf70dd0f6c28",
+      "instructions": 2,
+      "incoming_candidates": [
+        {
+          "site": 69266,
+          "kind": "b",
+          "runtime_target": 8613434,
+          "target_file": 69258
+        },
+        {
+          "site": 70290,
+          "kind": "b",
+          "runtime_target": 8613434,
+          "target_file": 69258
+        },
+        {
+          "site": 70498,
+          "kind": "b",
+          "runtime_target": 8613434,
+          "target_file": 69258
+        }
+      ],
+      "stored_pointer_candidates": [],
+      "external_pc_relative_users": [],
+      "calls": [],
+      "external_branches": [],
+      "literal_loads_and_adr": []
+    },
+    {
+      "name": "retained_neighbor_register_programmer",
+      "file_start": 74284,
+      "file_end_exclusive": 74344,
+      "bytes": 60,
+      "sha256": "6790cd2749fdb892620534dff1ceb0f7fb3c10ad6f27d421aa088f8dbc5bb560",
+      "instructions": 29,
+      "incoming_candidates": [
+        {
+          "site": 66090,
+          "kind": "bl",
+          "runtime_target": 8618460,
+          "target_file": 74284
+        }
+      ],
+      "stored_pointer_candidates": [],
+      "external_pc_relative_users": [],
+      "calls": [
+        {
+          "site": 74338,
+          "runtime_target": 8605122,
+          "target_file": 60946,
+          "other_immediate_entry_candidates": [
+            {
+              "site": 71214,
+              "kind": "bl",
+              "runtime_target": 8605122
+            },
+            {
+              "site": 72320,
+              "kind": "bl",
+              "runtime_target": 8605122
+            },
+            {
+              "site": 73092,
+              "kind": "bl",
+              "runtime_target": 8605122
+            },
+            {
+              "site": 73380,
+              "kind": "bl",
+              "runtime_target": 8605122
+            },
+            {
+              "site": 73462,
+              "kind": "bl",
+              "runtime_target": 8605122
+            },
+            {
+              "site": 73510,
+              "kind": "bl",
+              "runtime_target": 8605122
+            },
+            {
+              "site": 73738,
+              "kind": "bl",
+              "runtime_target": 8605122
+            },
+            {
+              "site": 73780,
+              "kind": "bl",
+              "runtime_target": 8605122
+            },
+            {
+              "site": 74008,
+              "kind": "bl",
+              "runtime_target": 8605122
+            },
+            {
+              "site": 74018,
+              "kind": "bl",
+              "runtime_target": 8605122
+            },
+            {
+              "site": 74136,
+              "kind": "bl",
+              "runtime_target": 8605122
+            },
+            {
+              "site": 74200,
+              "kind": "bl",
+              "runtime_target": 8605122
+            },
+            {
+              "site": 74268,
+              "kind": "bl",
+              "runtime_target": 8605122
+            },
+            {
+              "site": 74438,
+              "kind": "bl",
+              "runtime_target": 8605122
+            },
+            {
+              "site": 74576,
+              "kind": "bl",
+              "runtime_target": 8605122
+            },
+            {
+              "site": 74586,
+              "kind": "bl",
+              "runtime_target": 8605122
+            },
+            {
+              "site": 74636,
+              "kind": "bl",
+              "runtime_target": 8605122
+            },
+            {
+              "site": 74716,
+              "kind": "bl",
+              "runtime_target": 8605122
+            },
+            {
+              "site": 74740,
+              "kind": "bl",
+              "runtime_target": 8605122
+            },
+            {
+              "site": 74896,
+              "kind": "bl",
+              "runtime_target": 8605122
+            },
+            {
+              "site": 74944,
+              "kind": "bl",
+              "runtime_target": 8605122
+            }
+          ]
+        }
+      ],
+      "external_branches": [],
+      "literal_loads_and_adr": []
+    }
+  ],
+  "new_descendant_allowances": [
+    {
+      "name": "indicator_brightness_wrapper",
+      "after_four_byte_entry_allowance": [
+        63512,
+        63524
+      ],
+      "aligned_bytes": 12
+    },
+    {
+      "name": "indicator_busy_getter",
+      "after_four_byte_entry_allowance": [
+        63796,
+        63796
+      ],
+      "aligned_bytes": 0
+    },
+    {
+      "name": "indicator_driver_entry",
+      "after_four_byte_entry_allowance": [
+        70220,
+        70500
+      ],
+      "aligned_bytes": 280
+    },
+    {
+      "name": "indicator_register_programmer",
+      "after_four_byte_entry_allowance": [
+        74220,
+        74284
+      ],
+      "aligned_bytes": 64
+    }
+  ],
+  "known_raw_helper_allowances": [
+    {
+      "name": "raw_accumulator_clear",
+      "after_four_byte_entry_allowance": [
+        57156,
+        57176
+      ],
+      "aligned_bytes": 20
+    },
+    {
+      "name": "raw_accumulator_second_get",
+      "after_four_byte_entry_allowance": [
+        57180,
+        57184
+      ],
+      "aligned_bytes": 4
+    },
+    {
+      "name": "raw_accumulator_first_get",
+      "after_four_byte_entry_allowance": [
+        57188,
+        57192
+      ],
+      "aligned_bytes": 4
+    },
+    {
+      "name": "raw_halfword_get",
+      "after_four_byte_entry_allowance": [
+        57300,
+        57300
+      ],
+      "aligned_bytes": 0
+    },
+    {
+      "name": "raw_halfword_clear",
+      "after_four_byte_entry_allowance": [
+        57304,
+        57308
+      ],
+      "aligned_bytes": 4
+    }
+  ],
+  "totals": {
+    "new_descendant_instruction_bytes": 378,
+    "new_descendant_aligned_bytes_after_entry_allowances": 356,
+    "unoccupied_indicator_bodies": 332,
+    "existing_unused_bf_allowances": 48,
+    "known_raw_helpers_after_entry_allowances": 32,
+    "enumerated_extra_allowances": 768,
+    "current_append_lower_bound_over": 1090,
+    "still_short_before_extra_costs": 322
+  },
+  "approved_reclaimed_bytes": 0,
+  "entry_indirect_closure_proven": false,
+  "physical_shutdown_or_retention_proven": false,
+  "actual_placement_attempted": false,
+  "firmware_or_source_or_linker_changed": false,
+  "hardware_access": false,
+  "limits": [
+    "Immediate all-halfword candidates and whole-image absolute pointers are not computed/relative/ROM/patch/retained-entry closure.",
+    "PC-relative candidates include possible data or wide-instruction-second-half false positives; their absence is not pointer analysis.",
+    "Original shared driver epilogue, Health helpers, state/literal pools and ordinary motion/DFU bodies remain excluded.",
+    "Four-byte return stubs are only a conservative size allowance, not reviewed new-stub semantics or an authorization.",
+    "Conditional totals are not a successful link, ownership, future stack headroom, physical Health equivalence, or an exhaustive upper bound on all possible code changes."
+  ]
+}

@@ -84,7 +84,10 @@ def test_normal_stop_flushes_closes_and_joins_flusher(sink, monkeypatch):
         assert len(tasks) == 1 and tasks[0].done()
 
     asyncio.run(run())
-    assert client.writes[0] == protocol.ENABLE_RAW_SENSOR
+    # Every connection opens by clearing a stale raw mode, then starts.
+    stops = list(protocol.STOP_RAW_SENSOR_PACKETS)
+    assert client.writes[: len(stops)] == stops
+    assert client.writes[len(stops)] == protocol.ENABLE_RAW_SENSOR
     assert_cleaned_up(client, sink)
 
 
@@ -126,3 +129,24 @@ def test_subscription_failure_closes_notification_and_sink(sink):
     with pytest.raises(RuntimeError, match="notification setup failed"):
         asyncio.run(capture.stream(client, 0, sink=sink[0]))
     assert_cleaned_up(client, sink, raw_started=False)
+
+
+def test_a_failed_pre_start_stop_does_not_abort_the_session(sink):
+    """The ring may not answer the clearing stop; the start must still go out."""
+    class FirstStopFails(FakeClient):
+        def __init__(self):
+            super().__init__()
+            self.failed_once = False
+
+        async def write_gatt_char(self, uuid, packet, response=False):
+            if bytes(packet) == protocol.STOP_RAW_SENSOR and not self.failed_once:
+                self.failed_once = True
+                self.writes.append(bytes(packet))
+                raise RuntimeError("injected pre-start failure")
+            await super().write_gatt_char(uuid, packet, response)
+
+    client = FirstStopFails()
+    records = asyncio.run(capture.stream(client, 0, sink=sink[0]))
+    assert len(records) == 1
+    assert protocol.ENABLE_RAW_SENSOR in client.writes
+    assert_cleaned_up(client, sink)

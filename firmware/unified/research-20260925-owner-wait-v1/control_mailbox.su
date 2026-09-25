@@ -1,0 +1,6 @@
+firmware/unified/control_mailbox.c:23:wim_init	8	static
+firmware/unified/control_mailbox.c:26:wim_open	8	static
+firmware/unified/control_mailbox.c:38:wim_post	24	static
+firmware/unified/control_mailbox.c:56:wim_close	20	static
+firmware/unified/control_mailbox.c:64:wim_take	24	static
+firmware/unified/control_mailbox.c:85:wim_retire	16	static

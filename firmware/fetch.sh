@@ -3,7 +3,8 @@
 #
 # The two downloadable images come from the vendor CDN and from upstream; the
 # rate variants are built by probe/build.py; the experimental optical-off
-# candidate is derived from the pinned 25 Hz image by probe/build_optical_off.py. See
+# candidate is derived from the pinned 25 Hz image by probe/build_optical_off.py;
+# the compact unified candidate is derived by probe/build_unified_mode.py. See
 # PROVENANCE.md for what each is and why.
 set -euo pipefail
 
@@ -38,6 +39,9 @@ PY="$(cd .. && pwd)/.venv/bin/python"
 (cd .. && "$PY" -m probe.build --immediate 4 >/dev/null && echo "  rt02cr-25hz.bin")
 if [ ! -e "rt02cr-25hz-optical-off-v2-experimental.bin" ]; then
   (cd .. && "$PY" -m probe.build_optical_off --out firmware/rt02cr-25hz-optical-off-v2-experimental.bin)
+fi
+if [ ! -e "rt02cr-25hz-health-default-gesture-v1-experimental.bin" ]; then
+  (cd .. && "$PY" -m probe.build_unified_mode --out firmware/rt02cr-25hz-health-default-gesture-v1-experimental.bin)
 fi
 
 echo

@@ -1,0 +1,25 @@
+{
+  "command": [
+    "/usr/bin/clang",
+    "--target=armv6m-none-eabi",
+    "-mcpu=cortex-m0plus",
+    "-mthumb",
+    "-ffreestanding",
+    "-fno-builtin",
+    "-Oz",
+    "-std=c11",
+    "-Wall",
+    "-Wextra",
+    "-Werror",
+    "-fstack-usage",
+    "-I",
+    "/Users/akashanand/Claude_Whip/firmware/unified",
+    "-c",
+    "/Users/akashanand/Claude_Whip/firmware/unified/stock_event_gate.c",
+    "-o",
+    "/private/tmp/whip-discovery-read-proof.K8flA0/pytest-final/stock-event-gate1/stock_event_gate.o"
+  ],
+  "exit": 0,
+  "stdout": "",
+  "stderr": ""
+}

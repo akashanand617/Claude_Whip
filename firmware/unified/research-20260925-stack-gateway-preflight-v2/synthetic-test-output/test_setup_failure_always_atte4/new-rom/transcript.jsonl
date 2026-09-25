@@ -1,0 +1,2 @@
+{"kind": "header", "wall": 1790310207.182701, "plan": "stack-gateway-v1", "max_transactions": 122, "flashing": false, "sensor_commands": false, "target_execution": false, "pointer_following": false, "warning": "CD bookkeeping side effects; sampled identity is not full attestation"}
+{"kind": "aborted", "error": "fake cleanup failed", "retry": false, "error_type": "RuntimeError", "disconnect_completed": false, "disconnect_confirmed": false}

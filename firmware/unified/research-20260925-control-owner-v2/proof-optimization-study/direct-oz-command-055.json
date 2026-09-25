@@ -1,0 +1,31 @@
+{
+  "command": [
+    "/tmp/whip-unified-build.m1E9lk/zig-aarch64-macos-0.15.2/zig",
+    "ld.lld",
+    "-T",
+    "/tmp/whip-owner-lto.vFb7OT/UNCHANGED-nine-holes.ld",
+    "-e",
+    "wd_init",
+    "--no-undefined",
+    "--no-gc-sections",
+    "--build-id=none",
+    "-z",
+    "max-page-size=4",
+    "-Map=/tmp/whip-owner-lto.vFb7OT/direct-oz-append16-FAILED-NOT-FIT.map",
+    "-o",
+    "/tmp/whip-owner-lto.vFb7OT/direct-oz-append16-REFUSED.elf",
+    "/tmp/whip-owner-lto.vFb7OT/native/mode_controller.o",
+    "/tmp/whip-owner-lto.vFb7OT/native/stock_binding.o",
+    "/tmp/whip-owner-lto.vFb7OT/native/stock_timer_fence.o",
+    "/tmp/whip-owner-lto.vFb7OT/native/stock_health_timers.o",
+    "/tmp/whip-owner-lto.vFb7OT/native/stock_schedule_settings.o",
+    "/tmp/whip-owner-lto.vFb7OT/native/stock_result_commit.o",
+    "/tmp/whip-owner-lto.vFb7OT/native/stock_health_commit.o",
+    "/tmp/whip-owner-lto.vFb7OT/native/stock_legacy_gate.o",
+    "/tmp/whip-owner-lto.vFb7OT/native/compiler_runtime.o",
+    "/tmp/whip-owner-lto.vFb7OT/direct-oz-append16-LTO-NOT-FIRMWARE.o"
+  ],
+  "exit": 1,
+  "stdout": "",
+  "stderr": "ld.lld: error: undefined symbol: wco_monotonic_ms\n>>> referenced by ld-temp.o\n>>>               /tmp/whip-owner-lto.vFb7OT/direct-oz-append16-LTO-NOT-FIRMWARE.o:(wco_service)\n>>> referenced by ld-temp.o\n>>>               /tmp/whip-owner-lto.vFb7OT/direct-oz-append16-LTO-NOT-FIRMWARE.o:(wco_service)\n\nld.lld: error: undefined symbol: wco_bound_owner\n>>> referenced by ld-temp.o\n>>>               /tmp/whip-owner-lto.vFb7OT/direct-oz-append16-LTO-NOT-FIRMWARE.o:(wuw_supervise)\n\nld.lld: error: undefined symbol: wco_bound_stock\n>>> referenced by ld-temp.o\n>>>               /tmp/whip-owner-lto.vFb7OT/direct-oz-append16-LTO-NOT-FIRMWARE.o:(wuw_supervise)\n"
+}

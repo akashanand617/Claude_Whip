@@ -94,6 +94,22 @@ def checksum(packet: bytes | bytearray) -> int:
     return sum(packet) & 0xFF
 
 
+def notification_metadata(packet: bytes | bytearray) -> dict:
+    """Redacted diagnostic metadata, never an idle or packet-acceptance verdict.
+
+    Pinned stock/V2 code puts a status subtype in byte 1 of 0x73 packets.
+    Retain it only for a complete checksum-valid packet; bytes 2 onward may
+    carry health measurements and are never returned, including the checksum.
+    Other command families have no reviewed subtype here. A valid checksum
+    does not establish provenance, freshness, inactivity or harmlessness.
+    """
+    command = packet[0] if packet else None
+    valid = len(packet) == PACKET_SIZE and checksum(packet[:-1]) == packet[-1]
+    return {"command": command, "bytes": len(packet), "checksum_valid": valid,
+            "status_subtype": packet[1] if valid and command == 0x73 else None,
+            "payload_saved": False}
+
+
 def make_packet(command: int, sub_data: bytes | bytearray | None = None) -> bytearray:
     """Build a well formed 16 byte command packet with a trailing checksum."""
     if not 0 <= command <= 0xFF:
@@ -139,10 +155,12 @@ QUIET_SENSOR_PACKETS = (
     make_packet(0x6A, bytes([0x03, 0x00, 0x00])),  # stop realtime blood oxygen
 )
 
-# These disable only the HR and SpO2 schedules (bits 0 and 1 of 0x208AB1).
+# These disable only the HR and SpO2 schedules (bits 0 and 1 of 0x208AB1
+# on the pinned 25 Hz/V2 family; the stock-based unified map uses 0x208AAD).
 # Three other schedule bits belong to 0x36, 0x38 and 0x3A. This is not a
 # blanket background-optics disable; realtime requests and indicators are
-# separate too. The minute tick's 0x208C4A gate is time-set, not HR enable.
+# separate too. The 25 Hz/V2 0x208C4A gate is time-set, not HR enable;
+# the pinned stock map's corresponding time-set byte is 0x208C46.
 DISABLE_LOGGING_PACKETS = (
     make_packet(0x16, bytes([0x02, 0x02, 0x3C])),  # disable heart-rate logging
     make_packet(0x2C, bytes([0x02, 0x02])),        # disable blood-oxygen logging

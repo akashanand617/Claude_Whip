@@ -1,0 +1,26 @@
+{
+  "command": [
+    "/usr/bin/clang",
+    "--target=armv6m-none-eabi",
+    "-mcpu=cortex-m0plus",
+    "-mthumb",
+    "-ffreestanding",
+    "-fno-builtin",
+    "-Oz",
+    "-std=c11",
+    "-Wall",
+    "-Wextra",
+    "-Werror",
+    "-fstack-usage",
+    "-I",
+    "/Users/akashanand/Claude_Whip/firmware/unified",
+    "-fshort-enums",
+    "-c",
+    "/Users/akashanand/Claude_Whip/firmware/unified/control_owner.c",
+    "-o",
+    "/Users/akashanand/Claude_Whip/firmware/unified/research-20260925-whole28-flags-rejected-v2/MUST-NOT-EXIST.o"
+  ],
+  "exit": 1,
+  "stdout": "",
+  "stderr": "/Users/akashanand/Claude_Whip/firmware/unified/control_owner.c:3:16: error: static assertion failed due to requirement 'sizeof(wco_owner) == 880': review whole control-owner RAM budget\n    3 | _Static_assert(sizeof(wco_owner) == 880, \"review whole control-owner RAM budget\");\n      |                ^~~~~~~~~~~~~~~~~~~~~~~~\n/Users/akashanand/Claude_Whip/firmware/unified/control_owner.c:3:34: note: expression evaluates to '868 == 880'\n    3 | _Static_assert(sizeof(wco_owner) == 880, \"review whole control-owner RAM budget\");\n      |                ~~~~~~~~~~~~~~~~~~^~~~~~\n1 error generated.\n"
+}

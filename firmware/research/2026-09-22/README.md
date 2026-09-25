@@ -13,7 +13,8 @@ temporary directory. None of its contents authorizes a flash.
 | `fable-findings-draft.md` | Exact saved Fable draft; **contains superseded conclusions**, retained as a source record |
 | `fable-workflow-results.json` | All ten completed structured results, with agent IDs and original journal keys; nine verifiers plus final critic |
 | `captures/check_*.jsonl` | Byte-identical copies of all six hardware experiments, originally in git-ignored `data/ledcheck/` |
-| `captures/battery_*.jsonl` | Byte-identical copies of the interrupted startup trial and completed 600-second battery repeat; 92→90%, fresh ~25 Hz, host workaround on original firmware; see `docs/BATTERY_TESTS.md` |
+| `captures/battery_*.jsonl` | Byte-identical host-workaround battery captures, including the two later 30-minute runs (100→100 gauge plateau, then 100→95); see `docs/BATTERY_TESTS.md` |
+| `captures/firmware_validation_*.jsonl` | Pre/post-flash fixed-site identities and both native V2 stream/stop validations; LED darkness remains a human observation |
 | `v2-patch-manifest.json` | Exact base/candidate hashes, seven old/new edit ranges, runtime addresses and 22 fixed code reads |
 | `fwmap.py` | Fable's annotated Thumb mapping tool, with only the default image path made repository-relative |
 | `rom_symbol_gcc.axf` | Text ROM-symbol assignments used to identify the RTL8762E platform |

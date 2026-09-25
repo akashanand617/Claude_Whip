@@ -1,0 +1,22 @@
+{
+  "command": [
+    "/tmp/whip-unified-build.m1E9lk/zig-aarch64-macos-0.15.2/zig",
+    "cc",
+    "-target",
+    "thumb-freestanding-eabi",
+    "-mcpu=cortex_m0plus",
+    "-nostdlib",
+    "-Wl,-T,/Users/akashanand/Claude_Whip/tests/native/arm_proof.ld",
+    "-Wl,--build-id=none",
+    "-Wl,--no-undefined",
+    "-Wl,-e,wgs_replace_fee7",
+    "-o",
+    "/private/tmp/whip-wechat-routing-proof.eW8vOz/pytest-final/stock-service-slot1/NO-OWNED-SLOT-BINDINGS-REFUSED.elf",
+    "/Users/akashanand/Claude_Whip/firmware/unified/build-20260924-raw-ingress-v1/stock_transport.o",
+    "/Users/akashanand/Claude_Whip/firmware/unified/build-20260924-raw-ingress-v1/stock_service.o",
+    "/private/tmp/whip-wechat-routing-proof.eW8vOz/pytest-final/stock-service-slot1/stock_service_slot.o"
+  ],
+  "exit": 1,
+  "stdout": "",
+  "stderr": "ld.lld: error: undefined symbol: wgs_service_id\n>>> referenced by stock_service_slot.c\n>>>               /private/tmp/whip-wechat-routing-proof.eW8vOz/pytest-final/stock-service-slot1/stock_service_slot.o:(wgs_replace_fee7)\n\nld.lld: error: undefined symbol: wgs_callbacks\n>>> referenced by stock_service_slot.c\n>>>               /private/tmp/whip-wechat-routing-proof.eW8vOz/pytest-final/stock-service-slot1/stock_service_slot.o:(wgs_replace_fee7)\n"
+}

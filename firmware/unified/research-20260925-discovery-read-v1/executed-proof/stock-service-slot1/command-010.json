@@ -1,0 +1,23 @@
+{
+  "command": [
+    "/tmp/whip-unified-build.m1E9lk/zig-aarch64-macos-0.15.2/zig",
+    "cc",
+    "-target",
+    "thumb-freestanding-eabi",
+    "-mcpu=cortex_m0plus",
+    "-nostdlib",
+    "-Wl,-T,/Users/akashanand/Claude_Whip/tests/native/arm_proof.ld",
+    "-Wl,--build-id=none",
+    "-Wl,--no-undefined",
+    "-Wl,-e,wr_init",
+    "-o",
+    "/private/tmp/whip-discovery-read-proof.K8flA0/pytest-final/stock-service-slot1/SLOT-ARTIFICIAL-NOT-INSTALLABLE.elf",
+    "/Users/akashanand/Claude_Whip/firmware/unified/build-20260924-raw-ingress-v1/stock_transport.o",
+    "/Users/akashanand/Claude_Whip/firmware/unified/build-20260924-raw-ingress-v1/stock_service.o",
+    "/private/tmp/whip-discovery-read-proof.K8flA0/pytest-final/stock-service-slot1/stock_service_slot.o",
+    "/private/tmp/whip-discovery-read-proof.K8flA0/pytest-final/stock-service-slot1/proof_only_slot_bindings.o"
+  ],
+  "exit": 0,
+  "stdout": "",
+  "stderr": ""
+}

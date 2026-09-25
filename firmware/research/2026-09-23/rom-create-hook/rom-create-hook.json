@@ -1,0 +1,72 @@
+{
+  "schema": "whip.rom-create-hook.capture.v1",
+  "evidence_kind": "device_capture",
+  "session_id": "rom-create-hook-20260923-idle-v2",
+  "prerequisite_capture": {
+    "schema": "whip.capacity.capture.v1",
+    "evidence_kind": "device_capture",
+    "session_id": "rom-create-hook-20260923-idle-v2",
+    "image_sha256": "0d18a0fa860d58ab8f984b5f542f45dac105241f47bf1c2af41321eb0431e14c",
+    "windows": [
+      {
+        "address": 2098048,
+        "data_hex": "007c2000007000000074000070380000",
+        "sha256": "d181b7378851e44b709578a730fdafcbcf658ee96e9a0ee2a199fba433d30099"
+      },
+      {
+        "address": 2098148,
+        "data_hex": "002080000080040000a084000000000000a084000040000000e084000040020000000001000080000000000000000000",
+        "sha256": "19f636dc558b3e0d11daebb254ecaaf76d5c3a8597e7219063bf55f3715bf32e"
+      },
+      {
+        "address": 8397208,
+        "data_hex": "00d08000001000000030800000a00000006082000040020000a084000000000000a084000000000000a084000000000000a084000000000000a084000000000000a084000000000000e0800000800100",
+        "sha256": "d74c3afddf382c36dd4c566c539d2dcff16a22e0c7f525a9c1a342875cc4e12f"
+      }
+    ]
+  },
+  "prior_support_sha256": "bcbffd1362964a186797e815fe15a17d4b66e0b1a8a54918cc09fd20d5cb874a",
+  "app_rom_identifier": "f94c6b7e11c5eb118282f74a0c0cef5b",
+  "windows": {
+    "nonsecret_patch_header": {
+      "address": 8400896,
+      "data_hex": "0c0016099227000028950000f94c6b7e11c5eb118282f74a0c0cef5b003820000494800110350000003080010000000000000000",
+      "sha256": "1bb91c27a358ab3307730f7dff38e0adc1da0ac3c13bff574ab855462811a586"
+    },
+    "create_hook_ram_cap": {
+      "address": 2120704,
+      "data_hex": "7cb504460698079e0090089d019620460ef6c5f92870002808d12068002805d10348407ec00701d10bf6bdfa01207cbd6403200008460f30884201d9002070470020106001207047f8b505461b48006880471b4c002d28d01e21c8420cda6078002809d12546683528780126002804d0a81cfff753ff6670f8bd124800688047114f012039688847e06810490078800980000858a91c00f226f13968002088470b48006880472e70e5e760780028e3d008484069804700206070f8bd540f2000586d2000a40e2000e8062000f8938000a00e2000340f20000eb507480749006d8860022069460870012008720020019068460cf6bbfb0ebd8807200000ed00e0",
+      "sha256": "0f0e067c26d2ffc73ab8570f7f0a4a98a18c5ce2a98ef6eabe5877c04cb76d92"
+    },
+    "header_compare_rom_cap": {
+      "address": 36388,
+      "data_hex": "70b505460120002308e0ec5cce5cb44201d1012400e0002420405b1c9342f4d370bdf0b58446059d069c00206f1e2646c0434641384610408e4632461a406146284339407346401a224333409a4132401146e2076d083840154363082a1a8b4101d200200146f0bdf0b51fb482b00f9f0e9e0197009603990298fff7d2ff0446",
+      "sha256": "b43b9de4927e9913a1c452092d8a08dd9c6d66d7cab05ed608a419efac6e57e3"
+    }
+  },
+  "header_fields": {
+    "ic_type": 12,
+    "image_id": 10130,
+    "control_flags": 2326,
+    "payload_bytes": 38184,
+    "declared_ram_start": 2111488,
+    "declared_load_source": 25203716,
+    "declared_load_bytes": 13584,
+    "declared_image_base": 25178112,
+    "containment_checked": true,
+    "authenticity_verified": false,
+    "ram_ownership_verified": false,
+    "runtime_copy_verified": false
+  },
+  "known_code_state_repeated_equal": true,
+  "repeated_equal": true,
+  "final_state_header_equal": true,
+  "keys_read": false,
+  "pointer_following": false,
+  "target_execution": false,
+  "runtime_copy_verified": false,
+  "state_immutable": false,
+  "full_image_attestation": false,
+  "recovery_verified": false,
+  "flash_authorized": false
+}

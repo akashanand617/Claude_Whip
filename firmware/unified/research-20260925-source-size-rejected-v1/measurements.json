@@ -1,0 +1,280 @@
+{
+  "accepted_source_changed": false,
+  "adopted": false,
+  "artifacts_sha256": {
+    "baseline-repeat.command.json": "9302d88f1e33129571149f7f6904415139a74f5375133ef4c58d8f06cd327c09",
+    "baseline-repeat.o": "a6752f8bac164743704389a3c5d670619e2f946c7f6a29eb2c847cf3abbf2280",
+    "baseline-repeat.su": "435dd77401cb18126e563a87076c4bb233748ac1a9ad0e8dab0105366d7da1d8",
+    "baseline.command.json": "aa7181edbedbab660811d8c00524d147c7a459462777f67609ff0bffb8acedcf",
+    "baseline.o": "a6752f8bac164743704389a3c5d670619e2f946c7f6a29eb2c847cf3abbf2280",
+    "baseline.su": "435dd77401cb18126e563a87076c4bb233748ac1a9ad0e8dab0105366d7da1d8",
+    "bucket-repeat.command.json": "25b349a70623f9c34545d11d21e55d706cc7e7755ebae8dc96573992976a9598",
+    "bucket-repeat.o": "04168613df8b59f28aed7b02e3e01d5e39c8ff99b84973a76926cdd1a978ee78",
+    "bucket-repeat.su": "9ff15c8854695d8321ba630d1cae2711b8d32c809877a23bc11053a430094cda",
+    "bucket.command.json": "b612eb375c5cf84b0e5834864fab5ff3b0afa155797d73257432e93ba848861b",
+    "bucket.o": "04168613df8b59f28aed7b02e3e01d5e39c8ff99b84973a76926cdd1a978ee78",
+    "bucket.su": "9ff15c8854695d8321ba630d1cae2711b8d32c809877a23bc11053a430094cda",
+    "frames-repeat.command.json": "dba0ce372edcf973a0f739fa0a7351a3f1c897b953b14f89196aa2850e1911cb",
+    "frames-repeat.o": "8e90155cdf9295ce125aa4c323125762a52ade51d6eac4e82f3f13aa34c68344",
+    "frames-repeat.su": "d86958a2f5e602a1a9ee2d08bff01973c25e52e471f470e9d3ffdc948288f812",
+    "frames.command.json": "94fd48cb12749ddb8e467129ae8f3dea90f902be930d5a51b6b14898d3b025cc",
+    "frames.o": "8e90155cdf9295ce125aa4c323125762a52ade51d6eac4e82f3f13aa34c68344",
+    "frames.su": "d86958a2f5e602a1a9ee2d08bff01973c25e52e471f470e9d3ffdc948288f812",
+    "headroom-repeat.command.json": "fec6ce4382fee2af2b1e42aa9cfecfed2943e14d727078219a267a992bab95a7",
+    "headroom-repeat.o": "4d8a42b80bd26af3f282b7a3391428564a4be158ec2184bad9f8ac84c649be60",
+    "headroom-repeat.su": "07d51a38179e8157aafb27a953ffeb8af3265c03051b446624ec23255b663a0a",
+    "headroom.command.json": "f72d58d6e02d5064e834b3101317d34ac5b9768ea700727a139ff820362421aa",
+    "headroom.o": "4d8a42b80bd26af3f282b7a3391428564a4be158ec2184bad9f8ac84c649be60",
+    "headroom.su": "07d51a38179e8157aafb27a953ffeb8af3265c03051b446624ec23255b663a0a",
+    "outlined-repeat.command.json": "4b013964e8ec014371b06adfaac07ebd0cef415ddc95b4f69b1cb3d7a89700ce",
+    "outlined-repeat.o": "1a76a2a7d273d949544d75353822cb739de2bfef7c17de373b733d253f0d0e24",
+    "outlined-repeat.su": "a9ae042662a5858151eb7c12db4a795c0959a183831fe65d1604dbc631c41d7c",
+    "outlined.command.json": "9dbd16cc641c51bfb2455ec3b32ef9531ca5c5d072b14705339deefd3ae5ee9c",
+    "outlined.o": "1a76a2a7d273d949544d75353822cb739de2bfef7c17de373b733d253f0d0e24",
+    "outlined.su": "a9ae042662a5858151eb7c12db4a795c0959a183831fe65d1604dbc631c41d7c",
+    "preflight-repeat.command.json": "7d6e2d3d3e1547ef6d5097148e9dc36237da37873972f0a0de8e49629ff4d658",
+    "preflight-repeat.o": "ba07f3889e442be95839ee796e089cc082344aa95e850ec26f5b2da602172572",
+    "preflight-repeat.su": "b6e743c13857ef0605534a1d351b27d66ae5723f109c8608cf4b757a94fe243e",
+    "preflight.command.json": "448d18792906f4ba6eaf34d8b9299f770d5f465e4c0a1dd5c1af8824795d9bd9",
+    "preflight.o": "ba07f3889e442be95839ee796e089cc082344aa95e850ec26f5b2da602172572",
+    "preflight.su": "b6e743c13857ef0605534a1d351b27d66ae5723f109c8608cf4b757a94fe243e",
+    "sources/baseline.c": "56af8595bc24f15464178210b07863e1afa84f6891630f7eaba6ec12ffc3dcbf",
+    "sources/bucket.c": "1b836a58afa72ede88c333ca164f7544ec6bbd103512e7a53cb154f0daef968a",
+    "sources/frames.c": "dbf79818c62f395d1cb5771fdaced746c35c8eb28177bd648192303e42c78713",
+    "sources/headroom.c": "5dc26f7e2dccaf085f0e71c39472ec66621b0a753108014f411ec69c76f07f44",
+    "sources/outlined.c": "00d645b7cab9cd6d2fb82d900f806a99faa08d57d228ac12bf8e755c582e9519",
+    "sources/preflight.c": "a4d1a627a9e08066438edb5dbc19b3190652e2a69548e422c31b544190c8ef00"
+  },
+  "compiler_flags": [
+    "--target=armv6m-none-eabi",
+    "-mcpu=cortex-m0plus",
+    "-mthumb",
+    "-ffreestanding",
+    "-fno-builtin",
+    "-Oz",
+    "-std=c11",
+    "-Wall",
+    "-Wextra",
+    "-Werror",
+    "-fstack-usage",
+    "-I",
+    "/Users/akashanand/Claude_Whip/firmware/unified"
+  ],
+  "configured_append_bytes": 9520,
+  "differential_tests_run": false,
+  "elf_linked": false,
+  "flashable": false,
+  "hardware_access": false,
+  "headroom_zero_period_caveat": "Positive validated minimum period required for equivalence. Original C divides by zero on corrupted min0; pinned ARM helper returns0. Multiplied candidate faults instead. No universal corrupted-state equivalence claimed.",
+  "inputs_sha256": {
+    "/Users/akashanand/Claude_Whip/firmware/unified/build-20260924-raw-ingress-v1/adapter.o": "6234a3f5128632cab7ea83580f90f705eab6fd066eef15bf985f58b7e5103048",
+    "/Users/akashanand/Claude_Whip/firmware/unified/build-20260924-raw-ingress-v1/dispatch.o": "613bfe77dfe9076eae37250d6f6fea55c936693ee8b569515d2159a582eef210",
+    "/Users/akashanand/Claude_Whip/firmware/unified/build-20260924-raw-ingress-v1/fresh_source.o": "d7b9da70a52bc6c70bdbe2ac32361fb4586c3e43505b09a16ae711318fb0093c",
+    "/Users/akashanand/Claude_Whip/firmware/unified/build-20260924-raw-ingress-v1/health_adapter.o": "a75a9477ad00afc71bf05abeef66888dd6d530ebdd163f7b429a6387897a53f2",
+    "/Users/akashanand/Claude_Whip/firmware/unified/build-20260924-raw-ingress-v1/mode_controller.o": "8a7ba2ff0044622110fe314ec17374fdf5751a9b40a3ddf098963dcffeb066fc",
+    "/Users/akashanand/Claude_Whip/firmware/unified/build-20260924-raw-ingress-v1/runtime.o": "ea0af301a270a6dcaae3523d4e273fadacb286b7c18330a030b64fc44f599fd9",
+    "/Users/akashanand/Claude_Whip/firmware/unified/build-20260924-raw-ingress-v1/sample_tap.o": "e88ab06550ec9483683ed572d992e24dd744fb7de19b6ae8bddaa63861ae360a",
+    "/Users/akashanand/Claude_Whip/firmware/unified/build-20260924-raw-ingress-v1/stock-address/compiler_runtime.o": "14beafe8aebd3fa687aa9ca50d2727c122d04643cf6a268eae0786dc9671235d",
+    "/Users/akashanand/Claude_Whip/firmware/unified/build-20260924-raw-ingress-v1/stock_binding.o": "e12c8c700f768b16f41a26c5d5234fe0c65d6e34e59ca41e8d708530b7839c96",
+    "/Users/akashanand/Claude_Whip/firmware/unified/build-20260924-raw-ingress-v1/stock_coordinator.o": "9fad922bdeca22f5e724f815e2361f370f5270138594b6452b17834e6a5bc5ce",
+    "/Users/akashanand/Claude_Whip/firmware/unified/build-20260924-raw-ingress-v1/stock_health_commit.o": "a9d781b9257a905ff0f0a015bd7737f7471b76ba13822aa7ffc0cb932412dd7c",
+    "/Users/akashanand/Claude_Whip/firmware/unified/build-20260924-raw-ingress-v1/stock_health_timers.o": "c453e63c1fdec93fd8029fdda39223406c84276196c470c08e9063ea2a76b1a7",
+    "/Users/akashanand/Claude_Whip/firmware/unified/build-20260924-raw-ingress-v1/stock_legacy_gate.o": "c50b394d7be6458cf50f6e1736723ff5f9fcb3ee43fb7a7e85c7bf566bdd3aaa",
+    "/Users/akashanand/Claude_Whip/firmware/unified/build-20260924-raw-ingress-v1/stock_optical_io.o": "c7fb154217423ff473b0306de2846a4e86b48878484be2702468bfd42c6778db",
+    "/Users/akashanand/Claude_Whip/firmware/unified/build-20260924-raw-ingress-v1/stock_optical_work.o": "be016ec4485bad10f3928c7845dfe2376f87bc369ef46674a57df9415fa53c87",
+    "/Users/akashanand/Claude_Whip/firmware/unified/build-20260924-raw-ingress-v1/stock_result_commit.o": "d2ada34a2b7fb846be8c984ecb71de29b247c7d17099a59c2f76a5e254aeea7e",
+    "/Users/akashanand/Claude_Whip/firmware/unified/build-20260924-raw-ingress-v1/stock_schedule_settings.o": "15a2677a0105b05123bb499e669f5bfafb6b27d8f3559b85d99dbf65848f7faa",
+    "/Users/akashanand/Claude_Whip/firmware/unified/build-20260924-raw-ingress-v1/stock_service.o": "95d0f4514b47dd87964513a65b794e418439cec7c63be9b33dc39a2ecba9e0ff",
+    "/Users/akashanand/Claude_Whip/firmware/unified/build-20260924-raw-ingress-v1/stock_timer_fence.o": "0102100d2b8f397ea0453a2066a8a8138bf89f818d94749073166b2598215708",
+    "/Users/akashanand/Claude_Whip/firmware/unified/build-20260924-raw-ingress-v1/stock_transport.o": "72717bdbea56e9589db837f32aa5e58f9a5c9899b52987200d6ff968627fc396",
+    "/Users/akashanand/Claude_Whip/firmware/unified/build-20260924-raw-ingress-v1/wire.o": "bc03c770ba4360eb4ad295cd9561b6fd6c447074ec329069c93b271ac8faee4f",
+    "/Users/akashanand/Claude_Whip/firmware/unified/experiments/fresh_source_bucket.c": "1b836a58afa72ede88c333ca164f7544ec6bbd103512e7a53cb154f0daef968a",
+    "/Users/akashanand/Claude_Whip/firmware/unified/experiments/fresh_source_headroom.c": "5dc26f7e2dccaf085f0e71c39472ec66621b0a753108014f411ec69c76f07f44",
+    "/Users/akashanand/Claude_Whip/firmware/unified/experiments/fresh_source_split.c": "00d645b7cab9cd6d2fb82d900f806a99faa08d57d228ac12bf8e755c582e9519",
+    "/Users/akashanand/Claude_Whip/firmware/unified/experiments/measure_source_size.py": "a5efd2dad60258cfa58fa8fa9d69649b99642e076e1a24e0bc57380a5639bc6e",
+    "/Users/akashanand/Claude_Whip/firmware/unified/fresh_source.c": "56af8595bc24f15464178210b07863e1afa84f6891630f7eaba6ec12ffc3dcbf",
+    "/Users/akashanand/Claude_Whip/firmware/unified/fresh_source.h": "d298923d0c066ce86a17eb4a326d7207d4f36b8920d17fb6071d8beb2a826bc6",
+    "/Users/akashanand/Claude_Whip/firmware/unified/research-20260924-discovery-budget-v1/discovery.o": "80e629651190a06a0e623ae6442d073917603f3095249007ec74c479ac848404",
+    "/Users/akashanand/Claude_Whip/firmware/unified/sample_tap.h": "3ba5bbb3beb0c8b0855b45142fd354728abc979ddded2f289948f2f1afcc6a59",
+    "/Users/akashanand/Claude_Whip/probe/owner_wait_budget.py": "42d343686b0b070799b715f237894768fbc91fc16eb0a25d22bfed5d0227e87d",
+    "/Users/akashanand/Claude_Whip/whip/fwproof_guard.py": "c1229d88bfbfb28a3a50a96ababab3671c29ce924c7057ab2276d2d14ae0c508",
+    "/Users/akashanand/Claude_Whip/whip/fwraw_relocation_trial.py": "92776ad7745d48cdaa398c44e03aee9a5c5442f8e86c6bcf9fe7f256325932a6",
+    "/private/tmp/whip-fresh-source-split.T5Lzqk/per-frame.c": "dbf79818c62f395d1cb5771fdaced746c35c8eb28177bd648192303e42c78713",
+    "/private/tmp/whip-fresh-source-split.T5Lzqk/preflight.c": "a4d1a627a9e08066438edb5dbc19b3190652e2a69548e422c31b544190c8ef00"
+  },
+  "limits": "Input section/local-stack measurements only. No accepted candidate, behavioral proof, observed nested stack, physical stack headroom, memory ownership or full linked fit. Five finite designs rejected before expensive differential acceptance. Existing whole28 budget unchanged, not re-linked here. No safety policy, queue, feature, core pin or ring image changed.",
+  "measurements": {
+    "baseline": {
+      "adopted": false,
+      "allocated_sections": {
+        ".ARM.exidx": 56,
+        ".text": 1004
+      },
+      "functions": {
+        "ws_init": 10,
+        "ws_observe": 642,
+        "ws_profile_valid": 144,
+        "ws_set_bounds": 50,
+        "ws_start": 82,
+        "ws_stop": 18,
+        "ws_tick": 56
+      },
+      "input_bytes": 1060,
+      "local_stack_bytes": {
+        "ws_init": 8,
+        "ws_observe": 112,
+        "ws_profile_valid": 20,
+        "ws_set_bounds": 16,
+        "ws_start": 32,
+        "ws_stop": 0,
+        "ws_tick": 8
+      },
+      "object": "baseline.o"
+    },
+    "bucket": {
+      "adopted": false,
+      "allocated_sections": {
+        ".ARM.exidx": 56,
+        ".text": 1004
+      },
+      "functions": {
+        "ws_init": 10,
+        "ws_observe": 642,
+        "ws_profile_valid": 144,
+        "ws_set_bounds": 50,
+        "ws_start": 82,
+        "ws_stop": 18,
+        "ws_tick": 56
+      },
+      "input_bytes": 1060,
+      "local_stack_bytes": {
+        "ws_init": 8,
+        "ws_observe": 112,
+        "ws_profile_valid": 20,
+        "ws_set_bounds": 16,
+        "ws_start": 32,
+        "ws_stop": 0,
+        "ws_tick": 8
+      },
+      "object": "bucket.o"
+    },
+    "frames": {
+      "adopted": false,
+      "allocated_sections": {
+        ".ARM.exidx": 56,
+        ".text": 1040
+      },
+      "functions": {
+        "ws_init": 10,
+        "ws_observe": 678,
+        "ws_profile_valid": 144,
+        "ws_set_bounds": 50,
+        "ws_start": 82,
+        "ws_stop": 18,
+        "ws_tick": 56
+      },
+      "input_bytes": 1096,
+      "local_stack_bytes": {
+        "ws_init": 8,
+        "ws_observe": 112,
+        "ws_profile_valid": 20,
+        "ws_set_bounds": 16,
+        "ws_start": 32,
+        "ws_stop": 0,
+        "ws_tick": 8
+      },
+      "object": "frames.o"
+    },
+    "headroom": {
+      "adopted": false,
+      "allocated_sections": {
+        ".ARM.exidx": 56,
+        ".text": 1044
+      },
+      "functions": {
+        "ws_init": 10,
+        "ws_observe": 682,
+        "ws_profile_valid": 144,
+        "ws_set_bounds": 50,
+        "ws_start": 82,
+        "ws_stop": 18,
+        "ws_tick": 56
+      },
+      "input_bytes": 1100,
+      "local_stack_bytes": {
+        "ws_init": 8,
+        "ws_observe": 112,
+        "ws_profile_valid": 20,
+        "ws_set_bounds": 16,
+        "ws_start": 32,
+        "ws_stop": 0,
+        "ws_tick": 8
+      },
+      "object": "headroom.o"
+    },
+    "outlined": {
+      "adopted": false,
+      "allocated_sections": {
+        ".ARM.exidx": 72,
+        ".text": 998
+      },
+      "functions": {
+        "frame": 270,
+        "preflight": 122,
+        "ws_init": 10,
+        "ws_observe": 244,
+        "ws_profile_valid": 144,
+        "ws_set_bounds": 50,
+        "ws_start": 82,
+        "ws_stop": 18,
+        "ws_tick": 56
+      },
+      "input_bytes": 1070,
+      "local_stack_bytes": {
+        "frame": 56,
+        "preflight": 16,
+        "ws_init": 8,
+        "ws_observe": 72,
+        "ws_profile_valid": 20,
+        "ws_set_bounds": 16,
+        "ws_start": 32,
+        "ws_stop": 0,
+        "ws_tick": 8
+      },
+      "object": "outlined.o"
+    },
+    "preflight": {
+      "adopted": false,
+      "allocated_sections": {
+        ".ARM.exidx": 56,
+        ".text": 1044
+      },
+      "functions": {
+        "ws_init": 10,
+        "ws_observe": 682,
+        "ws_profile_valid": 144,
+        "ws_set_bounds": 50,
+        "ws_start": 82,
+        "ws_stop": 18,
+        "ws_tick": 56
+      },
+      "input_bytes": 1100,
+      "local_stack_bytes": {
+        "ws_init": 8,
+        "ws_observe": 112,
+        "ws_profile_valid": 20,
+        "ws_set_bounds": 16,
+        "ws_start": 32,
+        "ws_stop": 0,
+        "ws_tick": 8
+      },
+      "object": "preflight.o"
+    }
+  },
+  "schema": "whip.rejected-fresh-source-size.v1",
+  "tools_sha256": {
+    "clang": "b8763cf250e607a778bb4603cecb5b90338814d0a3dfcba0d57b1de242f610e9",
+    "python": "b874063062531b7ac73b400141e9ce95184945f86fa1bda91bab5c6671a55149"
+  },
+  "whole28_append_lower_bound_unchanged": 10798
+}

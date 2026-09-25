@@ -112,6 +112,50 @@ Test protocol:
    failed reads or failed freshness. Independently attempt `A1 05`, `A1 02` and
    motion-hold disable during cleanup, including cancellation/error paths.
 
+## Thirty-minute follow-up — 2026-09-22 (completed)
+
+The user approved a 1,800-second repeat on the same original 25 Hz firmware,
+using the same temporary optical STOP plus motion-hold sequence. No firmware
+was flashed. Log: `data/batterycheck/battery_1790109591966012000.jsonl`.
+
+The measured phase began at 13:40:08 America/Phoenix; scheduled completion is
+14:10:08, unless a safety/freshness check stops it earlier. Original25Hz code
+identity and initial motion state `000100` passed. Starting battery was 100%,
+not charging. First rolling window: 25.0 Hz, 247 distinct XYZ out of 250 samples,
+maximum gap 74.6 ms, longest identical run 30.0 ms; freshness passed. The next
+logged window also passed at 25.0 Hz. The user explicitly confirmed that the LEDs
+stopped flashing and stayed dark while moving the ring: "Yes, stayed dark".
+
+The run completed 1,800.0269 measured seconds and stopped automatically at
+14:10:08. All 31 battery replies in the measured phase reported 100%, with
+charging false; the first and last replies were 1,799.9953 seconds apart.
+All 30 logged freshness windows passed at 25.0–25.1 Hz, and the continuous
+rolling gate never failed. Cleanup restored `000100` with no errors, and the
+shell exited successfully. The user was informed that this is **not evidence
+of zero drain**: the raw battery reply exposes a whole-number percentage,
+not 99.9% precision, and battery-estimate refresh has not been independently
+verified. No runtime or power-saving claim follows from a flat 100% reading.
+
+This began at a different reported charge level from the earlier 92% trial;
+do not merge their intervals. On seeing this result, the user explicitly
+requested another thirty-minute run with the same conditions.
+
+## Second thirty-minute run — 2026-09-22 (complete)
+
+Log: `data/batterycheck/battery_1790111870918145000.jsonl`. A new connection
+again verified the original25Hz code fingerprint and `000100` motion-control
+preflight state. Preflight battery reported 100%, not charging. The same command
+was launched with `--optical-stop --duration 1800 --poll-seconds 60 --stop-at 40`;
+no firmware flash or health-schedule change. This is a separate run after the
+first run's cleanup and a gap, not a continuous sixty-minute measurement.
+The measured phase ran its full 1800.03 seconds and ended normally. Battery
+reported 100% at the start and 95% at the end, or about 0.167 displayed
+percentage points/minute; the first displayed drop occurred about three minutes
+in. Freshness checks continued to pass, and cleanup restored motion control to
+`000100` without error. This remains a rounded-gauge, host-workaround result,
+not a V2 battery measurement. Visible darkness for this run was not separately
+confirmed; the earlier confirmation belongs to the first run.
+
 ## Interpretation and next comparisons
 
 Report start/end percentage, their actual time separation, sample freshness/rate,
@@ -128,7 +172,8 @@ or treat the zero-data old captures as stock health measurements.
 
 Background health/indicator paths can restart optics on the unchanged firmware.
 This test does not establish a permanent LED fix, classifier accuracy, disconnect
-sleep behavior, or the battery performance of the unflashed v2 image.
+sleep behavior, or the battery performance of V2 (which was flashed only after
+these host-workaround runs).
 
 References: [firmware handoff](FIRMWARE_RESEARCH.md),
 [hardware measurements](HARDWARE.md), [LED experiment chronology](LED_FIX.md).

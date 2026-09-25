@@ -1,5 +1,39 @@
 # R02 Ring — SwiftUI implementation
 
+## 2026-09-25: compact unified image and runtime switch
+
+The app now bundles and SHA-pins the size-neutral candidate documented in
+`../docs/UNIFIED_MODE_V1.md`. Firmware maintenance can install it after the
+existing identity, battery, charging, hardware, health-sync and DFU checks. On
+reconnect the app fingerprints nine audited code regions before enabling the
+runtime control. Gesture entry uses only `A1 04` and requires fresh distinct
+A1/03 samples; Health return uses `A1 05` then `A1 02`. Stale inference,
+backgrounding and disconnect fail back toward Health. The full 61-test iOS
+suite and Debug/Release simulator builds pass. The image has not yet been
+flashed or physically validated; the installed ring remains V2 optical-off.
+
+## 2026-09-24/25: offline unified discovery candidate
+
+`Health/UnifiedDiscovery.swift` decodes the proposed 20-byte read-only boot/build
+identity. It performs no BLE/UART access, image attestation or capability
+admission; production transport remains locked. Actual ARM encoder output and
+the compiled Swift parser pass cross-language tests. The complete app builds
+for generic iOS Simulator (arm64/x86_64), using explicit Xcode developer path;
+no simulator was launched and nothing was deployed or connected. See
+`../docs/UNIFIED_DISCOVERY.md` for format, archive, tests and remaining owners.
+
+## 2026-09-22: health-default unified-mode offline work
+
+See `../docs/UNIFIED_FIRMWARE.md` for current implementation, tests and blockers.
+The Gesture tab now includes a capability-gated runtime session control and the
+pinned float32 model/Swift replay pipeline. The control is deliberately locked:
+there is no approved unified firmware or production wire adapter. Existing
+stock/V2 flashing is separately labeled **Firmware maintenance**. Nothing from
+this implementation was installed on the physical phone or flashed to the ring.
+Health sync is read-only, uses independent cursors/overlap, validates complete
+responses and persists coverage uncertainty. It no longer sets the clock or
+forces HR logging on. Settings changes are explicit user actions.
+
 Built from the design handoff in `~/design_handoff_r02_ring/` (`README.md` and
 `R02 Health Dashboard.dc.html`), which stayed outside this repo.
 Open `R02Ring.xcodeproj` and run the `R02Ring` scheme. Target iOS 17, portrait iPhone.
@@ -164,10 +198,13 @@ successfully built Debug for both simulator architectures with signing disabled.
 app was launched or deployed and no ring was connected by this build. The pre-merge
 iOS-only stash `0b3c0e75ea187cfea0e650edace72f6bd82ca4b6` remains as a recovery copy.
 
-## Reference for a future health / gesture switch
+## Health / gesture firmware switch
 
-This merged app is a working stock-health implementation, not yet a dual-mode app.
-Its behavior constrains any future switch:
+Settings now exposes an explicit, confirmation-gated Health/Gesture mode switch.
+The app bundles hash-pinned stock and V2 images, requires the exact RT02CR hardware
+header, a readable battery of at least 40%, and the ring off its charger. Every DFU
+frame is written with response and acknowledged; CHECK is the commit gate and END's
+reboot/disconnect is expected.
 
 - `HealthSyncService.sync` enables five-minute heart-rate logging when it finds a
   different setting. Connect, foreground and periodic refresh can invoke this. Health
@@ -177,13 +214,20 @@ Its behavior constrains any future switch:
   code documents that this clears accumulated stock activity. A firmware round-trip
   must not be treated as a new-ring setup automatically; preserving/importing existing
   history needs explicit handling and validation.
-- A safe mode transition needs exclusive BLE ownership, stopped capture/health jobs,
-  a confirmed target image, battery/charging checks, the existing DFU safety gates,
-  verified post-reboot identity, and only then the selected mode's services.
+- Before Health→Gesture, the app performs a routine (non-clock-resetting) history
+  import. In Gesture mode, connection, foreground and five-minute health sync jobs
+  are paused. Returning to Health resumes routine sync without treating the same ring
+  as new or sending clock command `0x01`.
+- Stock is identified by its DIS version. V2 shares its DIS version with the old 25 Hz
+  base, so the app uses the same fixed 22-read/244-byte critical-site fingerprint as
+  `whip.fwidentity`; unknown or mixed code pauses automatic health work.
 - The app button is an explicit fallback. A desktop hotkey is a separate host feature;
   a slow pose/hold at stock's roughly 1 Hz is only a possible switch cue, not the
   trained 25 Hz flick classifier. Receiving stock raw data itself starts the sensor
   front end, so it is not established as a free, passive health-mode gesture detector.
-- No automatic flash, switching UI, or mode-aware scheduler is implemented by this
-  merge. The experimental optical-off image remains unflashed and unvalidated on
-  hardware. See `../docs/FIRMWARE_RESEARCH.md` for the image/health limitations.
+- This does not make health continuous during Gesture mode: V2 deliberately disables
+  ordinary optical HR/SpO2 paths, and readings missed during that interval cannot be
+  reconstructed. A future single-image reversible optical design remains separate work.
+- The Swift implementation and test target compile for both simulator architectures;
+  DFU frame vectors match the validated Python implementation. The app-driven physical
+  round trip itself remains to be tested; keep the Python flasher as the recovery path.

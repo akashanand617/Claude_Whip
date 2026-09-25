@@ -1,0 +1,11 @@
+firmware/unified/mode_controller.c:30:wm_init	8	static
+firmware/unified/mode_controller.c:34:wm_link	16	static
+firmware/unified/mode_controller.c:21:leave	8	static
+firmware/unified/mode_controller.c:42:wm_request	16	static
+firmware/unified/mode_controller.c:103:wm_tick	8	static
+firmware/unified/mode_controller.c:9:issue	0	static
+firmware/unified/mode_controller.c:59:wm_complete	24	static
+firmware/unified/mode_controller.c:90:wm_renew	24	static
+firmware/unified/mode_controller.c:115:wm_optics_allowed	0	static
+firmware/unified/mode_controller.c:119:wm_stream_failed	16	static
+firmware/unified/mode_controller.c:125:wm_optical_start_allowed	0	static

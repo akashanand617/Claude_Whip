@@ -310,6 +310,17 @@ async def stream(
         # A failed or cancelled write may still have reached the ring. Start
         # cleanup coverage before attempting it, including optional setup.
         raw_start_attempted = True
+        # A session that ended in a disconnect leaves raw mode 4 set on the
+        # ring: the 32 ms producer keeps firing and deep sleep stays vetoed
+        # until a stop arrives. Clear it before starting, on every connection.
+        # A failed pre-start stop is logged, not fatal -- the start that
+        # follows begins with its own disable-all.
+        for packet in protocol.STOP_RAW_SENSOR_PACKETS:
+            try:
+                await client.write_gatt_char(protocol.UART_RX_CHAR_UUID, packet, response=False)
+                await asyncio.sleep(0.15)
+            except Exception as exc:  # noqa: BLE001 - the start below still has to be attempted
+                logger.warning("error sending pre-start stop %s: %s", packet[:2].hex(), exc)
         await client.write_gatt_char(protocol.UART_RX_CHAR_UUID, protocol.raw_sensor_packet(param), response=False)
 
         if disable_logging:

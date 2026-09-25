@@ -1,0 +1,157 @@
+{
+  "schema": "whip.capacity.capture.v1",
+  "session_id": "capacity-20260923-bank0-descriptor",
+  "declared_evidence_kind": "device_capture",
+  "declared_image": "optical_off_v2",
+  "declared_image_sha256": "0d18a0fa860d58ab8f984b5f542f45dac105241f47bf1c2af41321eb0431e14c",
+  "window_hashes": {
+    "0x200380": "d181b7378851e44b709578a730fdafcbcf658ee96e9a0ee2a199fba433d30099",
+    "0x2003e4": "19f636dc558b3e0d11daebb254ecaaf76d5c3a8597e7219063bf55f3715bf32e",
+    "0x802198": "d74c3afddf382c36dd4c566c539d2dcff16a22e0c7f525a9c1a342875cc4e12f"
+  },
+  "ram_configuration": {
+    "app_address": 2128896,
+    "app_bytes": 28672,
+    "app_end_exclusive": 2157568,
+    "data_heap_bytes": 29696,
+    "buffer_heap_bytes": 14448,
+    "matches_nominal_stock_reservation": true,
+    "free_bytes_proven": null,
+    "allocation_approved": false
+  },
+  "flash_regions": [
+    {
+      "name": "bank0",
+      "address": 8396800,
+      "size": 294912,
+      "end_exclusive": 8691712
+    },
+    {
+      "name": "bank1",
+      "address": 8691712,
+      "size": 0,
+      "end_exclusive": 8691712
+    },
+    {
+      "name": "ftl",
+      "address": 8691712,
+      "size": 16384,
+      "end_exclusive": 8708096
+    },
+    {
+      "name": "ota_tmp",
+      "address": 8708096,
+      "size": 147456,
+      "end_exclusive": 8855552
+    },
+    {
+      "name": "backup2",
+      "address": 0,
+      "size": 0,
+      "end_exclusive": 0
+    }
+  ],
+  "complete_flash_map_validated": false,
+  "unresolved_flash_declarations": [
+    {
+      "name": "backup1",
+      "declared_address": 16777216,
+      "declared_size": 8388608,
+      "reason": "exact application-written declaration outside reviewed primary-flash envelope",
+      "startup_store_files": [
+        1786,
+        1790
+      ],
+      "physical_capacity_verified": false,
+      "read_target_approved": false
+    }
+  ],
+  "banks": [
+    {
+      "bank": "bank0",
+      "partitions": [
+        {
+          "name": "secure_boot",
+          "address": 8441856,
+          "size": 4096,
+          "end_exclusive": 8445952
+        },
+        {
+          "name": "rom_patch",
+          "address": 8400896,
+          "size": 40960,
+          "end_exclusive": 8441856
+        },
+        {
+          "name": "app",
+          "address": 8544256,
+          "size": 147456,
+          "end_exclusive": 8691712
+        },
+        {
+          "name": "app_data1",
+          "address": 8691712,
+          "size": 0,
+          "end_exclusive": 8691712
+        },
+        {
+          "name": "app_data2",
+          "address": 8691712,
+          "size": 0,
+          "end_exclusive": 8691712
+        },
+        {
+          "name": "app_data3",
+          "address": 8691712,
+          "size": 0,
+          "end_exclusive": 8691712
+        },
+        {
+          "name": "app_data4",
+          "address": 8691712,
+          "size": 0,
+          "end_exclusive": 8691712
+        },
+        {
+          "name": "app_data5",
+          "address": 8691712,
+          "size": 0,
+          "end_exclusive": 8691712
+        },
+        {
+          "name": "app_data6",
+          "address": 8691712,
+          "size": 0,
+          "end_exclusive": 8691712
+        },
+        {
+          "name": "upperstack",
+          "address": 8445952,
+          "size": 98304,
+          "end_exclusive": 8544256
+        }
+      ],
+      "configured_app_fit": true,
+      "configured_app_margin_bytes": 9520,
+      "active_bank_verified": false
+    }
+  ],
+  "missing_descriptor_banks": [],
+  "banks_describing_known_app_base": [
+    "bank0"
+  ],
+  "minimum_partition_bytes": 137936,
+  "ota_tmp_configured_fit": true,
+  "physical_evidence_verified": false,
+  "live_image_verified": false,
+  "staging_route_verified": false,
+  "flash_chip_capacity_verified": false,
+  "placement_approved": false,
+  "flash_authorized": false,
+  "limitations": [
+    "configuration values are not chip capacity or live-image attestation",
+    "active bank, OTA route, header validity and erase/program geometry remain unverified",
+    "RAM ownership, indirect writers, retention and heap reserve remain unverified",
+    "self-supplied hashes detect content mismatch, not provenance or request correlation"
+  ]
+}

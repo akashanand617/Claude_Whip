@@ -1,0 +1,2 @@
+firmware/unified/experiments/uart_mux_size_bindings.c:7:wco_monotonic_ms	0	static
+firmware/unified/experiments/uart_mux_size_bindings.c:8:wum_post20	0	static

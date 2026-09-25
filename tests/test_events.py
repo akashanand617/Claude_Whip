@@ -3,6 +3,39 @@ import pytest
 from whip import events
 
 
+@pytest.mark.parametrize("directions, expected", [
+    ([], "none"), (["none", "none"], "none"),
+    (["up", "down"], "up"), (["down", "up"], "down"),
+    (["right", "left"], "right"), (["left", "right"], "left"),
+    (["up", "down", "down", "up"], "up"),
+    (["none", "right", "left", "right", "left"], "right"),
+    (["up", "down", "left", "right"], "up"),
+    (["up", "down", "down"], "down"),
+])
+def test_direction_votes_use_majority_then_first_non_none_vote(directions, expected):
+    assert events.dominant_direction(directions) == expected
+    # Exercise burst judgement too, with every vote geometrically eligible.
+    if len(directions) >= 2:
+        tracker = events.BurstTracker()
+        burst = events.Burst(on_s=3.0, off_s=3.04)
+        tracker._windows = [(1.4 + i * .24, "flick", .8, d) for i, d in enumerate(directions)]
+        assert tracker._judge(burst, 5.0).direction == expected
+
+
+def test_direction_ties_are_independent_of_python_hash_seed():
+    import os
+    import subprocess
+    import sys
+
+    code = ("from whip.events import dominant_direction; "
+            "assert dominant_direction(['up', 'down']) == 'up'; "
+            "assert dominant_direction(['down', 'up']) == 'down'; "
+            "assert dominant_direction(['right', 'left']) == 'right'")
+    for seed in ("0", "1", "42", "123", "random"):
+        subprocess.run([sys.executable, "-c", code], env={**os.environ, "PYTHONHASHSEED": seed},
+                       check=True, capture_output=True, text=True)
+
+
 def run_of(label, n):
     return [label] * n
 

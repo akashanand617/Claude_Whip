@@ -1,0 +1,3 @@
+firmware/unified/stock_health_timers.c:13:wht_stop_reviewed	40	static
+firmware/unified/stock_health_timers.c:8:ram_span	8	static
+firmware/unified/stock_health_timers.c:56:wht_stop_scheduled	8	static

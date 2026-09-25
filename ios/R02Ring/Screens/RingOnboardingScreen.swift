@@ -103,7 +103,7 @@ struct RingOnboardingScreen: View {
             }
             .frame(maxWidth: .infinity, minHeight: 50)
             .overlay { Rectangle().strokeBorder(Tok.hairline) }
-        case .ready:
+        case .ready, .recoveryReady:
             Button("Done") { manager.dismissOnboarding() }
                 .font(.mono(13, .medium))
                 .frame(maxWidth: .infinity, minHeight: 50)
@@ -134,6 +134,7 @@ struct RingOnboardingScreen: View {
         case .scanning: return "Keep the ring close. If it is asleep, place it on the charger for two seconds, then remove it."
         case .connecting, .discoveringServices: return "The R02 can take several seconds to expose all of its health services."
         case .bluetoothUnavailable: return "Enable Bluetooth and allow access for R02 Ring in Settings."
+        case .recoveryReady: return "The ring is reachable through its recovery service, but its normal health connection is unavailable. No firmware is written automatically."
         case .disconnected: return "Make sure QRing is closed so it does not hold the ring's only connection."
         default: return manager.candidates.count > 1
             ? "Choose the suffix printed by your ring's Bluetooth name. This app remembers only that ring."
@@ -150,8 +151,8 @@ struct RingManagerSheetPresenter: ViewModifier {
         content.sheet(isPresented: $manager.showsOnboarding, onDismiss: manager.cancelPairing) {
             RingOnboardingScreen(manager: manager, connect: connect)
                 .presentationDetents([.medium, .large])
-                .presentationDragIndicator(manager.isReady ? .visible : .hidden)
-                .interactiveDismissDisabled(!manager.isReady)
+                .presentationDragIndicator(manager.canDismissConnectionSheet ? .visible : .hidden)
+                .interactiveDismissDisabled(!manager.canDismissConnectionSheet)
         }
     }
 }

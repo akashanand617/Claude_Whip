@@ -1,0 +1,10 @@
+firmware/unified/dispatch.c:18:wd_init	24	static
+firmware/unified/dispatch.c:22:wd_open	24	static
+firmware/unified/dispatch.c:31:wd_close	16	static
+firmware/unified/dispatch.c:9:close_current	24	static
+firmware/unified/dispatch.c:36:wd_charging	16	static
+firmware/unified/dispatch.c:61:wd_tick	16	static
+firmware/unified/dispatch.c:42:ready	32	static
+firmware/unified/dispatch.c:115:wd_receive	56	static
+firmware/unified/dispatch.c:138:wd_reply_next	32	static
+firmware/unified/dispatch.c:149:wd_reply_sent	32	static

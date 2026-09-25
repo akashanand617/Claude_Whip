@@ -1,0 +1,4 @@
+# Optional, isolated environment for off-device execution of pinned stock Thumb.
+unicorn==2.1.4
+pyelftools==0.32
+pytest>=8.3.0

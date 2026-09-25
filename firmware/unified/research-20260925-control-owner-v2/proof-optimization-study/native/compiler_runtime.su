@@ -1,0 +1,5 @@
+firmware/unified/compiler_runtime.c:10:__aeabi_memclr4	0	static
+firmware/unified/compiler_runtime.c:14:__aeabi_memcpy	0	static
+firmware/unified/compiler_runtime.c:19:__aeabi_memcpy4	8	static
+firmware/unified/compiler_runtime.c:22:__aeabi_memmove4	0	static
+firmware/unified/compiler_runtime.c:34:__aeabi_uidiv	28	static

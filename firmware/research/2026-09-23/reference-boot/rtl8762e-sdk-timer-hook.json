@@ -1,0 +1,26 @@
+{
+  "schema": "whip.external-timer-hook-reference.v1",
+  "evidence_kind": "external_reference_not_ring_capture",
+  "repository": "https://github.com/atc1441/ATC_RTL_BLE_OEPL",
+  "commit": "49301d9b75816ccde1cc9657b827fdadf5736937",
+  "path": "ATC_RTL_BLE_OEPL_8762ESL/gcc/data_0x801000.bin",
+  "source_bytes": 190668,
+  "source_sha256": "ca53de5cfabc4eb9f4071773fe65db0e573560a0ad0c53c9c4d4ddfa02124347",
+  "nonsecret_patch_header": {
+    "file_offset": 8192,
+    "sha256": "d57dbcc65bb3b41dbcece4096d783ced88ffddc118809767c96972af84d19b3e",
+    "data_hex": "0c0016099227000088960000f94c6b7e11c5eb118282f74a0c0cef5b00382000c4998001b0300000003080010000000000000000"
+  },
+  "initializer_and_literals": {
+    "file_offset": 10514,
+    "flash_storage_address": 8403218,
+    "code_length": 20,
+    "sha256": "7a40a9ba8cafaf8acc3ed2e590a3425658e0d833ca4314e2ca583bde9d4042c4",
+    "data_hex": "0649044808600649054808600749054808607047000031632000fc1520008d6320003c1720005963200044162000"
+  },
+  "keys_retained": false,
+  "authentication_fields_retained": false,
+  "matches_live_create_hook": false,
+  "live_code_attested": false,
+  "flash_authorized": false
+}

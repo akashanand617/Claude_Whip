@@ -9,7 +9,7 @@ struct R02RingApp: App {
     init() {
         do {
             container = try ModelContainer(for: HeartRateRecord.self, StepRecord.self,
-                                           SleepSessionRecord.self, SleepStageRecord.self)
+                                           SleepSessionRecord.self, SleepStageRecord.self, HealthCoverageRecord.self)
         } catch {
             fatalError("Could not create the local health store: \(error)")
         }
@@ -73,14 +73,17 @@ struct RootView: View {
             switch phase {
             case .active:
                 model.ringManager.begin()
-                if model.ringManager.isReady { Task { await model.sync() } }
+                if model.ringManager.isReady, model.healthSyncEnabled { Task { await model.sync() } }
             case .background:
                 model.stopHeartRateMeasurement()
+                if model.modes.status?.mode == .gesture || model.modes.status?.mode == .enteringGesture {
+                    Task { await model.setGestureSession(false) }
+                }
             default: break
             }
         }
         .onReceive(foregroundRefresh) { _ in
-            guard scenePhase == .active, model.ringManager.isReady else { return }
+            guard scenePhase == .active, model.ringManager.isReady, model.healthSyncEnabled else { return }
             Task { await model.sync() }
         }
     }

@@ -47,12 +47,12 @@ ACK_TIMEOUT_S = 15.0
 # guessed, during the original flashing work.
 FLASH_TARGETS = {
     "gesture": {
-        "image": Path("firmware/rt02cr-25hz.bin"),
+        "image": Path("firmware/rt02cr-25hz-optical-off-v2-experimental.bin"),
         "init_type": 4,
-        "title": "Gesture firmware (25 Hz)",
-        "description": "Streams motion at 25 Hz for gesture detection. "
-                       "LEDs stay lit while streaming; ~5.5 h of continuous "
-                       "streaming on a charge. Health features unavailable.",
+        "title": "Gesture firmware V2 (25 Hz, optical-off)",
+        "description": "Streams motion at 25 Hz for gesture detection while "
+                       "ordinary optical emitters are suppressed. Optical health "
+                       "features are unavailable; use Stock mode for health tracking.",
     },
     "stock": {
         "image": Path("firmware/rt02cr-stock-3.12.02.bin"),

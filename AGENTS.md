@@ -1,7 +1,1057 @@
 # Whip — working notes
 
+## BLE recovery and unified-V1 postmortem — 2026-09-25
+
+This supersedes the "current compact unified candidate" claims below. The
+flashed transfer used SHA-256 `b1070bed755ce14936501431e379c6c47570ce747265fe0b6af0e87553eb2dc4`.
+That image has a proven builder defect: it patched startup call `0x749A`, which
+registers UART, instead of `0x74B6`, which registers FEE7. It therefore removed
+UART registration while still registering FEE7 over the bytes replaced with
+helper code. Never install or rebundle that hash. Whether it became the active
+on-ring image is not attested; normal services existed on one uninterrupted
+system link before the final forced Forget, and the present silent-radio state
+may also involve the stock disconnect/advertising-state race. Do not present
+either mechanism as physically proven.
+
+The corrected builder now patches the exact FEE7 call and fingerprints UART,
+DFU, DIS, FEE7 and HID setup. Its offline-only output is 137,540 bytes, SHA-256
+`7e2b3e2e61906031f5b79262ca39022fc34518ab421f814a586f9e49f8691243`;
+154 focused builder/identity/container/recovery tests pass with the pinned
+Zig 0.15.2 toolchain, zero skips. It is **not flash-approved** and is not the
+recovery path for the currently unreachable daily ring.
+
+The repaired iOS app now tries system-connected UART/DFU peripherals and exact
+historical CoreBluetooth identifiers; both iOS and macOS cached direct connects
+still received no response. A new exact macOS cached-peripheral latch then waited
+the full 300 seconds with zero connection callback and zero characteristic/DFU
+writes. `probe.ble_recovery` also provides a guarded Linux raw-HCI
+scanner/link test for a dedicated USB adapter. It can reveal name-less, directed
+or otherwise OS-filtered connectable advertisements, but cannot connect if the
+ring emits none. This Mac has only Apple's internal PCIe controller and cannot
+execute raw HCI. See [docs/BLE_RECOVERY.md](docs/BLE_RECOVERY.md). No physical
+pad shorting/opening or further firmware write is authorized.
+
+## Emergency handoff — unified V1 revoked, 2026-09-24
+
+The daily ring accepted unified V1 through DFU CHECK/END, then failed to return
+a valid R02/UART/DFU advertisement. Charging indication still works, but short
+and 15-second charger wakes plus phone and raw laptop scans found no recoverable
+ring service. Do not reflash or retry unified V1. Its app install action is
+hard-disabled. Recovery now requires a working BLE/DFU advertisement or an
+exact RT02CR hardware recovery route; the archived stock OTA image alone cannot
+recover a non-advertising application.
+All-advertisement near/far and two-window charger-trigger scans subsequently
+excluded invalid RSSI, Apple manufacturer beacons and nonconnectable devices;
+they found no R02/UART/DFU or nearby connectable non-Apple candidate. Do not
+repeat generic BLE scans without a new recovery hypothesis.
+
 Read this before touching the ring or the firmware. It records what has been
 measured, what was got wrong along the way, and the traps that cost hours.
+
+## Current compact unified candidate — 2026-09-25
+
+Read [docs/UNIFIED_MODE_V1.md](docs/UNIFIED_MODE_V1.md) first. A size-neutral
+Health-default / temporary-Gesture candidate is now built and bundled in the
+iOS app. Its SHA-256 is
+`b1070bed755ce14936501431e379c6c47570ce747265fe0b6af0e87553eb2dc4`.
+It reuses audited `A1 04` to enter Gesture and `A1 05`, then `A1 02` to return
+to Health; it adds no protocol, partition growth, or persistent RAM. The 184-byte
+helper occupies the retired FEE7 database after its sole registration call is
+disabled. Candidate-specific tests pass 71/71; the full iOS suite passes 61/61;
+Debug and Release simulator builds succeed. The installed ring is still V2.
+This candidate has not been flashed or physically validated. Do not describe it
+as completely safe: default Health, dark/fresh 25 Hz Gesture, optical resume,
+steps continuity, sleep continuity, and rollback remain physical gates.
+Use `python -m probe.validate_unified_mode --address <ring-address>` after the
+first reconnect; it is identity-gated and self-cleans raw and realtime-HR modes.
+
+## Latest off-ring storage experiment — 2026-09-24/25
+
+**Newest fit lead, still NOT production:** reusing the retained Colmi UART for
+versioned20-byte unified frames eliminates the separate replacement service,
+database/discovery/slot/event-gate units while preserving ordinary16-byte
+Health UART, DFU, DIS and HID. A reproducible measurement-only link places760
+bytes of current functions in gross FEE7 spans and occupies **9484/9520**, only
+36 bytes free. Its ingress+clock are fake6-byte fixtures; original connection/
+arrival ownership, zero-boot status discovery, send drain, complete FEE7
+retirement, placement and behavior are unproved. No accepted source/object or
+gate changes. Archive `research-20260925-uart-mux-fit-lead-v1`, report
+`231cccf7a85e93a3a9d28b5177adbd5598e7682a61a81b8376d63ec05bcb143d`.
+Focused actual-ARM routing:34 passed; all256 legacy opcodes ×3 stock modes keep
+the existing policy, matching20-byte requests reach only a fake sink, malformed
+20-byte traffic does not dispatch, and DFU bypasses the hook. This does not
+qualify the sink or the 36-byte margin.
+See `docs/UNIFIED_RESOURCE_BUDGET.md`.
+
+**Newest code-size checkpoint: both broader compiler shortcuts rejected.** All
+28 current sources reproduce exact objects. Short enums save72 text bytes but
+make `wco_owner`868 instead of required880. Internalized append LTO retains all
+38 public no-in-set-caller roots and saves112 text but adds456 unwind: measured
+occupancy11188/9520,344 worse than exact baseline10844/9520. Even hypothetical
+gross FEE7 790 leaves baseline at least534 over before real missing callbacks/
+bindings; approved reclaim remains0. Archive
+`research-20260925-whole28-flags-rejected-v2`, report
+`8cdcd42e778304624c48e809243c723314e8c53b0abfc197f365d1997d4b94e1`,
+538 checked content hashes/three tools. V1 stopped before report and is failed
+provenance only. No adopted source/object/image/ring change; all gates open.
+See `docs/UNIFIED_RESOURCE_BUDGET.md`.
+
+**Newest device result:** after separate fixed gateway reader passed 444 guarded
+checks (150 new), the freshly coordinated physical run completed exactly
+122 requests with repeated equality and confirmed disconnect; no sensor or
+flash command. ROM0x4926 saves arguments, null-checks and calls through the
+named slot. Live slot0x2011d4 is Thumb pointer0x80e401, exactly the previously
+captured Upper Stack execution address0x80e400. This closes only the first
+gateway boundary, not target dispatch, callback provenance/drain or any release
+gate. Device archive `firmware/research/2026-09-25/stack-gateway`, capture SHA
+`c8ea5af0fb5ae5a820b71b2e86fbeafac3c1e3e36105bb0c860370347ab96604`.
+Preflight archive
+`research-20260925-stack-gateway-preflight-v2`, supplement
+`b6afabcc24688284b11ef4d3aeb4d5aa002523c792cda1d113c330c222e1ffdf`.
+Its synthetic transport artifacts remain fake. The physical run never followed
+the pointer; any target read needs a new bounded plan and fresh confirmation.
+The separate CLI owns cleanup before connect; v1/413 cases missed inherited
+pre-yield cancellation cleanup and are historical. All six gates remain open.
+See `docs/UNIFIED_STACK_GATEWAY_READ.md`.
+
+**Newest ingress audit:**107 guarded tests pass (13 new),1178content hashes,
+fourtools; archive `research-20260925-control-provenance-v1`, supplement
+`6ceacaf36ff5346eb564fcbeb9bb70fedfb99fefe03c02a6f8427518a54a2e24`.
+Hypothetical old writes relabeled with current generation after BLE ID reuse
+reach software Gesture ENTRY; original generation rejects. Not an observed
+ring-stack bug. Require original callback ownership or proven upstream drain,
+not a current-ID lookup. SDK's seventh write arg is post-process output, not
+context; stock doesn't read it, so its dereference remains unqualified. Core,
+wire format, prior178 checkpoint and ring unchanged. See `docs/UNIFIED_CONTROL_INGRESS.md`.
+
+**Subsequent bounded size trial: all five candidates rejected.** Helper splits,
+exact bucket remainder and FIFO-headroom multiplication produced whole-module
+text/unwind deltas +40/+36/+10/0/+40 bytes; outlining also raised the known
+static nested stack chain. Accepted sources/pins unchanged, no new behavioral
+test count, ring command or image. Archive `research-20260925-source-size-rejected-v1`,
+report `9906db7c9aefbd6c6e84ca9f052b9b6ebd47ede7c11f820846c236f0d5f0d421`.
+Do not repeat these as untried optimizations; see `docs/UNIFIED_RESOURCE_BUDGET.md`.
+
+**Newest discovery/startup checkpoint:** actual six-argument `wdr_read` returns
+only the initialized20-byte identity view; no Gesture admission or mode change.
+Strong `wdr_identity` remains unbound (initialize before service-ID publication,
+then immutable); its20 bytes were already planned. Slot/gate/advertising now
+also execute together in one persistent ARM test, not full physical boot.
+**178 guarded tests pass in30.93s**,1130content hashes/fourtools; archive
+`research-20260925-discovery-read-v1`, supplement
+`efc06a5a3540d82ad16239aceb54521b383931187ba124b9ce392e9d2a1d90ee`.
+Whole28 lower bound10798/9520, **1278 over**, plus callback12 and remainingcode;
+six strong bindings missing. No productionELF, allocation, ring/bin or gate change.
+The prior27/26-object checkpoints below are historical. See WeChat/read audits.
+
+**Newest WeChat routing checkpoint:** `stock_event_gate` now guards both known
+callback pointer roots in the emulator; separate 13 size-neutral advertising
+edits remove only the FEE7 service-list entry and preserve manufacturer bytes.
+**144 guarded tests pass in 12.92 s**, 994 content hashes/four tools, archive
+`research-20260925-wechat-routing-v1`. Whole27 lower bound **10706/9520**, still
+**1186 over** before callback12 and remaining bindings. Five strong symbols
+remain undefined; no production ELF. Service ID adds1 owned RAM byte to the
+1244 planning subtotal. Before ID publication the still-missing dedicated
+callbacks must fail closed, never fall through. Retained/computed/direct roots,
+full boot/physical discovery and all six gates remain open. No ring/bin changes.
+The 26-object checkpoint below is historical; see the linked audit for details.
+
+**Subsequent direct WeChat work:** user approved FEE7-only retirement and asked
+Codex to audit it when Claude stopped. Read
+[the direct audit and adapter](docs/UNIFIED_WECHAT_RETIREMENT.md).
+Unattached `stock_service_slot` compiles; **98 guarded tests pass in5.22s**,
+915 content hashes/four tools, archive `research-20260925-wechat-slot-v1`.
+All26 known objects lower bound10674/9520 is still1154 over, plus callback
+constant12 and remaining bindings; separate ID needs1 owned RAM byte. Five
+strong bindings remain absent. No production ELF or gate closes. Crucial
+correction: setup ID209e1e differs from shared selectors209df7/209df8; sentinel
+alone does NOT disable old routing. Startup also advertises FEE7. Direct scan
+gross790 bytes is NOT approved space. Preserve UART/DFU/DIS/HID/Health.
+
+User asks to expedite testing and prepare the final compilation. Codex remains
+off-ring. Claude's separately authorized GATT archive now independently verifies
+172/172 reads and disconnect; see [GATT resources](docs/UNIFIED_GATT_RESOURCES.md).
+The ring Upper Stack differs from the reference mirror. The mirror's presumed
+server-init address is inside the ring APP, not its Upper Stack; never transplant
+that address. User explicitly accepts retiring WeChat/FEE7 sync, NOT HID or
+UART/DFU/DIS. This feature decision is not flash or memory-reclamation approval.
+See [timestamp experiment](docs/UNIFIED_TIMESTAMP_STORAGE.md).
+Generated low16 motion-queue timestamps pass **44 guarded tests in 17.06 s**,
+zero skips/failures/errors, with all 1202 content hashes independently audited. Archive:
+`firmware/unified/research-20260925-runtime-stamp16-v1/`.
+Supplement SHA: `cfced73f26753b7a0a9fc04bb50f9bcc6922586fb8fb7303895e3bde41cc3914`.
+
+This is NOT adopted core or flash approval. All 32 slots and exact live times
+remain; live head age is bounded by 7968 ms, pending stays full32. Prospective
+persistent RAM saves64 (1244→1180); wr_next local stack grows8 (24→32), with
+physical/nested headroom unproved. All25 rebuilt input lower bound is10608/9520,
+still1088 over, with the same three missing physical bindings. Runtime proof
+executes; the rebuilt low16 owner has NOT had full downstream integration.
+Accepted core, source pins and preceding767 content files are unchanged.
+Additional reclamation scans found only hypothetical space; approved reclaim
+remains zero. No BLE/bin/deploy/hooks/commit/push, no release gate closed.
+
+## Accepted integrated control-owner checkpoint — 2026-09-24/25
+
+Codex remains **off-ring**; Claude owns separately authorized device work.
+Health stays unified boot/default, Gesture temporary/opt-in. No BLE, stock/bin
+edit, phone deploy, production attachment, commit or push. All six release
+gates stay open. Read [the current checkpoint](docs/UNIFIED_CONTROL_OWNER.md)
+and [readiness](docs/UNIFIED_READINESS.md); preceding checkpoints are historical.
+
+Implemented real C `wuw_supervise` → `wco_service` → dispatcher/coordinator,
+with fresh time before/after stock work and original-arrival fragment expiry.
+Mailbox now holds two 20-byte frames (56-byte state); a third queued frame
+closes with FAULT. New actual-ARM owner witness runs selected original stock
+Health paths and Health→Gesture→Health with explicit physical/clock/storage
+fixtures. It is not the separate 21-object retired-layout witness and does
+not prove physical continuity, bounded cadence or production attachment.
+
+Full unchanged main regression: **3251 passed in 424.69 s**, zero skips;
+`firmware/unified/build-20260925-control-owner-regression-v1/`, 371 hashes
+independently checked, both main ELFs unchanged. The new units are absent from
+that main source list. Separate final supplement: **258 passed in 90.35 s**,
+zero failures/errors/skips/xfails, at
+`firmware/unified/research-20260925-control-owner-v2/`; 767 content hashes
+(440 inputs, 324 artifacts, 3 reports), four tools and three support pins.
+Supplement SHA: `7dcf4fb5ad98f4798b2e3dc3b9f6a059f9a38bef4a98f37056a16c408eb69a36`.
+The v1 tests passed but archive packaging failed on a duplicate pytest symlink;
+only v2 has a completed aggregate proof manifest. Old mailbox/wait source pins
+below are superseded, not current-source revalidation.
+
+Whole 25-object input-only append lower bound: **10610/9520, at least 1090
+bytes over**, same 1894 unowned moved bytes, before final alignment/unwind and
+remaining bindings. No production ELF; strict links refuse `wco_bound_owner`,
+`wco_bound_stock`, `wco_monotonic_ms`. Real supervisor is no longer missing.
+Compiler-only LTO saves only 40 bytes with nine moved objects exact; not a fit.
+RAM planning is **1244 = 1164 + identity 20 + mailbox 56 + arrival 4**. Owner 880
+already embeds dispatcher 764/coordinator 28/STOP 28: never add it twice. Event 32
+is stack scratch; nominal unowned 1224-byte overlay/gap is not an allocation.
+Physical source/STOP/current-settings resume, steps/sleep, storage ownership,
+recovery, real callback/output ownership and fresh clock binding remain open.
+
+## Preceding mailbox/wait checkpoint — 2026-09-24/25
+
+Codex remains **off-ring**; Claude owns separately authorized device work.
+Health stays unified boot/default, Gesture temporary/opt-in. No installed-image
+change by Codex. Read [the current checkpoint](docs/UNIFIED_OWNER_WAIT_BUDGET.md)
+and [six open gates](docs/UNIFIED_READINESS.md).
+
+New unattached C input mailbox and exact-stock idle-wait wrapper pass **131
+guarded tests in 41.44 s**, zero skips/failures/errors/xfails. Final archive:
+`firmware/unified/research-20260925-owner-wait-v2/`. Its 279 content hashes
+(262 inputs, 14 artifacts, 3 reports), three tools and launcher are guarded.
+Supplement SHA: `45b82ad5414076cba77c0af1c5544bb8883135b0a9ad5750bb11b835dbe935fa`.
+The pre-hardening v1/125-case result is historical, not the current source pin.
+
+Mailbox text 480 + wait 72 are now included with all prior 22 objects. The whole24
+link **refuses** strong undefined `wuw_supervise`: no fake production provider.
+The append input-only lower bound is **9782/9520, at least 262 bytes over** before
+final alignment/unwind and remaining owner code, using the same 1894 unowned moved
+bytes. No new holes, no unwind discard, no full24 ELF or installable image.
+Prior 264-byte margin below is only the old 22-object subtotal.
+
+Mailbox needs 32 persistent bytes plus separate 32-byte event scratch. Persistent
+planning 1184→1216 is not ownership of the nominal 1224-byte overlay/gap. IRQ-safe
+bounded copies do not establish serialized owner, physical fence or deadline.
+The wait witness changes one BL only in emulator memory; ROM/body/supervisor
+are explicit fixtures. The two new modules execute separate artificial ELFs,
+not a full unified switch. Fresh time, real provider, bounded stock work,
+physical STOP/source/resume/steps/sleep and recovery remain open.
+No BLE, stock/container edits, phone deploy, production admission, commit or push.
+
+## Preceding integrated-retirement/discovery supplement — 2026-09-24/25
+
+Codex remains **off-ring**; Claude owns separately authorized device work.
+Health is unified boot/default; Gesture temporary/opt-in. Installed V2 optical-off
+is unchanged. All six [release gates](docs/UNIFIED_READINESS.md) remain open.
+[Integrated switching](docs/UNIFIED_RETIRED_SWITCH.md) now runs the compiled
+coordinator, original Health sample paths and known queued/stored-root retirement
+in one persistent ARM context, using the pinned **21-object ELF** and **18
+emulator-only instruction edits**. Physical/RTOS/steps/sleep remain fixtures.
+
+[Discovery](docs/UNIFIED_DISCOVERY.md) adds an unattached 20-byte C boot/build
+identity format and Swift parser, with no callback, owner or admission.
+The full app builds for iOS Simulator; no launch/deployment/device connection.
+The separate **22-object/132-function** budget links reproducibly:
+**9256/9520 append bytes, 264 left**, plus unchanged **1894 unowned moved bytes**.
+Output: `firmware/unified/research-20260924-discovery-budget-v1/`.
+ELF: `932203212bae6fd1354030dadba21db3c388d575def6389891da56929fc26e66`.
+It has no retirement stubs and is production-rejected. **Never install it.**
+Discovery's immutable value would increase the unallocated selected state
+planning case from 1164 to **1184 bytes**; no RAM or task owner is approved.
+
+Final guarded supplement: **63 passed in 40.88 s**, zero failures/errors/skips/
+xfails, 189 passing phases. **253 content hashes** (238 inputs, 12 artifacts,
+three reports), four tools and two support hashes independently checked.
+Supplement: `4ec869f67ffe7e25be32152add9451c20c33e6ce389fbe4f7bde53c256180d3a`.
+Switch tests use the old 21-object ELF; new 22-object discovery runs separately.
+The 3251-test main checkpoint was not rerun; its 371 and prior supplement's 277 hashes
+still match. No source list, main ELF, retirement pin or production lock changed.
+
+[Independent stack review](docs/UNIFIED_STACK_EVIDENCE.md) verified Claude's
+198/194/454-transaction archives, task windows and known-A5 hashes. Paint does
+not establish SP-depth history, future headroom, allocation ownership or
+stock-Health workload peaks. No flash/container, stock .bin edit, phone deploy,
+Codex ring access, commit or push.
+
+Subsequent source-only binding audits (no C/build changes):
+[task map](docs/UNIFIED_TASK_BINDINGS.md) places selected Health scheduling and
+consumption in **qc_app**, acquisition/optical work in **hub**, and timer/deferred
+callbacks in **Tmr Svc**. qc_app waits indefinitely and may block while servicing
+work; it cannot by itself guarantee the 1 s/3 s/10 s deadlines. A bounded
+supervisor wake and immutable cross-context handoff remain required.
+[Read ABI](docs/UNIFIED_GATT_READ_BINDING.md) has six arguments, no context pointer;
+an owned identity lookup is still needed. [Boot-ID source](docs/UNIFIED_BOOT_ID_SOURCE.md)
+finds actual stock `platform_random` startup use, but entropy/failure/reset
+qualification is absent; the shared software PRNG is not a fresh 64-bit ID.
+The separate proposed GATT resource audit was not delivered and is not evidence.
+These three audits use stock/public source only; no ring or vendor-guide access.
+
+## Preceding raw-ingress and combined-retirement checkpoint — 2026-09-24/25
+
+Codex stayed entirely off-ring while Claude owned separately authorized device
+work. Health remains unified boot/default; Gesture temporary/opt-in. Installed
+V2 optical-off is unchanged. Read [the finite gates](docs/UNIFIED_READINESS.md)
+and [combined retirement](docs/UNIFIED_STOCK_RETIREMENT.md).
+
+`firmware/unified/build-20260924-raw-ingress-v1/`: **3251 passed in 515.24 s**,
+zero failures/errors/skips; **371 content hashes** independently checked
+(197 inputs, 171 artifacts, three reports), plus four tools and SDK metadata.
+Manifest: `4ab65e86daeab7fee1d186c4fd873fe95fec7dd1dbb3040ba3ba5ee9d37d1cee`.
+The 64-byte unattached guard now denies **A1/BF/CE/CD** before the legacy
+receive prelude. Both main ELFs are unchanged; this guard and three other
+candidates remain unlinked there. Append-only all-code refusal is **11108/9520**,
+**1588 over**, before missing hooks. No complete append-only ELF is emitted.
+
+New conditional archive: `firmware/unified/research-20260924-raw-retirement-v1/`.
+All 21 objects/130 functions reproduce; **1894** bytes move into nine **unowned**
+regions, with **9132 append bytes / 388 remaining**. ELF:
+`9cad661e85edd74ebc9f425956aa1937da0dfa9f2f5344ddf20cf9d61109d432`.
+A fixed planner pins that whole ELF and describes **16 emulator-only edits**:
+15 entry stubs plus the early UART BL. Combined tests cover known queued/direct/
+stored roots and selected preserved Health/DFU paths, not all indirect/retained
+roots, full switching or physical continuity. The ELF alone still has no stubs.
+**Never install it.** No stock/container file is changed or generated.
+
+The separate **55-test guarded supplement passed in 5.57 s** (42 placement,
+13 combined), with **277 hashes** checked (228 inputs, 46 artifacts, three
+reports), plus tools. Its 1078 policy vectors are not 1078 pytest cases.
+Supplement: `5d5c058abbe066ad662946450b986611dafa2d4a1b97f5ce50e2af925f304eac`.
+The earlier 59-test supplement and 3212 checkpoint below are historical.
+
+[Independent ROM review](docs/UNIFIED_ROM_RESUME_EVIDENCE.md) verifies Claude's
+274/108/178-transaction archives but finds a normal-return continuation into
+first-boot initialization; excluding it needs unread context-restore semantics.
+Literal `0xd478` is also missing. Equal gap digests across ~4.61 hours prove no
+observed net change, not DLPS retention or no writers. RAM ownership, physical
+source/STOP/resume/steps/sleep, app identity migration and usable recovery remain
+unresolved. All six release gates stay open; no OTA, deployment, commit or push.
+
+## Earlier legacy-filter checkpoint and measured RAM constraint — 2026-09-24
+
+Later off-ring supplement: [conditional whole-code placement](docs/UNIFIED_RAW_RELOCATION_TRIAL.md)
+now links all 21 current objects/130 functions, moving **1886 bytes** into nine
+**unowned** raw/diagnostic/indicator regions. Append usage is **9132/9520**, 388
+remaining before missing hooks. Output:
+`firmware/unified/research-20260924-raw-relocation-v2/`. Production rejects it;
+old raw entries are NOT retired and this ELF must never be installed. V1 is
+historical: V2 fixes immediate object-snapshot timing without changing the ELF.
+The separate **59-test guarded supplement passed in 5.28 s**, zero skips;
+274 content hashes checked (225 inputs, 46 artifacts, three reports), plus
+tool hashes. Its 17 raw-entry tests compare selected real stock Health/command
+paths with only two emulator entry stubs; physical algorithms/continuity and
+all-entry closure remain unproved. This is not a full 3212-suite rerun.
+Supplement manifest:
+`da91ae46d68f8060a29b185ec2d1663c4e7a9f725cccdaf8c2e3a754ef8cc9aa`.
+
+Read [docs/UNIFIED_READINESS.md](docs/UNIFIED_READINESS.md) and
+[docs/UNIFIED_LEGACY_GATE.md](docs/UNIFIED_LEGACY_GATE.md).
+`firmware/unified/build-20260924-legacy-gate-v1/`: **3212 passed in 434.50 s**,
+zero failures/errors/skips; all **370 hashes** checked (196 inputs, 171
+artifacts, three reports). Manifest:
+`cbfd74c0eb2218b5f2e6d5f10570b5dceb811a1c817087fd4c04bd6bf60e3467`.
+Both main ELFs are byte-identical to the coordinator checkpoint. The new
+56-byte legacy filter is a fourth **unlinked candidate**; exact stock UART
+callback/gate tests exercise BF/CE/CD rejection before the stateful prelude.
+A1 remains admitted. Dedicated unified identity/app discovery must precede
+attachment: retiring CD under the existing V2 identity would poison its CD01
+fingerprint and block the app's battery preflight for return-to-stock.
+
+Append-only, all implemented code attempts **11100/9520 bytes**, **1580 over**;
+the correct capacity refusal emits no full ELF. Unknown remaining hooks are
+additional. [Raw retirement](docs/UNIFIED_RAW_RETIREMENT.md) identifies 1220
+conditional bytes, preserving shared Health readers, pools and timer slots;
+diagnostics add 476 conditional bytes. Neither is owned or approved for reuse.
+
+Claude completed a separately authorized read-only session: **268 matching
+CD01 transactions**, verified disconnect, archive under
+`firmware/research/2026-09-24/ram-ownership/`. Archive hashes and its separate
+39-test RAM suite were rechecked off-ring. Installed V2 had **264 bytes free
+data heap, 104 minimum-ever**, insufficient for the 1164-byte selected unified
+state. The nonzero gap was unchanged during one 60-second idle window; that
+does not establish ownership, boot/DLPS safety or stock Health's peak usage.
+
+Codex remains entirely off-ring; no firmware-file edit, OTA image, phone
+deployment, commit or push. Claude released the device but further device work
+needs fresh coordination. Installed V2 optical-off is unchanged. Health remains
+unified boot/default, Gesture temporary/opt-in. All six release gates remain
+open. This supersedes current counts/sizes below, not their historical evidence.
+
+## Earlier coordinator checkpoint — 2026-09-24
+
+Read [docs/UNIFIED_COORDINATOR.md](docs/UNIFIED_COORDINATOR.md) and the finite
+[readiness checklist](docs/UNIFIED_READINESS.md). Coordinated with Claude Code
+and parallel implementation/review, entirely off-ring on the Codex side.
+`firmware/unified/build-20260924-coordinator-v1/`: **3143 passed in 454.34 s**,
+zero failures/errors/skips; all **365 hashes** independently checked
+(193 inputs, 169 artifacts, three reports). Manifest:
+`00a65e568e1c2900ca83a48a1ffee69adb11ecc1d1f75b0c52cfc8503601e61c`.
+
+A real C coordinator now joins checked one-shot STOP, original-pause-token
+software retirement and atomic current-settings Health commit. Partial-entry
+resume has a fully-quiet retirement predicate; unexpected masked STOP returns
+latch failure. Physical STOP/source, producer/queue drain and fresh scheduler
+preparation are still explicit fixtures. Coordinator, Health commit and service
+remain **unlinked candidates**. Existing components occupy **9500/9520** bytes;
+all implemented candidates together attempt **11044**, **1524 over**, no ELF,
+before additional hooks. Candidate persistent state is **1164 bytes**, not owned.
+
+Only the premature pre-coalescing linker assertion was removed; exact MEMORY
+capacity stays fixed and final ELF checks are stricter and boundary-tested.
+The unowned relocation diagnostic retains its old strict script; its baseline
+is 9208 append bytes and excludes the coordinator. Approved reclaimed space
+remains zero. Claude's RAM/vendor and code-space evidence is separate, not
+proof of exact-ring lifetime or complete fit. The settings-writer audit exposes
+legacy BF arbitrary-write bypasses requiring retirement before revision safety.
+
+No Codex ring access, firmware-file edit, OTA generation, phone deployment,
+commit or push. The user assigned separate live testing to Claude Code;
+Codex must remain off-ring while that session owns the device. Do not infer
+its results from this checkpoint. Health remains unified boot/default, Gesture
+temporary/opt-in; installed V2 optical-off is unchanged by this batch. No
+release gate is fully closed. This supersedes current counts/sizes below.
+
+## Earlier parallel layout-candidate checkpoint — 2026-09-24
+
+Coordinated directly with the active Claude Code peer: separate RAM/code-space
+research, service implementation, relocation experiments and independent review.
+Read [docs/UNIFIED_READINESS.md](docs/UNIFIED_READINESS.md) and
+[docs/UNIFIED_RESOURCE_BUDGET.md](docs/UNIFIED_RESOURCE_BUDGET.md).
+`firmware/unified/build-20260924-layout-candidates-v1/`: **3060 passed in
+327.59 s**, zero skips/failures/errors; all **357 hashes** independently checked
+(190 inputs, 164 artifacts, three reports). Manifest:
+`ad5ad8705c40cd68e7dc1a9e4064c7a4001ab0ce9baeb824e44946d10cc36512`.
+Both main ELFs remain byte-identical to the prior checkpoint. Health commit
+and the new 240-byte service database are separate unlinked candidates.
+
+An explicitly unowned scattered-placement diagnostic moves 408 bytes into
+hypothetical indicator holes and includes Health commit: 9176 append bytes,
+344 configured bytes remain. The production verifier rejects this layout.
+Adding the service **fails the unchanged link bound**; archived failed-map
+arithmetic is not a successful fit. Exact LLD source explains provisional
+unwind sizing before coalescing. No bound or production verifier was relaxed.
+Claude's RAM audit has 15 separately passing tests, but its overlay/gap candidate
+does not establish ownership, retention or recovery. Approved reclaimed space
+remains zero. No complete coordinator/hardware bindings or installable image.
+No ring access, stock-file change, flash, app deployment, commit or push.
+Installed V2 optical-off is unchanged; Health remains unified boot/default.
+All six release gates remain open. This supersedes current counts below.
+
+## Earlier parallel-integration checkpoint — 2026-09-24
+
+Read [docs/UNIFIED_READINESS.md](docs/UNIFIED_READINESS.md) and
+[docs/UNIFIED_RESOURCE_BUDGET.md](docs/UNIFIED_RESOURCE_BUDGET.md).
+`firmware/unified/build-20260924-parallel-integration-v1/`: **3004 passed in
+218.01 s**, zero skips/failures/errors; all **265 hashes** independently checked
+(180 inputs, 82 artifacts, three reports). Manifest:
+`fae04b2e10e1ddc1b6a645db0cac72c43d5c98d274320b5a50c1bbd4cd02a040`.
+Both main links and archived objects reproduce. This supersedes current
+counts/sizes below, not physical or release gates.
+
+Temporary delivery scratch is **64 bytes**, down from 208, by the proven
+eight-bucket bound within the unchanged <250 ms window. All 32 input frames
+and the 32-sample persistent queue remain. Measured observation nested stack
+is **244 bytes**; receipt-on-stack planning is **532** before outer/interrupt
+use. Persistent state plus receipt remains **1084**, not an approved RAM fit.
+Existing linked components use **9468/9520** bytes, 52 remain; complete fit fails.
+
+The persistent switch runner now executes the stock notification wrapper for
+replies/motion. ROM acceptance, buffer lifetime/draining and physical transition
+evidence remain fixtures. The new [Health commit guard](docs/UNIFIED_HEALTH_COMMIT.md)
+checks current settings and commits software Health under one critical section.
+It is a **separate unlinked candidate**: 196 text bytes, full addition rejected by
+the unchanged APP bound. Neither main ELF contains it. A revision owner, fresh
+scheduler resume, all hardware hooks and their complete memory budget are absent.
+Its 16-byte preparation plus separate revision word need owned storage too.
+
+Parallel independent reviews found no blocking defects under stated contracts.
+[Vendor references](docs/UNIFIED_VENDOR_RECOVERY_LEADS.md) document a family ROM
+bypass, not a proven recovery route for RT02CR_V3.1. No ring access, stock-file
+change, flash, app deployment, commit or push. Installed V2 optical-off stays
+unchanged; unified Health remains boot/default and Gesture temporary/opt-in.
+No release gate is fully closed; no installable unified image exists.
+
+## Earlier source-storage checkpoint — 2026-09-24
+
+Read [docs/UNIFIED_READINESS.md](docs/UNIFIED_READINESS.md) for the finite six
+release gates and [docs/UNIFIED_RESOURCE_BUDGET.md](docs/UNIFIED_RESOURCE_BUDGET.md)
+for the exact handoff. Source-level receipt/progress compaction is implemented:
+receipt **480→288 bytes**, selector local frame **184→112**, observed integrated
+observation nested stack **460→388**. All 32 input frames, exact millisecond
+bounds, output queue capacity and failure behavior remain; ages are encoded by
+checked `ws_set_bounds` relative to final status time, never unchecked casts.
+Only transactional progress is copied on stack, not the immutable profile.
+
+`firmware/unified/build-20260924-source-storage-v1/`: **2912 passed in 191.86 s**,
+zero skips/failures/errors. Both links reproduce; all **260 hashes** independently
+match (177 inputs, 80 artifacts, three reports). Manifest:
+`f6790c649e7213b60aaf2a59b10ea945eaa8b65ab9675161b2401117411e0b95`.
+This supersedes current counts/sizes below. Prior/new ARM differential tests,
+131072 raw age-pair cases and 65536 FIFO status/count cases are included, not
+physical source evidence. Integrated Health → Gesture → Health still uses
+explicit fixtures for hardware/coordinator boundaries.
+
+Components now occupy **9464/9520** configured bytes (56 remain), not a complete
+image. State remains 796 bytes; persistent receipt scratch would total **1084**,
+still 60 beyond the unapproved 1024-byte gap. Receipt-on-stack planning is
+**676** before outer caller/interrupts, not a proven task budget. A six-entry
+service database alone would take append usage to 9632, **112 over capacity**,
+before its other code and the remaining hooks. Reclaimed stock space stays zero.
+Compiler flags, unwind metadata, linker script/bounds and ELF verifier are
+unchanged. Early failing draft links are not successful checkpoints.
+
+No ring access, OTA generation, stock-file change, app deployment, commit or push.
+Installed V2 optical-off is unchanged. Health remains unified boot/default,
+Gesture temporary/opt-in. Physical pause/resume, source freshness/model, steps/
+sleep, RAM ownership and recovery gates remain open. Next source-memory candidate:
+prove maximum selected batch size before reducing delivery scratch; its current
+208-byte witness is unchanged. This cannot substitute for whole integration.
+
+## Earlier integrated-switch checkpoint — 2026-09-24
+
+Read [docs/UNIFIED_READINESS.md](docs/UNIFIED_READINESS.md): the finite six-gate
+checklist and whole-image budget now lead the work, not isolated test counts.
+`firmware/unified/build-20260924-integrated-switch-v1/`: **2883 passed in
+179.35 s**, zero skips/failures/errors; all **258 hashes** independently checked
+(175 inputs, 80 artifacts, three reports). Manifest:
+`6d6c8a5ee06f89f9c91231688362274913871a0d9e1e0087bf249492463f8119`.
+This supersedes current counts below. Both links reproduce; the production
+component ELF is unchanged from the I/O checkpoint.
+
+New runner joins wire commands/replies, controller/lifecycle C, original optical
+read/clear/TX, guarded HR stores and original motion consumer in ONE persistent
+ARM state. Health → Gesture → Health executes, but inventory, physical source/
+STOP, draining, transport and fresh scheduler setup remain NAMED FIXTURES.
+Same motion-consumer inputs through eight phases do not prove steps/sleep.
+Retirement must use the original Health pause token, not HOLD's newer token.
+
+Whole-image fit is NOT established: existing components use 9480/9520 bytes;
+a stock-shaped six-entry service table alone adds 168, exceeding append capacity
+by 128 before the remaining hooks. Current state is 796 bytes, input receipt
+480, and observed observation nested stack 460 (not the older two-frame sum of
+440). None is approved RAM; the 208-byte output scratch is already in stack.
+Approved reclaimed stock space remains zero. Resolve the integrated allocation
+before more one-helper-at-a-time squeezing. Source/reference review found another
+exact upstream-base match, not vendor application source or proven recovery.
+
+No ring access, stock file change, production gate, app deployment or flashing.
+Installed V2 optical-off is unchanged. Health is unified boot/default; Gesture
+is temporary/opt-in. Full tests at integration checkpoints, focused tests during
+edits. Further hardware work needs a new bounded plan and coordination.
+
+## Earlier optical-I/O checkpoint — 2026-09-24
+
+Completed before starting the user-requested integrated-switch milestone.
+Read [docs/UNIFIED_OPTICAL_IO.md](docs/UNIFIED_OPTICAL_IO.md).
+`firmware/unified/build-20260924-optical-io-v1/`: **2868 passed in 183.28 s**,
+zero skips/failures/errors; **257 hashes independently checked** (174 inputs,
+80 artifacts, three reports). Manifest:
+`f04a5dd7dab093f3c02cb375737583cc348637e09463298e1bea625ad164cc48`.
+This supersedes current counts/sizes below; earlier builds remain historical.
+
+Compiled C `woi_samples_io` uses caller-owned buffers and checked take/bus/give
+results, with no allocation or automatic recovery. A pinned two-BL plan redirects
+the selected stock sample reader in emulator memory only. Both edits are needed;
+`wop_read` alone does not install them. Other stock I/O paths retain old defects.
+FE/FF still have separate mutex scopes, not atomic acquisition. Source identity,
+buffer lifetime, physical completion/STOP and fresh-job resume remain unproved.
+
+Components occupy **9480/9520 configured bytes**, leaving **40**; state remains
+796 bytes, with no approved RAM/stack ownership. This is not complete image fit.
+Read nested stack is 336 observed bytes excluding substituted internals; control
+reply local stack drops from 72 to 32 bytes. The host-only motion validator moves
+to test support; all production incoming-control validation remains. No queue,
+safety predicate, unwind metadata or compiler flags were removed.
+
+No stock file, installed V2, construction gate or hardware state changed.
+Health is the unified default, Gesture temporary/opt-in. No installable image.
+Next milestone: integrated Health → Gesture → Health using actual stock paths
+where possible, explicit fixture boundaries, a whole-image budget and finite
+readiness checklist. Full regression/reproducibility runs belong at integration
+checkpoints; focused tests during edits. Exact vendor references/source are in
+scope, but a similar SDK is not evidence of ring-code equivalence.
+
+## Earlier integrated component handoff — 2026-09-24
+
+Reference policy reaffirmed by the user: use functioning firmware's actual
+behavior as the reference. Rechecked all five current image hashes and compared
+payloads: upstream 50 Hz, local 33 Hz and original 25 Hz differ ONLY at `0x2248`
+within `0x450..EOF`. This supports shared code/layout within that lineage, not
+health/timing equivalence at different rates. Stock 3.12.02 has a different map;
+V2 changes 81 payload bytes and globally disables optics, so it is not a working
+optical-Health baseline. Keep stock Health/steps/sleep code as the unified base;
+use the measured motion images as references, not unconditional patch donors.
+
+Latest device session: after the user's new connection request, the fixed
+create-hook retry completed **359 matching CD01 transactions**, repeated
+header/code equality, final state/header/config/idle checks and verified
+disconnect. Archive: `firmware/research/2026-09-23/rom-create-hook/`; exact replay
+passes. All 224 preflight hashes and 226 selected tests passed before connection.
+The earlier 170-request/169-reply `0x73` abort remains separately archived and
+its subtype/cause remains unknown. No sensor/flash command, filter bypass or
+automatic retry. This session ended; further device access needs new coordination.
+
+Captured patch prefix declares RAM `0x203800..0x206d10`, source `0x1809404`,
+length `0x3510`, payload `0x9528`; these are not ownership/copy/recovery proofs.
+Off-ring captured-body execution now runs the actual wrapper/hook/default/
+divider/native-create path. Successful creation installs a new identity/callback
+but does not START. Empty-handle failure calls unread `0x111a6`
+(`vTimerCreateFailedHook`); do not assume it safely returns failure. A null
+output pointer reaches an unadmitted zero-address read; wrapped large periods
+consume allocation before asserting. Hook handled=1 is not operation success.
+Pool/list/critical boundaries remain synthetic. Comparator `0x8e24..0x8e46`
+and selected APP/patch header checks execute, not payload authentication or
+recovery. Neighboring code/literals remain forbidden. No production resume
+binding, physical gate or continuing hardware authority follows.
+
+Read [docs/UNIFIED_RESOURCE_BUDGET.md](docs/UNIFIED_RESOURCE_BUDGET.md) and
+[docs/UNIFIED_HEALTH_CANCELLATION.md](docs/UNIFIED_HEALTH_CANCELLATION.md).
+This supersedes earlier build counts and sizes. Component development was
+off-ring; the separately coordinated diagnostic below changed no firmware.
+Installed V2 optical-off is unchanged; Health remains the unified boot/default.
+
+`firmware/unified/build-20260924-optical-work-v2/`: **2812 tests passed** in
+188.17 seconds, zero skips/failures/errors; all **248 hashes** checked (170 inputs,
+75 artifacts, three reports). Components occupy **9468/9520 configured bytes**,
+leaving **52**. Dispatcher/frame/fence remains **796 bytes**, with 228 nominal
+aligned RAM bytes remaining. Neither complete integration fit nor RAM/stack
+ownership is approved. Both ARM ELFs change and reproduce identically.
+Manifest: `a9ce16455f17c1c0a55d2d6af22f21ec96ad1e2e1edf5ecb28c6528a1d4613e2`.
+
+Read [docs/UNIFIED_OPTICAL_WORK.md](docs/UNIFIED_OPTICAL_WORK.md). New unattached
+C `wop_read` keeps an original shared-sensor acquisition in flight, executes
+stock's real sample reader, preserves surfaced nonzero statuses and rejects
+late zero after pause. `wop_retire` runs the stock software clear only after
+fully evidenced PAUSED, even when old ready is zero, then clears four flags.
+It does not flush hardware FIFO, assign source provenance or complete resume.
+The 59 compiled-ARM integration cases, 15 stock-sample witnesses and four shared-
+codec cases are included in the full count. Modeled read/retire nested stack
+peaks are 352/56 bytes; retirement has 5417 masked instruction boundaries, not
+qualified physical latency. Stock allocation/ignored-release-result limitations,
+real producer identity, physical STOP and steps/sleep continuity remain open.
+
+Shared existing checked bodies and one byte-wise wire codec recovered space;
+no predicate, queue capacity, unwind data or compiler flag was removed. Net
+linked growth is 116 bytes; no static RAM or stock bytes changed. The earlier
+`build-20260924-optical-work-fit-v1/` is a retained failed APP-bound link with
+no success manifest. No production/construction gate opened and no ring access
+occurred. Only 52 configured bytes remain; complete hooks/service/bindings still
+need fit/ownership approval. This is not an installable firmware.
+
+The preceding optical-acquisition build passed 2734 tests with 239 checked
+hashes at 9352 component bytes; its audit and manifest below are historical.
+
+Read [docs/UNIFIED_OPTICAL_ACQUISITION.md](docs/UNIFIED_OPTICAL_ACQUISITION.md).
+Selected actual status/parser/classification and mutex/RX paths now replace
+former mocks. Failed reads can still yield top-level zero and parsed/read flags;
+cached calls can return zero with no read. Never derive measured provenance from
+those flags/returns or a plausible cached value. All nine modeled reads can fail
+while cached-ready/algorithm fixtures reach HR stores; this is not a physical
+health observation. Completion's `0xedda` operation is RX, not a control write;
+the former harness label is corrected. Source/algorithm/job association and
+sample-buffer retirement remain unbound. The 29 new cases pass in a 61-test
+focused run; both ARM ELFs match the preceding HR-commit build. No C, stock
+bytes, memory allocation or gate changed; no ring access occurred here.
+Manifest: `2de14d67ced3621281a69c615f1db9bc04571328d712373b831e99fa5629503b`.
+The next bounded source path (`0x10610` / `0x11994`) is in the pinned stock
+image; further off-ring analysis does not require another ring connection.
+
+Read [docs/UNIFIED_HR_RESULT_COMMIT.md](docs/UNIFIED_HR_RESULT_COMMIT.md).
+Unattached `wrc_commit_hr` protects exactly four stock positive-HR-result stores
+with a bounded original-ticket/provenance check under preserved PRIMASK. It
+rejects exception entry and adds no static RAM. Its 60 actual-ARM cases include
+stock-store equivalence, lifecycle/stale-ticket rejection, all 64 modeled pause
+instruction boundaries and missing-mask/restore mutants. The 92-test focused
+run overlaps the full count. Observed nested stack peak is 56 bytes, not real
+task headroom. Original producer identity, measured provenance and metric/job
+association remain caller obligations; no production inventory was assigned.
+Other result/publication paths and real hardware fences remain unbound. Never
+install a closed guard over default Health when its inventory is unresolved.
+That preceding implementation changed both ARM ELFs (+80 bytes of C), not
+stock bytes or compiler flags. Its historical manifest:
+`954c042ddf9f9ecca308c8fe8fc25f1c34bbe6751363d6bd7b61f9cc374bad07`.
+The earlier 32-case optical audit and 121 hook/comparator cases remain included.
+Optical-dispatch v1 was deliberately interrupted before terminology correction
+and has no success manifest; it is not a passing build.
+
+Read [docs/UNIFIED_OPTICAL_DISPATCH.md](docs/UNIFIED_OPTICAL_DISPATCH.md).
+GPIO/software producers `0xd8f0/0xd9f8` post untagged `(3,0,0)`; hub processing
+goes through `0xf7a8/0xf774/0xf308`, not ordinary enable. Under synthetic cached
+ready/algorithm fixtures, late processing after STOP can restore HR/SpO2 result
+state with zero owners and no new RUN, and SpO2 can reach later aggregation.
+Actual `0x10f56` early status is ignored; the physical cause of its status bit
+is not established. Completion clears lower flags, not the published HR cache.
+Immediate C5/raw-report sinks also exist. Entry-only checks lose a mid-call
+pause race; assigning a current ticket at dequeue relabels old work. Original
+identity and real commit/IRQ/hub/publication fencing remain required. This is
+not an installed guard, source-provenance flag, complete inventory, physical
+observation or another ring session. No production inventory mask was enabled.
+
+Read [docs/UNIFIED_STATUS_NOTIFICATIONS.md](docs/UNIFIED_STATUS_NOTIFICATIONS.md).
+Off-ring execution proves three stock/original25Hz/V2 constructors share `0x73`
+with different subtypes; selected callers include motion, SpO2 aggregation and
+device state. Getters/transport remain explicit fixtures, not physical-cause
+proof. The failed archive lacks a subtype and cannot be retrospectively decoded.
+Code readers now log only type/length/checksum validity, valid `0x73` subtype
+and host time; no health values/checksum value/raw payload. EVERY foreign packet
+still aborts, including valid `0x73`. No filter, retry or address/budget change.
+The separate passive observer has the same redacted metadata (v2), no UART
+writes, and has NOT run. 35 new cases plus one passive case are included in
+2491; 20 separate protocol/cleanup tests pass. Both ARM ELFs are unchanged.
+This is better observability, not a completed inventory or flash approval.
+
+Read [docs/UNIFIED_TIMER_RESUME_READ.md](docs/UNIFIED_TIMER_RESUME_READ.md).
+Captured kernel rearm preserves old callback/ID; stale START/RESET can invoke that
+callback immediately, and native zero-period CHANGE mutates state before asserting.
+These are synthetic native-tick/queue/list witnesses, not safe job resume or ms
+conversion. No production rearm API was added; both ARM ELFs match the prior build.
+After fresh user confirmation, `probe.rom_read --timer-resume-code` completed:
+180 matching CD01 transactions, all 452 new ROM bytes read twice equally,
+matching prerequisites/known STOP/postchecks and verified disconnect. Archive:
+`firmware/research/2026-09-23/rom-timer-resume/`. Exact offline replay passes.
+Preflight reran 540 selected tests and all 209 prior-build hashes matched before
+connection. The current build includes the archive replay and 79 new captured-
+code execution cases; both ARM ELFs remain byte-identical to the prior build.
+Captured literals locate create/start/restart hooks at `0x201644/48/4c`;
+their values were NOT read in that earlier session (see the later support read
+below). Physical resume remains unresolved. That session had no hook-state RAM, pointer following, sensor-start,
+target execution, flash, retry or reconnect. CD bookkeeping effects remain.
+This session ended and the user may reopen clients; further device work needs
+a NEW bounded plan and exclusive-idle confirmation. No construction gate opened.
+
+Captured native create consumes an allocation before asserting on zero period;
+no rollback occurs before the unread assertion boundary. Valid native creation
+replaces callback/ID but does not start the timer. Hook fallback arguments and
+exact queue-result handling execute correctly under explicit substitutes.
+Large requested periods can wrap to zero under the assumed division/config
+fixtures; restart can enqueue zero and report acceptance under those fixtures.
+These conditional conversions are NOT a proven tick rate or physical hazard
+measurement. The future binding must validate native periods before allocation/
+enqueue and independently prove object lifetime and fresh-job admission. No
+production create/rearm API, hardware binding or approved timer pool was added.
+
+Read [docs/UNIFIED_SUPPORT_READ.md](docs/UNIFIED_SUPPORT_READ.md). The separately
+requested support diagnostic completed **284 matching CD01 transactions**:
+616 new ROM bytes and 17 fixed non-secret state bytes, each twice; known-code
+comparisons and final idle/config checks passed, followed by verified disconnect.
+Archive: `firmware/research/2026-09-23/rom-support/`. No sensor/flash/reset,
+target execution, returned-pointer following or automatic retry. CD bookkeeping
+effects remain. Preflight passed 134 tests and all 215 prior-build hashes matched.
+The earlier zero-command discovery failure remains in `rom-support-not-found/`.
+A preceding separate battery-only session reported 99%, not charging.
+
+Observed inhibit is zero, rate configuration 100, and create/start/restart hooks
+are **(0x205c01, 0, 0)**. The nonzero create-hook target was NOT read or followed
+in that support session; it was acquired only by the later separately bounded
+session described above.
+Never substitute the ROM create default for that actual live wrapper path.
+The new unsigned arithmetic helper and IPSR context selector execute off-ring
+without those former mocks. Direct create-default tests confirm rounding/wrap
+under captured configuration, but bypass the unread hook and retain synthetic
+pool/list/critical-section boundaries. START/restart use real literals/context
+with captured zero hooks; queue/tick behavior remains substituted. These are
+not atomic/immutable state, physical cadence or safe resume proofs.
+OTA-table-header magic checks use captured constants. The support-only APP test
+stops at its missing comparator; later separate-capture tests above execute it.
+No geometry/recovery approval follows. The 60 then-new
+offline cases include exact archive replay and 59 instruction cases.
+Both device sessions ended. Further ring access needs new bounded coordination;
+no construction gate opened or production hardware binding was added.
+
+Read [docs/UNIFIED_CREATE_HOOK_READ.md](docs/UNIFIED_CREATE_HOOK_READ.md).
+The pinned SDK initializer installs create hook `0x206359`, NOT the ring's
+observed `0x205c01`; matching ROM UUID is not patch-code equivalence. The new
+`--timer-create-hook` diagnostic plan requires, after 279 matching
+prerequisite transactions, repeat a fixed 52-byte non-secret ROM-patch prefix.
+Only if its identity/declared containment checks pass, read fixed 256-byte RAM
+hook and 128-byte ROM comparator caps twice, then state/header/config/idle
+postchecks. Exactly 359 transactions; no keys, MMIO/FIFO, returned-pointer
+following, target execution, sensor/flash/reset, retry or reconnect. CD
+bookkeeping effects remain. Caps are not function closure; header declarations
+are not runtime-copy, RAM ownership or recovery proof. All 132 new preflight
+cases pass within a 789-case focused run. Fresh exclusive-idle confirmation is
+required for another attempt; neither completed session grants ongoing access.
+The corrected v2 preflight includes every new case; both ARM ELFs are unchanged.
+V1 is a retained pre-correction build (ROM-byte summary omitted a four-byte
+known caller; now derived as 1282). Addresses and transaction budget did not
+change. Both builds preceded the later aborted device attempt recorded above.
+
+Read [docs/UNIFIED_STOCK_SETTINGS.md](docs/UNIFIED_STOCK_SETTINGS.md).
+Unattached `wss_read_controls` snapshots four exact-stock bytes under bounded
+PRIMASK preservation: HR interval `0x208aac`, controls `0x208aad`, mode `0x208c44`,
+time-set `0x208c46`. The 25 Hz/V2 map differs. No settings/clock/history writes,
+heap or static RAM; +48 linked bytes, eight-byte local ARM frame. This is not a
+monotonic revision, complete Health-settings snapshot or resume receipt.
+Actual stock getters/setters and minute selection execute with synthetic clock,
+wear/charge/queue/timer/bookkeeping boundaries. The whole minute handler consumes
+pending time and does not replay crossed due minutes; keep non-optical work alive.
+Fresh job starts reset working state, and owners 0x200/0x100 share a write at
+`0x20c0fa`. Do not implement resume by restarting old timers or calling the whole
+minute handler. A complete serialized fresh-job resume remains unimplemented.
+
+Read [docs/UNIFIED_INDICATOR_RETIREMENT.md](docs/UNIFIED_INDICATOR_RETIREMENT.md).
+Ten indicator entries are replaced only in emulator memory; tested late callbacks
+cannot request LEDs, while selected stock Health starts and command replies match
+unmodified controls. All non-entry bytes, timer helpers, literal pool and boot
+overlay remain intact. The potential 764-byte body reuse is NOT approved space;
+computed/indirect references, full boot/retention and real STOP remain unresolved.
+This is not a live hotpatch and does not shut down pre-existing optics/timers.
+Do not delete indicator jobs from the production inventory based on these tests.
+
+Lossless tap storage compaction retains all 32 samples and the same output/
+failure behavior. Oldest sequence is derived from conserved FIFO counters,
+not stored per entry. This saves 192 RAM bytes and 40 linked flash bytes.
+57 ARM cases also match the actual archived pre-change ELF; native sanitizer
+stress includes 100,000 interleaved operations. No queue capacity, freshness,
+timestamp, overflow or sequence-exhaustion protection was reduced.
+
+Unattached `wht_stop_reviewed` checks twelve mapped timer slots: the original
+five scheduled jobs plus realtime, on-demand 0x1e, wear, activity, raw and both
+indicator timers. The original five-job API retains its bounds. Individual
+STOP failures are preserved; no handles/state/settings/history are cleared.
+Captured-ROM tests show twelve accepted STOPs precede the timer barrier, but
+a failed STOP can leave its timer active even when a later barrier completes.
+Never use the barrier alone as a successful cancellation receipt.
+
+This is not a closed producer inventory or complete pause/resume adapter.
+Activity/wear timers have additional duties; do not blindly pause all twelve
+in production. Real serialization, hub/IRQ/RUN/result fences, physical STOP,
+current-settings resume, memory/recovery and physical FIFO/model/steps/sleep
+continuity remain open. Compiler flags and stock bytes are unchanged; no
+construction gate opened or final OTA image produced. Further ring
+access needs a new bounded plan and fresh exclusive-client coordination.
+
+## Earlier checked-health cancellation — 2026-09-23
+
+Read [docs/UNIFIED_HEALTH_CANCELLATION.md](docs/UNIFIED_HEALTH_CANCELLATION.md).
+This supersedes older build counts and sizes below. Entirely off-ring; installed
+V2 and locked production/construction gates are unchanged. No final unified
+firmware, complete health adapter, memory/recovery approval or physical trial.
+
+`firmware/unified/build-20260923-health-cancel-v1/`: **1648 tests passed**, zero
+skips/failures/errors; all **192 hashes** checked (128 inputs, 61 artifacts,
+three reports). Components occupy **9220/9520 configured bytes**, leaving **300**.
+Dispatcher/frame/fence still totals 988 bytes; no RAM allocation is approved.
+
+New unattached `wht_stop_scheduled` validates the five reviewed scheduled-health
+timer slots, queue/pool bounds, timer number and allocation bit before submitting
+STOP with zero wait. It preserves handles/state and accepts only ROM result 1.
+It requires a caller-proved serialization/lifetime domain through enqueue;
+PRIMASK snapshot protection alone is insufficient. Compiled C and captured ROM
+execute five STOPs before the timer fence acknowledgment under a synthetic FIFO.
+This is not full optical cancellation, physical STOP or current-settings resume.
+Realtime/wear/activity/raw/indicator producers and all result sinks remain open.
+
+Do not reclaim the apparent raw/debug region wholesale: it shares constants/
+epilogue and has neighboring startup/OTA dependencies. No bytes were reclaimed.
+Physical FIFO/model/step/sleep testing and usable recovery remain required;
+fresh coordination and an exact bounded plan precede any further device access.
+
+## Earlier captured-ROM integration — 2026-09-23
+
+This supersedes the older build counts/sizes and unread-ROM claims below.
+Read [docs/UNIFIED_STOCK_INTEGRATION.md](docs/UNIFIED_STOCK_INTEGRATION.md).
+Entirely off-ring: no connection, sensor/flash command, deployment, commit or push.
+Installed V2 optical-off is unchanged. Unified Health remains boot/default and
+Gesture opt-in; no installable unified image or production capability exists.
+
+`firmware/unified/build-20260923-captured-rom-v1/` passes **1588 tests**, zero
+skips/failures/errors; all **185 hashes** checked (125 inputs, 57 artifacts,
+three reports). The successful 974-transaction ROM archive/replay is included.
+Actual-address components occupy **8892/9520 configured bytes**, leaving **628**;
+dispatcher/frame/fence remains **988 bytes**, 36 nominal RAM bytes remaining.
+Neither figure approves ownership, complete integration fit or physical safety.
+
+The captured ROM timer-pend wrapper asserts on a null queue. The unattached C
+fence now guards the exact queue slot `0x201478`, permanently refusing enqueue
+if absent. Compiled C -> captured pend/dispatch -> compiled acknowledgment is
+executed together; queue kernel/scheduling remain explicit synthetic fixtures.
+Captured generic STOP/DELETE exposes deliberate null writes for invalid handles;
+STOP can enqueue a pool-aligned unallocated handle. Handle lifetime/ownership
+must be proved before cancellation. Timer acceptance is not completed shutdown.
+The RAM-layout helper only writes configuration; the boot error helper stores
+a bounded status byte. Neither proves RAM ownership or recovery. Valid-looking
+headers reach unread literals and fail the offline proof rather than inventing
+successful validation. No new physical evidence or construction gate opened.
+
+Still required: queue/hub/IRQ/RUN/result fencing and full health bindings,
+current-settings resume, qualified physical source/model and steps/sleep
+continuity, complete flash/RAM placement and recovery. Further device access
+needs a new bounded plan and coordination; the earlier retry ended.
+
+## Earlier stock-address implementation — 2026-09-23
+
+This section supersedes the older unified-workflow build numbers and RAM/code
+sizes below. Read [docs/UNIFIED_STOCK_INTEGRATION.md](docs/UNIFIED_STOCK_INTEGRATION.md)
+and [docs/UNIFIED_BOOT_REFERENCE.md](docs/UNIFIED_BOOT_REFERENCE.md).
+Health remains the required unified boot/default, Gesture temporary and opt-in.
+Installed V2 optical-off is unchanged; optical health is still globally disabled.
+
+The full guarded build `firmware/unified/build-20260923-stock-address-v1/`
+passes **1495 tests, zero skips/failures/errors**. All **179 hashes** were checked
+(119 inputs, 57 artifacts, three proof reports). It includes artificial-address
+and real-address ARM component execution, native sanitizers and compiled Swift
+checks. No new simulator/legacy-regression run, app deployment, commit or push.
+The real-address component ELF starts at `0x847ad0`, preserves all stock bytes
+including the boot overlay, and occupies **8868 of 9520 configured bytes**,
+leaving **652 bytes**. It is NOT a complete stock-hooked image or OTA container.
+RAM profile deduplication reduces adapter to 864 bytes and dispatcher to 956;
+dispatcher + 20-byte frame + 12-byte timer fence totals **988 bytes**, leaving
+only 36 nominal aligned bytes. No RAM ownership or complete integration fit is
+approved. A separate LTO experiment was rejected; do not treat it as a build.
+
+The new unattached timer-daemon fence calls the mapped ROM enqueue API, keeps
+boot-lifetime ticket storage, preserves PRIMASK, and rejects stale/wrapped/failed
+requests. An enqueue/abandon/reentry race is fixed and executed in ARM tests.
+Actual ROM queue semantics, hub/IRQ/RUN/result fencing and physical STOP remain
+unproved. Never turn this timer receipt alone into a health quiescence receipt.
+
+The prior boot comparison completed 182 matching CD01 transactions and verified
+disconnect; only the 52-byte non-secret header and 528-byte factory/OEM checker
+were compared. Both matched the SDK reference. No key fields were read; matching
+one checker does not establish full boot recovery or the SDK board's memory map.
+
+A subsequent newly coordinated 6076-byte ROM plan **aborted**: 189 requests,
+188 matching replies, unrelated UART traffic at request `0x4f8e`. Only 1302 new
+bytes returned once; no new window passed repeat/postchecks. No retry/reconnect
+or success capture. Archive: `firmware/research/2026-09-23/rom-integration-aborted/`.
+The old abort logger did not record packet type or verified disconnect; do not
+invent them. Cleanup ran and the process ended. New failure logs retain only
+packet type/length and backend-disconnect state, with abort behavior unchanged.
+A separately coordinated passive check then completed **60 seconds with zero
+notifications and zero UART commands**, followed by verified disconnect.
+Archive: `firmware/research/2026-09-23/idle-notifications/`. The earlier packet's
+type/cause remain unknown; quiet passive traffic does not qualify CD01 behavior
+or allow ignoring foreign packets. No code-read or sensor/flash command occurred
+in that passive session.
+
+The user then explicitly requested one retry and freshly confirmed client
+closure. It **completed 974 matching CD01 transactions**, all **6076 fixed ROM
+bytes read twice with equal results**, configuration/idle postchecks and verified
+disconnect. Archive: `firmware/research/2026-09-23/rom-integration/`. No sensor,
+flash, key-field, MMIO/FIFO, pointer-following or target-execution operation.
+The unchanged reader/references passed 378 preflight tests; exact archive replay
+and the retained abort archive passed separately (2 tests). Firmware and the
+older 179 build hashes remain unchanged; the new archive/test are outside that
+1495-test manifest. Timer API code is now captured for off-ring review, not a
+completed RTOS/hardware fence. Some header literals/callees remain unread.
+No production gate opened. This retry ended; future device access needs a new
+bounded plan and coordination. See the stock-integration handoff for hashes.
+
+Production transport/construction remain locked. Chip/erase/recovery and RAM
+ownership, a physically qualified source/model replay, complete stock health
+bindings, current-settings resume and steps/sleep continuity remain open.
+Passing offline tests or fitting configured bytes does not close these gates.
+
+## Earlier unified-workflow handoff — 2026-09-23
+
+This section supersedes conflicting historical firmware/app claims below.
+Read [docs/UNIFIED_WORKFLOW_3.md](docs/UNIFIED_WORKFLOW_3.md), its linked audits,
+the [offline wire continuation](docs/UNIFIED_WIRE_CODEC.md), and the
+[command dispatcher integration](docs/UNIFIED_DISPATCH.md), and
+[stock transport evidence](docs/UNIFIED_STOCK_TRANSPORT.md), and the
+[memory-budget continuation](docs/UNIFIED_RESOURCE_BUDGET.md), and the
+[completed ROM-code diagnostic](docs/UNIFIED_ROM_DIAGNOSTIC.md).
+Health is the required unified boot/default; Gesture is temporary and opt-in.
+The installed ring remains **V2 optical-off**, not the unified image; optical
+health is globally disabled on that installed image. Historical claims below
+that V2 has not been flashed are superseded.
+The current guarded offline build passes **1276 tests, zero skips**, including
+actual ARM and compiled Swift codec/decoder checks. The previous full iOS
+simulator run passed **58 tests, zero skips**; no Swift changed or simulator was
+rerun in the dispatcher/stock-transport/memory/ROM continuations. Output is
+`firmware/unified/build-20260923-rom-internals-v1/`, NOT installable. Workflow 3 separately
+passed 194 existing firmware/protocol/acceleration/cleanup regressions; those
+were not rerun in the codec, dispatcher, stock-transport, memory or ROM continuations.
+The earlier workflow3-final directory is a retained failed compiler-setup run,
+not a passing build. All 132 source/artifact/report hashes in the new build
+were rechecked; no unified OTA image or production capability was enabled.
+The shared C/Swift codec is only an offline candidate for a distinct future GATT
+service, never a legacy UART command. The offline dispatcher now joins commands
+to the guarded adapter, waiting for committed transitions and owning both reply
+fragments. Native/ARM cases and 20,000 sanitizer-stressed connections pass. No
+UUID, service registration or live transport is attached; those components were
+tested offline, separately from the bounded diagnostic sessions below.
+The exact-stock transport shim passes callback structs by value and preserves
+stack-result bytes, bypassing the unsafe UART queue. It is NOT attached to the
+dispatcher or a service. Stock requests five service slots and registers five services;
+additional capacity is unproved. Executed queue witnesses show wrap/data loss,
+latched wake failure and no per-packet connection generation. Callback event
+layout is compiler-sensitive; do not import default-size SDK enums blindly.
+A newly coordinated idle session completed the fixed 80-byte bank0 descriptor
+read twice after identity/config checks: 91 matching CD01 transactions, no
+sensor start or flash, ring disconnected. Raw evidence is archived under
+`firmware/research/2026-09-23/bank0-descriptor/`. Sampled code is not full
+on-device image attestation. Further device work needs a new bounded plan.
+A later freshly coordinated session repeated those prerequisites and read only
+the fixed ROM identifier and 72 bytes of timer stop/delete wrappers, twice:
+114 matching CD01 transactions, verified disconnect, no sensor command or flash.
+Evidence: `firmware/research/2026-09-23/rom-timers/`. Both wrappers support an
+optional hook and separate result byte. Later user-ready on-ring sessions
+captured the literals/default code (142 matching transactions), then the fixed
+eight-byte hook slots (144 matching transactions), each with repeated prior
+evidence, configuration/idle postchecks and verified disconnect. Both hook
+pointers were zero in both reads: defaults were selected in that idle snapshot.
+Defaults call `xTimerGenericCommand`; delete clears the caller's handle on
+nonzero return. The command implementation, external selector/state and actual
+callback drain remain unproved. No sensor or flash command was sent.
+New evidence: `firmware/research/2026-09-23/rom-timer-internals/` and
+`firmware/research/2026-09-23/rom-timer-hooks/`. Replay and selected actual ARM
+caller tests pass; unread boundaries remain explicit mocks.
+The user was told clients could reopen; no continuing idle authorization exists.
+APP and OTA staging each declare 144 KiB, agreeing with OEM upload bounds;
+the stock-image margin is **9520 configured bytes, not approved expansion**.
+Bank1 is absent; backup1's override is NOT an 8 MiB chip-capacity proof.
+Geometry, ROM recovery, linked placement and RAM ownership remain unproved.
+New exact-code witnesses expose ignored FIFO overflow/partial-read failures,
+ignored OTA write failures, late optical restarts and unsafe STOP allocation.
+An unattached heap-free STOP-write shim preserves bus/mutex failures; it does
+not prove physical shutdown, callback fencing or current-settings resume.
+Model axes/scale agree, but physical FIFO timing and new-source model accuracy
+remain unqualified. Steps/sleep continuity is not established. No live FIFO
+read or speculative instrumentation is authorized by this completed session.
+New unified production transport remains unattached/locked.
+The user has only the daily-use ring and permits considering a specifically
+reviewed test if risk is reduced. A spare is preferred, not an absolute
+requirement. Diagnostics first does NOT authorize a flash or waive technical gates.
+The preceding memory change reduces `ws_observe`'s ARM
+local stack frame from 344 to 184 bytes; its nested pair with `wa_observe` drops
+600 to 440, excluding callers/other callees/interrupts. The dispatcher still
+needs 1016 bytes versus only 1024 nominal aligned RAM bytes (not approved space).
+Ten component `.text` sections now sum to 8252 bytes, not a linked-image fit.
+All 132 new-build hashes match. The bounded sessions above were diagnostic only;
+no phone access or firmware change occurred. The test ELF is unchanged from the
+memory build; no C firmware component was changed by the ROM diagnostics.
+The user subsequently requested a battery check and to run firmware if tests
+passed. A separate battery-only connection reported 94%, not charging, then
+verified disconnect (one checksum-valid 0x03 reply; no sensor/CD/flash command).
+Offline tests passed, but flash-readiness gates have not: no stock-linked unified
+image exists to transfer. Nothing was flashed under that conditional request.
+Current health sync preserves clock/settings; older automatic-write claims below
+are historical. Never use an unknown command as a harmless capability probe:
+stock UART dispatch has side effects. Never use the image tail as spare space:
+all final 200 bytes are a relocated boot overlay. Keep construction gates closed.
 
 ## Firmware handoff — 2026-09-22 (supersedes older LED conclusions below)
 

@@ -1,0 +1,7 @@
+firmware/unified/research-20260925-source-size-rejected-v1/sources/bucket.c:8:ws_set_bounds	16	static
+firmware/unified/research-20260925-source-size-rejected-v1/sources/bucket.c:19:ws_profile_valid	20	static
+firmware/unified/research-20260925-source-size-rejected-v1/sources/bucket.c:35:ws_init	8	static
+firmware/unified/research-20260925-source-size-rejected-v1/sources/bucket.c:37:ws_start	32	static
+firmware/unified/research-20260925-source-size-rejected-v1/sources/bucket.c:45:ws_stop	0	static
+firmware/unified/research-20260925-source-size-rejected-v1/sources/bucket.c:49:ws_tick	8	static
+firmware/unified/research-20260925-source-size-rejected-v1/sources/bucket.c:63:ws_observe	112	static

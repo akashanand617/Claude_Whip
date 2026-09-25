@@ -1,0 +1,126 @@
+{
+  "schema": "whip.gatt-resources.capture.v1",
+  "evidence_kind": "device_capture",
+  "session_id": "gatt-resources",
+  "prerequisite_capture": {
+    "schema": "whip.capacity.capture.v1",
+    "evidence_kind": "device_capture",
+    "session_id": "gatt-resources",
+    "image_sha256": "0d18a0fa860d58ab8f984b5f542f45dac105241f47bf1c2af41321eb0431e14c",
+    "windows": [
+      {
+        "address": 2098048,
+        "data_hex": "007c2000007000000074000070380000",
+        "sha256": "d181b7378851e44b709578a730fdafcbcf658ee96e9a0ee2a199fba433d30099"
+      },
+      {
+        "address": 2098148,
+        "data_hex": "002080000080040000a084000000000000a084000040000000e084000040020000000001000080000000000000000000",
+        "sha256": "19f636dc558b3e0d11daebb254ecaaf76d5c3a8597e7219063bf55f3715bf32e"
+      },
+      {
+        "address": 8397208,
+        "data_hex": "00d08000001000000030800000a00000006082000040020000a084000000000000a084000000000000a084000000000000a084000000000000a084000000000000a084000000000000e0800000800100",
+        "sha256": "d74c3afddf382c36dd4c566c539d2dcff16a22e0c7f525a9c1a342875cc4e12f"
+      }
+    ]
+  },
+  "windows": {
+    "upperstack_header": [
+      {
+        "address": 8445952,
+        "data_hex": "0c0001099a2700003c6c0100f94c6b7e11c5eb118282f74a0c0cef5b00e4800000e480000000000000e0800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        "sha256": "61279b714ee37143fc65d50cb029e062f2f68f597b4ed68a95b51956413c35ed"
+      },
+      {
+        "address": 8445952,
+        "data_hex": "0c0001099a2700003c6c0100f94c6b7e11c5eb118282f74a0c0cef5b00e4800000e480000000000000e0800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        "sha256": "61279b714ee37143fc65d50cb029e062f2f68f597b4ed68a95b51956413c35ed"
+      }
+    ],
+    "upperstack_hash_field": [
+      {
+        "address": 8446324,
+        "data_hex": "816f1c7b38d61e6beee1d0e411a205a853427ad5bb7b6e8dba9fcd69861913c8",
+        "sha256": "0a793257352daf0ff240682ca71897fb60bcea1d3e80bbb2fdec83369b9bb4b9"
+      },
+      {
+        "address": 8446324,
+        "data_hex": "816f1c7b38d61e6beee1d0e411a205a853427ad5bb7b6e8dba9fcd69861913c8",
+        "sha256": "0a793257352daf0ff240682ca71897fb60bcea1d3e80bbb2fdec83369b9bb4b9"
+      }
+    ],
+    "upper_otp_config": [
+      {
+        "address": 2097892,
+        "data_hex": "000c0500001000000000000014101416ff001b013c003c0001000a020a060006f7000005f7000005fb00000a100cf70000000000b400b4003c003c00",
+        "sha256": "417ff08a90f5a61995abe918ce8fc0d111059e4d54e3bbaa4791d6e281ba02b8"
+      },
+      {
+        "address": 2097892,
+        "data_hex": "000c0500001000000000000014101416ff001b013c003c0001000a020a060006f7000005f7000005fb00000a100cf70000000000b400b4003c003c00",
+        "sha256": "417ff08a90f5a61995abe918ce8fc0d111059e4d54e3bbaa4791d6e281ba02b8"
+      }
+    ],
+    "server_init_code": [
+      {
+        "address": 8556124,
+        "data_hex": "01d8002300e00123052201210846a2e701230422194618469de7002801d0002300e0012303220121084694e74b2210b55201904201d8002309e0ac49884201d3072304e05a21801a14f05dfec3b2002207210120fff77fff10bd012307221946022078e7",
+        "sha256": "a203f67c273e01778fa746b86eaef9666f6a08a641a8dff5ba308e51b1f076db"
+      },
+      {
+        "address": 8556124,
+        "data_hex": "01d8002300e00123052201210846a2e701230422194618469de7002801d0002300e0012303220121084694e74b2210b55201904201d8002309e0ac49884201d3072304e05a21801a14f05dfec3b2002207210120fff77fff10bd012307221946022078e7",
+        "sha256": "a203f67c273e01778fa746b86eaef9666f6a08a641a8dff5ba308e51b1f076db"
+      }
+    ],
+    "service_pool_alloc_code": [
+      {
+        "address": 8490744,
+        "data_hex": "01d2079000e007950b4630680b21079a09e0a08ba84201d2079000e007950b4630680d21079af6f780fa85e0208c002806d0a84200d00122e08b022802d007e02584f9e7a08ba84200d20546a81ce083002a05d0608c801e6084e088a08013e080b2801ea84201d0",
+        "sha256": "ed99f47ebf911a27c25c429a98a5eadcbf2fdfcf0f89fa87babf7067ac7ebafa"
+      },
+      {
+        "address": 8490744,
+        "data_hex": "01d2079000e007950b4630680b21079a09e0a08ba84201d2079000e007950b4630680d21079af6f780fa85e0208c002806d0a84200d00122e08b022802d007e02584f9e7a08ba84200d20546a81ce083002a05d0608c801e6084e088a08013e080b2801ea84201d0",
+        "sha256": "ed99f47ebf911a27c25c429a98a5eadcbf2fdfcf0f89fa87babf7067ac7ebafa"
+      }
+    ],
+    "server_state": [
+      {
+        "address": 2128244,
+        "data_hex": "4cf32bf3a9ef65928c19ba9f5eb24cd3",
+        "sha256": "ee27f990199f0caa65b64d2ee6c2a806d768a30fab74bead082b4273280ef660"
+      },
+      {
+        "address": 2128244,
+        "data_hex": "4cf32bf3a9ef65928c19ba9f5eb24cd3",
+        "sha256": "ee27f990199f0caa65b64d2ee6c2a806d768a30fab74bead082b4273280ef660"
+      }
+    ],
+    "gatt_pool_state": [
+      {
+        "address": 2127888,
+        "data_hex": "0000000000000000426f6f744f6e6365",
+        "sha256": "16dec743d1465877edbc1981ce18785e05de6082c56c5de3901ce1844a6f71df"
+      },
+      {
+        "address": 2127888,
+        "data_hex": "0000000000000000426f6f744f6e6365",
+        "sha256": "16dec743d1465877edbc1981ce18785e05de6082c56c5de3901ce1844a6f71df"
+      }
+    ]
+  },
+  "repeated_equal": {
+    "upperstack_header": true,
+    "upperstack_hash_field": true,
+    "upper_otp_config": true,
+    "server_init_code": true,
+    "service_pool_alloc_code": true,
+    "server_state": true,
+    "gatt_pool_state": true
+  },
+  "pointer_following": false,
+  "target_execution": false,
+  "flash_authorized": false
+}
