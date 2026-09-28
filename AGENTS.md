@@ -1,5 +1,221 @@
 # Whip — working notes
 
+## RT12COL V7 comparison result — 2026-09-28
+
+This section supersedes the earlier wording below that calls V6 off-ring, V7
+unflashed, or the current model a 9/15 V6-snap model. The ring `COLMI R02_DE07`
+currently runs `RT12COL_1.00.07_260927` (V7), SHA-256
+`cb815abea8d0ed0b4734b83790a45f632113e0bed4184de606b897727d4e9bd5`.
+Its guarded transfer completed 135 chunks and CHECK, rebooted, and returned the
+exact V7/hardware identity. A 751-packet physical gate measured 25.03 Hz, zero
+consecutive duplicate XYZ and 0.40% implied loss; renewal boundaries were fresh.
+V7 is therefore not a source-freshness failure, but it remains recognition-only
+with no app install route.
+
+V7 did not improve frozen-model transfer. Two ten-snap sessions had zero source
+duplicates but produced 4/10 and 5/10 snap events (plus one double-clap
+confusion). V6's 15-snap session produces 12/15 under the current pinned model,
+with RT02-nearest signed/magnitude correlations 0.77/0.97 versus V7's
+0.75/0.95 and 0.69/0.96. Separate-session bootstrap intervals include zero, so
+do not claim that 100 Hz acquisition itself is universally worse. The actual
+design omission was bandwidth: V7 is 100 Hz with a 50 Hz digital cutoff, while
+V6 is 200 Hz with a 100 Hz cutoff. RT02 uses filtered STK data with its 1 kHz
+bandwidth setting before every-fourth FIFO retention.
+
+Exact static enumeration finds no STK `DATASETUP 0x13` write in RT02 stock or
+25 Hz initialization; the training source is reset-default filtered data, not
+the public 352 Hz unfiltered mode. RT02's near-zero-duplicate 25 Hz controls plus
+documented every-fourth retention imply roughly 100 or more source frames/s,
+not an exact proven 100 Hz clock. Keep the fixed RT12 proper rotation
+`[x,z,-y]`, common 8005 counts/g scale and +/-4 g range. Do not fit a gain,
+quantizer or inverse filter to one session.
+
+V6 (`e92c5bc…e134d`) is the selected cross-ring signal baseline and rollback:
+fresh 25 Hz delivery from the 200 Hz/wider source. V7 is retained only as a
+diagnostic artifact. The current ring has not been rolled back in this update.
+Before calling behavior satisfactory, record one complete 11-class V6
+validation session and a separate long ambient/hard-negative run; existing
+V6/V7 data are isolated snaps, while the earlier full vocabulary was V1.
+Discrete time-shift augmentation is safe for live latency because it is a
+training transform, but exhaustive window shifts recover only about one V7 miss
+per session and are not the main hardware fix. Read
+[docs/RT12COL_FIRMWARE.md](docs/RT12COL_FIRMWARE.md) and
+[docs/GESTURE_SIGNAL_CONTRACT.md](docs/GESTURE_SIGNAL_CONTRACT.md).
+
+## RT12COL inactivity hypothesis and off-ring V6 — 2026-09-27
+
+Before any reader/FIFO changes, the exact stock image was checked for the
+LIS2DW12 activity/inactivity configuration. Its active initializer writes
+`WAKE_UP_THS 0x34=0x41` (`SLEEP_ON=1`, threshold 1),
+`WAKE_UP_DUR 0x35=0x40` (`SLEEP_DUR=0`, `WAKE_DUR=2`) and
+`CTRL7 0x3f=0x20` (`INTERRUPTS_ENABLE=1`). The other stock read/modify/write of
+0x34 clears bit 7 only and preserves `SLEEP_ON`. One proposed timing detail was
+wrong: LIS2DW12 `SLEEP_DUR` uses 512/ODR per LSB, not 1/ODR, and stock programs
+it to zero. Automatic inactivity mode is nevertheless enabled.
+
+The V4/V5 captures contain no genuine high-motion interval (total spans below
+0.04 g; maximum distinct-run step below 0.03 g). Their few singleton runs do
+not systematically align with motion, so those captures cannot demonstrate a
+wake transition. They are consistent with a persistent inactivity state:
+approximately 12.5 distinct values/s delivered as pairs at 25 notifications/s.
+
+V6 is a single-variable experimental candidate: V4-LP2 plus Gesture entry
+writing `0x34=0x01` (only `SLEEP_ON` cleared), with explicit stop, disconnect
+and lease expiry restoring exact stock `0x34=0x41` through the same common
+helper. Repeated active `A1 04` remains lease-only. Nothing else in the image is
+intentionally changed. Artifact:
+`firmware/rt12col-25hz-health-default-gesture-v6-sleep-fix-experimental.bin`,
+version `RT12COL_1.00.06_260927`, SHA-256
+`e92c5bc0d2751c3348aeea56ece4e5b5693baf1f6ba45c2a869c2d79729e134d`.
+On 2026-09-27 the user authorized one bounded deployment. Preflight identified
+`COLMI R02_DE07` on exact `RT12COL_V1.0`, running V1 at 98% battery. All 135
+chunks transferred, CHECK passed, and the expected silent END reboot followed.
+Read-only reconnection reported `RT12COL_1.00.06_260927`, exact hardware and
+97% battery. The first bounded A1/03 test then produced exactly 250 samples over
+9.959843 seconds at 25.0004 Hz: 250/250 payloads distinct, zero consecutive
+duplicates, 44.604 ms median gap and 60.368 ms maximum gap. The firmware lease
+stopped the stream before the 15-second host window, as designed, and host
+cleanup sent `A1 05`, `A1 02` and released the motion hold. Axis spans were only
+904/380/1116 counts, so this proves the low-motion paired-duplicate failure is
+fixed but is not a high-motion/waveform qualification. V6 is not added to the
+app and is not generally flash-approved. LED state, physical register restore,
+optical Health return and steps/sleep continuity remain untested on V6.
+The user-confirmed high-motion repeat then reached 7.09 g with six rail hits,
+yet retained 25.0378 Hz, zero consecutive duplicates and no stalls. A 20-second
+isolated-snap run sent active lease-only `A1 04` renewals at 8 and 16 seconds:
+501/501 payloads were distinct at 25.0065 Hz; boundary gaps were 60.146 and
+47.178 ms with no boundary or nearby duplicates. The intended snap became one
+7.77 g burst, but the current model called it `flick left` at 0.621 confidence.
+Firmware source and renewal now pass; RT12 model/domain adaptation remains open.
+See `firmware/research/2026-09-27/rt12-activity-hypothesis/`.
+
+The firmware's nominal ten-second lease is only a fail-closed backstop, not the
+intended user session duration. The app already renews fresh active Gesture
+sessions continuously and now exposes a persistent Return-to-Health timer:
+Off by default, or 1/5/15/30 minutes. Background/disconnect/stale inference
+still return to Health because the phone CNN cannot operate then. Focused iOS
+tests pass 21/21. The CLI collector initially missed this renewal: rejected
+capture `prompted_20260927_211920` contains only 250 motion samples/~10 seconds,
+one valid snap and 14 marks outside its stream. Keep it as failure evidence,
+never training data. `capture.stream` now recognizes exact V6 and renews `A1 04`
+every eight seconds; exact V6/non-lease/cleanup tests pass. Repeat the requested
+15-snap diagnostic before drawing any multi-snap conclusion.
+
+The repeat `prompted_20260927_213001` successfully crossed the lease renewals:
+2,313 A1/03 samples over about 92 seconds, 25.0007 active Hz, zero consecutive
+duplicate payloads and all 15 cues containing motion. Its only 649.8 ms gap was
+before the first cue; no gesture-region gap exceeded 95 ms. Capture SHA-256 is
+`a1d3f2aa4f4224d60e89d618b8921ceb1f0cbca4abf7bfe2e9bc569b9763aa20` and notes
+SHA-256 is `cb49aed800174f1fcb923bd8c842247b7a5a2358ab1fbc094ab46000a3726b7a`.
+Against 54 exact-identity RT02 snaps, the 15 RT12 waveforms have median peak
+ratio 0.88, nearest signed correlation 0.77 and magnitude correlation 0.97;
+median peak is 5.06 g and the typical causal burst again spans two samples/~43
+ms. This rejects a global scale or transport explanation and shows V6's snap
+waveform is broadly RT02-like. The existing model emitted 9/15 snap events; the
+six misses were one long windup, three low/soft no-vote bursts, one one-vote
+3.63 g burst, and one one-vote 7.56 g burst. The session is diagnostic only:
+the collector/checkup rejects a 15-item single-class run as training data, and
+the cue audit reports 9 valid, 1 suspect and 5 invalid for lateness/amplitude/
+weakness. Do not turn 9/15 into a general accuracy claim.
+
+## RT12COL V4/V5 physically rejected; V1 restored — 2026-09-27
+
+V4-LP2 (`RT12COL_1.00.04_260927`, SHA-256
+`21de9507955e102e846932f1d3c1b16e736a73d9d355560af8cf89cc61093d78`)
+passed DFU and rebooted, but its bounded A1/03 test failed freshness: 250
+packets over the 9.945105-second active lease contained 123 duplicate
+transitions out of 249 (**49.3976%**), arranged as 123 pairs and four
+singletons. The ten-second firmware lease correctly stopped the stream.
+V5-LP1 (`RT12COL_1.00.05_260927`, SHA-256
+`23267b5e25e65591349861048c24b72b5cdbc60ea2d583a58315b4cd33d38217`)
+passed DFU and rebooted, but its first bounded A1/03 test failed freshness:
+201 packets over 7.995054 seconds contained 98 duplicate transitions out of
+200 (**49.0%**), arranged as 98 two-packet runs and five singletons. Normal
+~25 Hz notifications therefore hid an almost strict new/repeat source pattern.
+V4 and V5 are permanently revoked and must never be flashed or exposed in the app.
+Cleanup sent `A1 05`, `A1 02`, and released the RT12 motion hold. The exact V1
+artifact was then reflashed; the ring reconnected as
+`RT12COL_1.00.01_260927` on `RT12COL_V1.0` and reported 100% battery. Evidence
+is under `firmware/research/2026-09-27/rt12-v4-lp2-physical/` and
+`firmware/research/2026-09-27/rt12-v5-lp1-physical/`.
+
+## RT12COL V3 revoked off-ring — 2026-09-27
+
+The unflashed V3 candidate is **revoked and app installation is disabled**:
+`firmware/rt12col-25hz-health-default-gesture-v3-experimental.bin`, SHA-256
+`ea5b7a61041d7c64213307018a29f7dc6d803a135afd94d1f1a25178c0ab5026`,
+version `RT12COL_1.00.03_260927`. Do not flash it. Its `CTRL1=0x62` was
+incorrectly documented as LP mode 2; `LP_MODE=10b` is LP mode 3 and the widest
+LP3 cutoff is 360 Hz. Its repeated `A1 04` path also rewrites configuration and
+restarts the one-shot producer instead of being lease-only. Explicit
+stop, disconnect and a 250-callback/nominal-ten-second lease share one restore
+path for stock `CTRL1=0x32`, `CTRL6=0x50`, raw ownership/timer and volatile
+motion hold, but this does not cure those entry/renewal defects. V1/V2 do not
+receive renewal commands. No V3 flash or on-ring validation occurred. Its later
+LP2 (`CTRL1=0x61`) and LP1 (`CTRL1=0x60`) successors passed those off-ring
+gates, but both failed physical source freshness and are revoked as recorded
+above.
+The reader is now instruction-traced to STK `FIFODATA=0x3f`; corrected renewal
+requires `active=1` plus mode 4 and changes only the lease byte, while the app
+snapshots ten packets immediately before the UART write, arms its collector
+before that write can return motion, and checks ten packets after it. V4-LP2
+and V5-LP1 remain hash-pinned for provenance but have no install route. A fresh
+RT02 control attempt found no exact device and
+sent no command. There is no separate RT02 control ring; the user designated
+the existing two completed 30-minute and one completed ten-minute exact-identity
+RT02 captures as the control. Reanalysis with the same raw XYZ equality metric
+measured 0.0511%, 0.0556% and 0.0333% duplicates versus RT12 V1's 17.4574%, so
+fresh RT02 recapture is not a gate. Read
+[docs/RT12COL_FIRMWARE.md](docs/RT12COL_FIRMWARE.md) before any device action.
+
+## RT12COL first physical Gesture evidence — 2026-09-27
+
+The experimental `RT12COL_1.00.01_260927` image booted, reconnected and passed
+its 11 app fingerprints on `COLMI R02_DE07`. Live A1/03 captures then proved
+changing motion and a clean Gesture return (`A1 05`, `A1 02`, `3B 02 01 00`)
+followed by Health sync. RT12 sensor orientation differs from RT02: forward is
+dominated by decoded source axis 0, while fingertips-down is source axis 2 near
+`-1 g`. The phone now applies RT12-only `[source0, source2, -source1]` before
+calibration/inference; forward is rejected and down is the only calibration
+reference. Repeated stationary payloads are allowed after the initial distinct
+motion gate because RT12 quantizes some still samples identically. The iOS suite
+passes **83 tests**. Model accuracy, optical Health return, steps/sleep,
+disconnect recovery and stock rollback remain physical gates. Stationary
+payloads often occur in identical pairs; notification count is not a proven
+distinct-sample rate.
+
+## RT12COL application/candidate handoff — 2026-09-27
+
+Read [docs/RT12COL_FIRMWARE.md](docs/RT12COL_FIRMWARE.md) before touching the
+new ring. Two independent, complete CD01 reads of its bounded application
+partition matched. They produced a normalized stock application restore,
+`firmware/rt12col-stock-1.00.00.bin`, SHA-256
+`b180b27a3fddd24db8a49de7c6b0041b94621062187300ceeb79af3d7908c639`.
+This is not a full-chip/wired recovery image.
+
+The exact-source, size-preserving RT12COL Health-default / temporary-Gesture
+candidate is `firmware/rt12col-25hz-health-default-gesture-v1-experimental.bin`,
+SHA-256 `52736f328dd2ea60e284a25438284447b54837e93a0dbcc2da88737968b4483b`.
+It keeps the native RT12 boot, GATT, DFU, partitions and accelerometer driver;
+it does not reuse the invalid RT02 unified image's service/code-cave design.
+The app uses `A1 04`, then volatile `3B 02 01 03`, and requires fresh distinct
+motion. Health return is `A1 05`, `A1 02`, then `3B 02 01 00`. On 2026-09-27
+the candidate passed its first physical DFU CHECK/END, rebooted, reconnected,
+reported its candidate identity, matched all 11 bounded fingerprint reads and
+entered app-recognized Health default. **Do not call that full validation.**
+Dark/fresh 25 Hz Gesture, optical Health return, steps/sleep continuity,
+disconnect recovery and stock rollback remain device gates.
+
+The iOS firmware UI requires matching Device Information hardware/firmware
+families. RT12COL sees only its exact stock/candidate; RT02CR sees only RT02CR.
+Unknown or contradictory identity fails closed. The revoked RT02 unified V1
+remains disabled. The full iOS simulator suite passes **83 tests**, the 28
+focused RT12 firmware tests pass, and the current selected firmware/signal/
+protocol regression set passes **153 tests**. The acquisition used read-only
+diagnostics; the only RT12 write so far is the first candidate deployment just
+described. The untracked `rt12col_fetch.py` predates this change and remains
+untouched.
+
 ## BLE recovery and unified-V1 postmortem — 2026-09-25
 
 This supersedes the "current compact unified candidate" claims below. The

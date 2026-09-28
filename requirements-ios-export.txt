@@ -4,3 +4,7 @@
 coremltools==9.0
 torch==2.11.0
 numpy==2.3.4
+# The exporter imports the shared capture module while assembling replay
+# fixtures. Bleak is therefore an import-time dependency even though export
+# never connects to a ring.
+bleak==3.0.2

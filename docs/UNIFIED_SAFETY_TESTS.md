@@ -8,6 +8,17 @@ candidate or hardware adapter. The fixed app has not been installed on the phone
 See the software-fix follow-up at the end; the initial failing results below
 are retained as history, not the current verdict on those two regressions.
 
+**Gesture-model follow-up — 2026-09-27:** the new pinned 9-channel checkpoint
+and Core ML bundle are documented in
+[GESTURE_MODEL_V2.md](GESTURE_MODEL_V2.md). The extended generator checked all
+7,627 split windows with zero failures and maximum probability error
+`2.086162567138672e-6`; the updated Swift numerical/full-stream suites passed
+15/15, and the complete iOS simulator suite passed 87/87 with zero skips. Model SHA-256 is
+`1158a0b6c0aaaccbc90ca6352791481aa3a734cc1ac4c75e959ad8588c56d6c7`,
+and the replacement safety fixture SHA-256 is
+`2e9a8260c1c45fdcbfbccd296cf37aad2a449d6b053882ff39ac6dccd3142c6f`.
+The older identity and initial results below remain historical.
+
 **Later firmware implementation/proof pass:** 95 offline tests pass (0 skipped),
 including actual selected stock Thumb execution, a separate C Gesture sample
 queue and reproducible Cortex-M0+ object builds. The shared Health cursor is

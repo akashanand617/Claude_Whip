@@ -19,13 +19,20 @@ struct RingOnboardingScreen: View {
                         .multilineTextAlignment(.center)
                 }
 
-                if manager.candidates.count > 1, manager.state == .discovered {
+                if !manager.candidates.isEmpty, manager.state == .discovered {
                     ringChoices
                         .padding(.horizontal, 28)
                 }
 
                 action
                     .padding(.horizontal, 28)
+                if manager.state == .connecting || manager.state == .discoveringServices
+                        || manager.state == .recoveryReady {
+                    Button("Choose another ring") { manager.forget() }
+                        .font(.mono(11))
+                        .foregroundStyle(Tok.accent)
+                        .frame(minHeight: 44)
+                }
                 Text(helpText)
                     .font(.mono(10))
                     .foregroundStyle(Tok.dim)
@@ -50,7 +57,7 @@ struct RingOnboardingScreen: View {
                             .frame(width: 7, height: 7)
                         VStack(alignment: .leading, spacing: 3) {
                             Text(ring.name).font(.mono(12))
-                            Text(signalLabel(ring.rssi))
+                            Text(signalLabel(ring))
                                 .font(.mono(9)).foregroundStyle(Tok.muted)
                         }
                         Spacer()
@@ -89,13 +96,14 @@ struct RingOnboardingScreen: View {
         switch manager.state {
         case .discovered:
             Button(action: connect) {
-                Text("Connect \(selectedSuffix)")
+                Text(manager.candidate == nil ? "Select a ring" : "Connect \(selectedSuffix)")
                     .font(.mono(13, .medium))
                     .frame(maxWidth: .infinity, minHeight: 50)
                     .foregroundStyle(Tok.ink)
                     .background(Tok.accent)
             }
             .buttonStyle(.plain)
+            .disabled(manager.candidate == nil)
         case .scanning, .connecting, .discoveringServices:
             HStack(spacing: 12) {
                 ProgressView().tint(Tok.accent)
@@ -123,9 +131,10 @@ struct RingOnboardingScreen: View {
         return name.split(separator: "_").last.map(String.init) ?? name
     }
 
-    private func signalLabel(_ rssi: Int) -> String {
-        if rssi >= -60 { return "Very close" }
-        if rssi >= -75 { return "Nearby" }
+    private func signalLabel(_ ring: DiscoveredRing) -> String {
+        if manager.isRecoverySuppressed(ring.id) { return "Previously forgotten · select to reuse" }
+        if ring.rssi >= -60 { return "Very close" }
+        if ring.rssi >= -75 { return "Nearby" }
         return "Farther away"
     }
 

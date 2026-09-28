@@ -31,7 +31,7 @@ struct FirmwareCapabilities: Equatable {
         guard protocolVersion == 1, healthDefault, darkGesture, sampleRate == 25 else { return false }
         switch profile {
         case .leasedService: return sequencedMotion && leaseSeconds == 30
-        case .exactA1: return !sequencedMotion && leaseSeconds == 0
+        case .exactA1: return !sequencedMotion && (leaseSeconds == 0 || leaseSeconds == 10)
         }
     }
 }
@@ -48,8 +48,9 @@ struct ModeReply {
     let status: ModeStatus
 }
 
-/// Production transport remains unattached. UnifiedWire is an offline candidate
-/// codec for a separate reviewed GATT service, never an unknown A1 query to stock.
+/// UnifiedWire is the retained offline codec for the abandoned separate-service
+/// design. The production RT12COL path uses the exact A1 adapter below and never
+/// sends an unknown capability query to stock firmware.
 @MainActor
 protocol UnifiedModeTransport {
     func capabilities() async throws -> FirmwareCapabilities
@@ -59,12 +60,14 @@ protocol UnifiedModeTransport {
 }
 
 enum UnifiedModeError: LocalizedError {
-    case unavailable, uncorrelated, staleStream, exhausted
+    case unavailable, uncorrelated, staleStream, renewalBoundary, exhausted
     var errorDescription: String? {
         switch self {
         case .unavailable: return "This installed firmware does not support the reviewed runtime mode switch."
         case .uncorrelated: return "The mode response did not match this request. Reconnect before continuing."
         case .staleStream: return "Gesture processing is not fresh. The Health-return lease will not be renewed."
+        case .renewalBoundary:
+            return "Motion timing or freshness changed across the Gesture lease renewal. Returning to Health."
         case .exhausted: return "Reconnect before sending further mode requests."
         }
     }
@@ -85,6 +88,20 @@ extension RingManager: A1ModeLink {}
 final class A1UnifiedModeTransport: UnifiedModeTransport {
     typealias MotionHandler = (Data, UInt32, UInt32, TimeInterval) -> Void
 
+    struct RenewalBoundaryMetrics: Equatable {
+        let baselineMedianSpacing: TimeInterval
+        let renewalMedianSpacing: TimeInterval
+        let boundarySpacing: TimeInterval
+        let renewalMaximumSpacing: TimeInterval
+        let baselineDuplicateFraction: Double
+        let renewalDuplicateFraction: Double
+    }
+
+    private struct MotionObservation {
+        let payload: Data
+        let time: TimeInterval
+    }
+
     private struct PendingStart {
         let id: UUID
         var packets = 0
@@ -94,25 +111,49 @@ final class A1UnifiedModeTransport: UnifiedModeTransport {
         let timeout: Task<Void, Never>
     }
 
+    private struct PendingRenewal {
+        let id: UUID
+        let baseline: [MotionObservation]
+        var after: [MotionObservation] = []
+        let requestID: UInt32
+        let continuation: CheckedContinuation<ModeReply, Error>
+        let timeout: Task<Void, Never>
+    }
+
     var onMotion: MotionHandler?
     private let link: any A1ModeLink
     private let charging: () -> Bool
+    private let requiresMotionHold: Bool
+    private let firmwareLeaseSeconds: Int
     private var current: ModeStatus
     private var sequence: UInt32 = 0
     private var pending: PendingStart?
+    private var pendingRenewal: PendingRenewal?
+    private var renewalWriteInProgress = false
+    private var motionHistory: [MotionObservation] = []
     private var lastMotionAt: TimeInterval = -.infinity
     private var lastWriteAt: TimeInterval = -.infinity
+    private(set) var lastRenewalMetrics: RenewalBoundaryMetrics?
+
+    private static let renewalSampleCount = 10
+    private static let renewalTimeout = Duration.seconds(1)
 
     init(link: any A1ModeLink, charging: @escaping () -> Bool,
+         requiresMotionHold: Bool = false,
+         firmwareLeaseSeconds: Int = 0,
          connectionID: UInt64 = UInt64.random(in: 1...UInt64.max)) {
+        precondition(firmwareLeaseSeconds == 0 || firmwareLeaseSeconds == 10)
         self.link = link
         self.charging = charging
+        self.requiresMotionHold = requiresMotionHold
+        self.firmwareLeaseSeconds = firmwareLeaseSeconds
         current = ModeStatus(bootID: connectionID, session: 0, mode: .health, charging: charging())
     }
 
     func capabilities() async throws -> FirmwareCapabilities {
         .init(protocolVersion: 1, healthDefault: true, darkGesture: true,
-              sequencedMotion: false, leaseSeconds: 0, sampleRate: 25, profile: .exactA1)
+              sequencedMotion: false, leaseSeconds: firmwareLeaseSeconds,
+              sampleRate: 25, profile: .exactA1)
     }
 
     func status(requestID: UInt32) async throws -> ModeReply {
@@ -122,7 +163,8 @@ final class A1UnifiedModeTransport: UnifiedModeTransport {
     }
 
     func setGesture(_ enabled: Bool, requestID: UInt32) async throws -> ModeReply {
-        guard link.isReady, pending == nil else { throw RingProtocolError.busy }
+        guard link.isReady, pending == nil, pendingRenewal == nil,
+              !renewalWriteInProgress else { throw RingProtocolError.busy }
         if !enabled {
             try await stopRaw()
             current = .init(bootID: current.bootID, session: 0, mode: .health, charging: charging())
@@ -132,6 +174,8 @@ final class A1UnifiedModeTransport: UnifiedModeTransport {
         var next = current.session &+ 1
         if next == 0 { next = 1 }
         sequence = 0
+        motionHistory.removeAll(keepingCapacity: true)
+        lastRenewalMetrics = nil
         current = .init(bootID: current.bootID, session: next, mode: .enteringGesture, charging: false)
         let id = UUID()
         return try await withCheckedThrowingContinuation { continuation in
@@ -142,7 +186,12 @@ final class A1UnifiedModeTransport: UnifiedModeTransport {
             }
             pending = PendingStart(id: id, requestID: requestID, continuation: continuation, timeout: timeout)
             Task { @MainActor [weak self] in
-                do { try await self?.writeSpaced(ColmiR02Protocol.startRawMotionPacket) }
+                do {
+                    try await self?.writeSpaced(ColmiR02Protocol.startRawMotionPacket)
+                    if self?.requiresMotionHold == true {
+                        try await self?.writeSpaced(ColmiR02Protocol.gestureMotionHoldPacket(enabled: true))
+                    }
+                }
                 catch { self?.failStart(id: id, error: error) }
             }
         }
@@ -154,7 +203,54 @@ final class A1UnifiedModeTransport: UnifiedModeTransport {
               ProcessInfo.processInfo.systemUptime - lastMotionAt <= 0.5 else {
             throw UnifiedModeError.staleStream
         }
-        return .init(requestID: requestID, status: current)
+        guard pending == nil, pendingRenewal == nil, !renewalWriteInProgress else {
+            throw RingProtocolError.busy
+        }
+        guard firmwareLeaseSeconds > 0 else {
+            return .init(requestID: requestID, status: current)
+        }
+        guard motionHistory.count >= Self.renewalSampleCount else {
+            throw UnifiedModeError.staleStream
+        }
+
+        // The corrected firmware interprets A1 04 as a lease-only operation
+        // when Gesture is active. Do not accept the write itself as proof. Wait
+        // out the UART throttle first, snapshot the ten packets immediately
+        // before the exact write, then arm the post-boundary collector before
+        // writeUART can synchronously hand anything back to us.
+        renewalWriteInProgress = true
+        do {
+            try await waitForWriteSlot()
+        } catch {
+            renewalWriteInProgress = false
+            throw error
+        }
+        guard current.mode == .gesture, current.session == session,
+              ProcessInfo.processInfo.systemUptime - lastMotionAt <= 0.5,
+              motionHistory.count >= Self.renewalSampleCount else {
+            renewalWriteInProgress = false
+            throw UnifiedModeError.staleStream
+        }
+        let baseline = Array(motionHistory.suffix(Self.renewalSampleCount))
+        let id = UUID()
+        return try await withCheckedThrowingContinuation { continuation in
+            let timeout = Task { [weak self] in
+                try? await Task.sleep(for: Self.renewalTimeout)
+                guard !Task.isCancelled else { return }
+                self?.failRenewal(id: id, error: UnifiedModeError.renewalBoundary)
+            }
+            pendingRenewal = PendingRenewal(
+                id: id, baseline: baseline, requestID: requestID,
+                continuation: continuation, timeout: timeout
+            )
+            do {
+                try writePrepared(ColmiR02Protocol.startRawMotionPacket)
+                renewalWriteInProgress = false
+            } catch {
+                renewalWriteInProgress = false
+                failRenewal(id: id, error: error)
+            }
+        }
     }
 
     func receiveMotion(_ packet: Data, at time: TimeInterval) {
@@ -163,6 +259,11 @@ final class A1UnifiedModeTransport: UnifiedModeTransport {
         sequence &+= 1
         if sequence == 0 { sequence = 1 }
         lastMotionAt = time
+        let observation = MotionObservation(payload: Data(packet[2..<8]), time: time)
+        motionHistory.append(observation)
+        if motionHistory.count > Self.renewalSampleCount {
+            motionHistory.removeFirst(motionHistory.count - Self.renewalSampleCount)
+        }
         if var waiting = pending {
             waiting.packets += 1
             waiting.payloads.insert(Data(packet[2..<8]))
@@ -175,6 +276,13 @@ final class A1UnifiedModeTransport: UnifiedModeTransport {
             return
         }
         guard current.mode == .gesture else { return }
+        if var renewing = pendingRenewal {
+            renewing.after.append(observation)
+            pendingRenewal = renewing
+            if renewing.after.count >= Self.renewalSampleCount {
+                completeRenewal(renewing)
+            }
+        }
         onMotion?(packet, current.session, sequence, time)
     }
 
@@ -184,6 +292,13 @@ final class A1UnifiedModeTransport: UnifiedModeTransport {
             pending = nil
             waiting.continuation.resume(throwing: RingProtocolError.notReady)
         }
+        if let waiting = pendingRenewal {
+            waiting.timeout.cancel()
+            pendingRenewal = nil
+            waiting.continuation.resume(throwing: RingProtocolError.notReady)
+        }
+        renewalWriteInProgress = false
+        motionHistory.removeAll(keepingCapacity: true)
         current = .init(bootID: current.bootID, session: 0, mode: .health, charging: charging())
     }
 
@@ -196,24 +311,120 @@ final class A1UnifiedModeTransport: UnifiedModeTransport {
         Task { try? await stopRaw() }
     }
 
+    private func completeRenewal(_ waiting: PendingRenewal) {
+        guard pendingRenewal?.id == waiting.id,
+              let metrics = Self.renewalMetrics(
+                baseline: waiting.baseline,
+                after: Array(waiting.after.prefix(Self.renewalSampleCount))
+              ) else {
+            failRenewal(id: waiting.id, error: UnifiedModeError.renewalBoundary)
+            return
+        }
+        lastRenewalMetrics = metrics
+        let allowedDuplicateFraction = min(
+            1, metrics.baselineDuplicateFraction + 1 / Double(Self.renewalSampleCount)
+        )
+        let spacingPassed = (0.015...0.080).contains(metrics.baselineMedianSpacing)
+            && metrics.renewalMedianSpacing >= metrics.baselineMedianSpacing * 0.5
+            && metrics.renewalMedianSpacing <= metrics.baselineMedianSpacing * 1.5
+            && metrics.boundarySpacing >= max(0.010, metrics.baselineMedianSpacing * 0.25)
+            && metrics.renewalMaximumSpacing <= 0.120
+        let duplicatesPassed = metrics.renewalDuplicateFraction <= allowedDuplicateFraction + 1e-12
+        guard spacingPassed, duplicatesPassed else {
+            failRenewal(id: waiting.id, error: UnifiedModeError.renewalBoundary)
+            return
+        }
+        waiting.timeout.cancel()
+        pendingRenewal = nil
+        waiting.continuation.resume(returning: .init(requestID: waiting.requestID, status: current))
+    }
+
+    private func failRenewal(id: UUID, error: Error) {
+        guard let waiting = pendingRenewal, waiting.id == id else { return }
+        waiting.timeout.cancel()
+        pendingRenewal = nil
+        waiting.continuation.resume(throwing: error)
+        // The firmware lease remains the final backstop. Also request the
+        // already-audited explicit return immediately while the link is alive.
+        Task { [weak self] in
+            try? await self?.stopRaw()
+            guard let self else { return }
+            self.current = .init(
+                bootID: self.current.bootID, session: 0,
+                mode: .health, charging: self.charging()
+            )
+        }
+    }
+
+    private static func renewalMetrics(
+        baseline: [MotionObservation], after: [MotionObservation]
+    ) -> RenewalBoundaryMetrics? {
+        guard baseline.count == renewalSampleCount, after.count == renewalSampleCount,
+              let lastBefore = baseline.last else { return nil }
+        let baselineSpacings = zip(baseline, baseline.dropFirst()).map { $1.time - $0.time }
+        let boundarySeries = [lastBefore] + after
+        let renewalSpacings = zip(boundarySeries, boundarySeries.dropFirst()).map { $1.time - $0.time }
+        guard baselineSpacings.allSatisfy({ $0.isFinite && $0 > 0 }),
+              renewalSpacings.allSatisfy({ $0.isFinite && $0 > 0 }) else { return nil }
+        let baselineDuplicates = zip(baseline, baseline.dropFirst()).filter { pair in
+            pair.0.payload == pair.1.payload
+        }.count
+        let renewalDuplicates = zip(boundarySeries, boundarySeries.dropFirst()).filter { pair in
+            pair.0.payload == pair.1.payload
+        }.count
+        return RenewalBoundaryMetrics(
+            baselineMedianSpacing: median(baselineSpacings),
+            renewalMedianSpacing: median(renewalSpacings),
+            boundarySpacing: renewalSpacings[0],
+            renewalMaximumSpacing: renewalSpacings.max()!,
+            baselineDuplicateFraction: Double(baselineDuplicates) / Double(baselineSpacings.count),
+            renewalDuplicateFraction: Double(renewalDuplicates) / Double(renewalSpacings.count)
+        )
+    }
+
+    private static func median(_ values: [TimeInterval]) -> TimeInterval {
+        let values = values.sorted()
+        let middle = values.count / 2
+        return values.count.isMultiple(of: 2)
+            ? (values[middle - 1] + values[middle]) / 2
+            : values[middle]
+    }
+
     private func stopRaw() async throws {
         var firstError: Error?
-        for packet in ColmiR02Protocol.stopRawMotionPackets {
+        var packets = ColmiR02Protocol.stopRawMotionPackets
+        if requiresMotionHold {
+            // Preserve the previously measured host lifecycle: stop raw first,
+            // then release the volatile STK hold so stock Health owns the sensor.
+            // The RT12 candidate still requires its own physical validation.
+            packets.append(ColmiR02Protocol.gestureMotionHoldPacket(enabled: false))
+        }
+        for packet in packets {
             do { try await writeSpaced(packet) }
             catch { if firstError == nil { firstError = error } }
         }
+        motionHistory.removeAll(keepingCapacity: true)
         if let firstError { throw firstError }
     }
 
-    private func writeSpaced(_ packet: Data) async throws {
+    private func waitForWriteSlot() async throws {
         guard link.isReady else { throw RingProtocolError.notReady }
         let now = ProcessInfo.processInfo.systemUptime
         let wait = 0.15 - (now - lastWriteAt)
         if wait > 0 { try await Task.sleep(for: .seconds(wait)) }
         try Task.checkCancellation()
         guard link.isReady else { throw RingProtocolError.notReady }
+    }
+
+    private func writePrepared(_ packet: Data) throws {
+        guard link.isReady else { throw RingProtocolError.notReady }
         try link.writeUART(packet)
         lastWriteAt = ProcessInfo.processInfo.systemUptime
+    }
+
+    private func writeSpaced(_ packet: Data) async throws {
+        try await waitForWriteSlot()
+        try writePrepared(packet)
     }
 }
 
@@ -221,7 +432,7 @@ final class A1UnifiedModeTransport: UnifiedModeTransport {
 final class UnifiedModeCoordinator: ObservableObject {
     @Published private(set) var status: ModeStatus?
     @Published private(set) var available = false
-    @Published private(set) var message = "Unified firmware is not yet approved. Health is the intended default."
+    @Published private(set) var message = "Unified runtime control is unavailable. Health remains the default."
     var onModeChange: ((ModeStatus?, ModeStatus?) -> Void)?
     private var transport: (any UnifiedModeTransport)?
     private var connection = UUID()
@@ -233,8 +444,8 @@ final class UnifiedModeCoordinator: ObservableObject {
 
     init(gate: RingOperationGate) { self.gate = gate }
 
-    // Internal semantic attachment is for offline fixtures until a reviewed
-    // production adapter exists. The shipped app never calls this with BLE.
+    // The coordinator accepts either the retired offline wire fixture or the
+    // exact fingerprint-gated A1 transport attached by AppModel.
     func attach(_ transport: any UnifiedModeTransport) async throws {
         disconnected()
         let generation = connection

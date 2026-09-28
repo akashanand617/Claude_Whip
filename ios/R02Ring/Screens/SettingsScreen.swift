@@ -48,13 +48,17 @@ struct SettingsScreen: View {
         .sheet(isPresented: $showsExport) { ActivityView(items: exportURLs) }
         #endif
         .confirmationDialog("Firmware maintenance", isPresented: $showsModePicker, titleVisibility: .visible) {
-            Button("Stock Health firmware") { chooseMode(.health) }
-            Button("Unified firmware (disabled after failed boot)") { chooseMode(.unified) }
-                .disabled(!BundledFirmware.unifiedInstallEnabled)
-            Button("Experimental Gesture-only V2 firmware") { chooseMode(.gesture) }
+            ForEach(model.firmwareOptions) { image in
+                Button(optionLabel(image)) { chooseMode(image.mode) }
+                    .disabled(!image.installEnabled)
+            }
+            if model.firmwareOptions.isEmpty {
+                Button("No compatible firmware available") {}
+                    .disabled(true)
+            }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("This replaces the installed firmware. It is not the planned instant runtime toggle.")
+            Text(model.firmwareRoutingMessage)
         }
         .alert(item: $pendingFirmwareMode) { target in
             Alert(
@@ -168,6 +172,11 @@ struct SettingsScreen: View {
         pendingFirmwareMode = mode
     }
 
+    private func optionLabel(_ image: BundledFirmware) -> String {
+        guard let reason = image.disabledReason else { return image.label }
+        return "\(image.label) (\(reason))"
+    }
+
     private func modeWarning(_ target: RingFirmwareMode) -> String {
         switch target {
         case .gesture:
@@ -175,7 +184,7 @@ struct SettingsScreen: View {
         case .health:
             return "This restores stock health tracking. Gesture recognition will be unavailable until you switch back. Keep the app open and the ring nearby."
         case .unified:
-            return "This installs the size-neutral Health-default image. The app will sync pending health history first. Gesture sessions then switch instantly without another firmware transfer."
+            return "This installs the experimental size-neutral Health-default image. Offline safety checks pass, but its RT12COL behavior is not yet validated on-ring. The app will save pending health history first; Gesture sessions then switch without another firmware transfer."
         case .unknown:
             return ""
         }

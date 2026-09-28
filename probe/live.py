@@ -68,6 +68,7 @@ async def run(args: argparse.Namespace) -> int:
 
     async with capture.connected(device) as client:
         info = await capture.read_device_info(client, device)
+        engine.set_signal_profile(info.hardware, info.firmware)
         battery = await capture.read_battery(client)
         print(f"connected   {info.name}  fw {info.firmware}"
               + (f"  battery {battery[0]}%" if battery else ""))
@@ -77,7 +78,8 @@ async def run(args: argparse.Namespace) -> int:
         try:
             await capture.stream(client, duration=0, stop=stop,
                                  param=protocol.RAW_ENABLE_ALL,
-                                 on_record=queue.append)
+                                 on_record=queue.append,
+                                 motion_hold=engine.signal_profile.family == "rt12col")
         finally:
             stop.set()
             await consumer
@@ -92,13 +94,15 @@ def replay(path: Path, checkpoint: Path, threshold: float | None) -> int:
     from whip import audit
     config = RouterConfig.load()
     engine = Engine.from_checkpoint(checkpoint, threshold=threshold if threshold is not None else config.threshold)
+    header, records = capture.load_capture(path)
+    device = header.get("device") or {}
+    engine.set_signal_profile(device.get("hardware"), device.get("firmware"))
     engine.auto_frame = False
     fr = audit.frame_path(path)
     if fr.exists():
         import json as _json
         engine.set_frame(_json.loads(fr.read_text())["rotation"])
     print(f"replay {path}  frame {engine.frame_name}  threshold {engine.threshold:.2f}")
-    _, records = capture.load_capture(path)
     n = 0
     for t, payload in records:
         for ev in engine.feed(t, payload):

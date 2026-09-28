@@ -24,7 +24,7 @@ from pathlib import Path
 from bleak import BleakClient, BleakScanner
 from bleak.backends.device import BLEDevice
 
-from whip import protocol
+from whip import protocol, ring_profile
 
 logger = logging.getLogger(__name__)
 
@@ -201,7 +201,14 @@ async def read_battery(client: BleakClient, timeout: float = 3.0) -> tuple[int, 
     except asyncio.TimeoutError:
         return None
     finally:
-        await client.stop_notify(protocol.UART_TX_CHAR_UUID)
+        try:
+            await client.stop_notify(protocol.UART_TX_CHAR_UUID)
+        except Exception as exc:  # noqa: BLE001 - the connection owner still disconnects
+            # CoreBluetooth can report CBErrorUnknown after it already disabled
+            # the subscription. A valid battery reply must not be discarded by
+            # teardown; the surrounding connection is always closed or reused
+            # by a caller that owns its remaining notifications.
+            logger.warning("could not stop battery notification cleanly: %s", exc)
 
 
 @asynccontextmanager
@@ -254,8 +261,10 @@ async def stream(
     capture: Capture | None = None,
     quiet_optical: bool = False,
     disable_logging: bool = False,
+    motion_hold: bool = False,
     stop: "asyncio.Event | None" = None,
     on_record=None,
+    lease_renew_interval_s: float | None = None,
 ) -> list[tuple[float, bytes]]:
     """
     Enable raw sensor streaming, record every notification for `duration`
@@ -271,6 +280,17 @@ async def stream(
     append -- the design rule that the callback only stamps and stores extends
     to it, because any work here contaminates the arrival timing being recorded.
     """
+    if lease_renew_interval_s is None and capture is not None:
+        lease_renew_interval_s = ring_profile.gesture_lease_renewal_interval(
+            capture.device.firmware)
+    if lease_renew_interval_s is not None:
+        if not 0 < lease_renew_interval_s < 10.0:
+            raise ValueError("lease renewal interval must be between zero and ten seconds")
+        if param != protocol.RAW_ENABLE_ALL:
+            raise ValueError("gesture lease renewal is only defined for A1 04")
+        if capture is not None:
+            capture.notes["gesture_lease_renewal_s"] = lease_renew_interval_s
+
     records: list[tuple[float, bytes]] = capture.records if capture else []
     t0 = time.perf_counter()
     if capture is not None:
@@ -321,7 +341,19 @@ async def stream(
                 await asyncio.sleep(0.15)
             except Exception as exc:  # noqa: BLE001 - the start below still has to be attempted
                 logger.warning("error sending pre-start stop %s: %s", packet[:2].hex(), exc)
+        if motion_hold:
+            # A previous disconnect may have left the volatile RT12 hold set.
+            # Clear it only after the raw STOP pair, matching app recovery.
+            try:
+                await client.write_gatt_char(protocol.UART_RX_CHAR_UUID,
+                                             protocol.MOTION_HOLD_DISABLE, response=False)
+                await asyncio.sleep(0.15)
+            except Exception as exc:  # the guarded start below still gets one attempt
+                logger.warning("error clearing pre-start motion hold: %s", exc)
         await client.write_gatt_char(protocol.UART_RX_CHAR_UUID, protocol.raw_sensor_packet(param), response=False)
+        if motion_hold:
+            await client.write_gatt_char(protocol.UART_RX_CHAR_UUID,
+                                         protocol.MOTION_HOLD_ENABLE, response=False)
 
         if disable_logging:
             # Preserve the historical post-start ordering. These settings only
@@ -342,10 +374,36 @@ async def stream(
                 await client.write_gatt_char(protocol.UART_RX_CHAR_UUID, packet, response=False)
 
         flush_task = asyncio.create_task(flusher()) if handle else None
-        if stop is not None:
-            await stop.wait()
+        if lease_renew_interval_s is None:
+            if stop is not None:
+                await stop.wait()
+            else:
+                await asyncio.sleep(duration)
         else:
-            await asyncio.sleep(duration)
+            # Keep the write in this task so a failed renewal aborts the
+            # capture immediately and enters the audited STOP cleanup.  A
+            # detached renewal task could fail silently while prompts continue
+            # against a dead stream—the exact failure this protects against.
+            deadline = None if stop is not None else time.perf_counter() + duration
+            while True:
+                if stop is not None:
+                    try:
+                        await asyncio.wait_for(stop.wait(), timeout=lease_renew_interval_s)
+                        break
+                    except asyncio.TimeoutError:
+                        pass
+                else:
+                    remaining = deadline - time.perf_counter()
+                    if remaining <= 0:
+                        break
+                    await asyncio.sleep(min(lease_renew_interval_s, remaining))
+                    if time.perf_counter() >= deadline:
+                        break
+                await client.write_gatt_char(
+                    protocol.UART_RX_CHAR_UUID,
+                    protocol.raw_sensor_packet(param),
+                    response=False,
+                )
     finally:
         if flush_task:
             flush_task.cancel()
@@ -364,6 +422,12 @@ async def stream(
                     await asyncio.sleep(0.15)
                 except Exception as exc:  # noqa: BLE001 - attempt every remaining cleanup step
                     logger.warning("error sending stream stop %s: %s", packet[:2].hex(), exc)
+            if motion_hold:
+                try:
+                    await client.write_gatt_char(protocol.UART_RX_CHAR_UUID,
+                                                 protocol.MOTION_HOLD_DISABLE, response=False)
+                except Exception as exc:  # cleanup is best-effort, but always attempted last
+                    logger.warning("error releasing motion hold: %s", exc)
         try:
             await client.stop_notify(protocol.UART_TX_CHAR_UUID)
         except Exception as exc:  # noqa: BLE001 - we still want the data we captured

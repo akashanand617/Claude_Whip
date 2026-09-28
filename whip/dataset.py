@@ -18,7 +18,7 @@ from pathlib import Path
 
 import numpy as np
 
-from whip import accel, capture, despike, protocol, session
+from whip import accel, capture, despike, protocol, ring_profile, session
 from whip.registry import DIRECTIONS, NONE_LABEL, Registry, class_name, load_registry
 
 SAMPLE_RATE_HZ = 25.0
@@ -87,12 +87,13 @@ class Window:
 
 
 def _decode_stream(path: Path) -> tuple[list[float], list[accel.AccelSample]]:
-    _, records = capture.load_capture(path)
+    header, records = capture.load_capture(path)
+    adapter = ring_profile.adapter_for_capture_header(header)
     acc = [
         (t, p) for t, p in records
         if len(p) >= 8 and p[0] == protocol.CMD_RAW_SENSOR and p[1] == protocol.SUBTYPE_ACCEL
     ]
-    return [t for t, _ in acc], [accel.decode(p) for _, p in acc]
+    return [t for t, _ in acc], [adapter.model_sample(accel.decode(p)) for _, p in acc]
 
 
 def _coverage(win_start: float, win_end: float, ges_start: float, ges_end: float) -> float:

@@ -53,12 +53,15 @@ def sink(tmp_path, monkeypatch):
     return path, handles
 
 
-def assert_cleaned_up(client, sink, *, raw_started=True):
+def assert_cleaned_up(client, sink, *, raw_started=True, motion_hold=False,
+                      expected_records=1):
     path, handles = sink
     if raw_started:
-        assert client.writes[-2:] == list(protocol.STOP_RAW_SENSOR_PACKETS)
+        tail = [*protocol.STOP_RAW_SENSOR_PACKETS,
+                *([protocol.MOTION_HOLD_DISABLE] if motion_hold else [])]
+        assert client.writes[-len(tail):] == tail
         _, records = capture.load_capture(path)
-        assert len(records) == 1
+        assert len(records) == expected_records
     else:
         assert client.writes == []
     assert client.notify_stopped
@@ -89,6 +92,53 @@ def test_normal_stop_flushes_closes_and_joins_flusher(sink, monkeypatch):
     assert client.writes[: len(stops)] == stops
     assert client.writes[len(stops)] == protocol.ENABLE_RAW_SENSOR
     assert_cleaned_up(client, sink)
+
+
+def test_rt12_motion_hold_is_bounded_by_raw_start_and_complete_cleanup(sink):
+    client = FakeClient()
+    asyncio.run(capture.stream(client, 0, sink=sink[0], motion_hold=True))
+    writes = client.writes
+    start = writes.index(protocol.ENABLE_RAW_SENSOR)
+    assert writes[start + 1] == protocol.MOTION_HOLD_ENABLE
+    assert writes[:start] == [*protocol.STOP_RAW_SENSOR_PACKETS,
+                             protocol.MOTION_HOLD_DISABLE]
+    assert_cleaned_up(client, sink, motion_hold=True)
+
+
+def test_exact_v6_capture_renews_a1_04_before_lease_expiry(sink):
+    client = FakeClient()
+    rec = capture.Capture(
+        device=capture.DeviceInfo("test", "COLMI R02_DE07",
+                                  firmware="RT12COL_1.00.06_260927",
+                                  hardware="RT12COL_V1.0"),
+        started_wall=0.0, param=protocol.RAW_ENABLE_ALL, label="renewal-test",
+    )
+    asyncio.run(capture.stream(client, 0.025, sink=sink[0], capture=rec,
+                               lease_renew_interval_s=0.01))
+    assert client.writes.count(protocol.ENABLE_RAW_SENSOR) == 3
+    assert rec.notes["gesture_lease_renewal_s"] == 0.01
+    assert_cleaned_up(client, sink, expected_records=3)
+
+
+def test_non_lease_firmware_does_not_repeat_a1_04(sink):
+    client = FakeClient()
+    rec = capture.Capture(
+        device=capture.DeviceInfo("test", "COLMI R02_CC07",
+                                  firmware="RT02CR_3.12.07_260514",
+                                  hardware="RT02CR_V3.1"),
+        started_wall=0.0, param=protocol.RAW_ENABLE_ALL, label="no-renewal-test",
+    )
+    asyncio.run(capture.stream(client, 0, sink=sink[0], capture=rec))
+    assert client.writes.count(protocol.ENABLE_RAW_SENSOR) == 1
+    assert "gesture_lease_renewal_s" not in rec.notes
+    assert_cleaned_up(client, sink)
+
+
+def test_rt12_hold_enable_failure_still_runs_both_stops_and_hold_release(sink):
+    client = FakeClient(fail_on=b"\x3b\x02")
+    with pytest.raises(RuntimeError, match="injected write failure"):
+        asyncio.run(capture.stream(client, 0, sink=sink[0], motion_hold=True))
+    assert_cleaned_up(client, sink, motion_hold=True)
 
 
 @pytest.mark.parametrize("fail_on, options", [
@@ -150,3 +200,19 @@ def test_a_failed_pre_start_stop_does_not_abort_the_session(sink):
     assert len(records) == 1
     assert protocol.ENABLE_RAW_SENSOR in client.writes
     assert_cleaned_up(client, sink)
+
+
+def test_valid_battery_reply_survives_corebluetooth_stop_notify_error():
+    class StopNotifyFails(FakeClient):
+        async def write_gatt_char(self, uuid, packet, response=False):
+            await super().write_gatt_char(uuid, packet, response)
+            if bytes(packet) == protocol.BATTERY_PACKET:
+                self.callback(None, bytearray([protocol.CMD_BATTERY, 87, 0]))
+
+        async def stop_notify(self, _uuid):
+            self.notify_stopped = True
+            raise RuntimeError("CBErrorUnknown")
+
+    client = StopNotifyFails()
+    assert asyncio.run(capture.read_battery(client)) == (87, False)
+    assert client.notify_stopped

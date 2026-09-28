@@ -1,777 +1,776 @@
-ª
+¶
 
 samples*	
-2 €R
+	2 €R
 probabilities
 *
- €¢ñ¢4
-#com.github.apple.coremltools.sourcetorch==2.11.0¢+
-$com.github.apple.coremltools.version9.0¢¶
-contract©{"channels": ["shape", "scale", "saturation", "room"], "checkpoint_sha256": "77ed774f03ce3eaddbb8ac29ac8dfc1be32fdd7bef997b56c54157891aff26d5", "conversion": "float32 CPU only", "coremltools_version": "9.0", "despike": false, "frame": "identity", "labels": ["none", "flick_up", "flick_down", "flick_left", "flick_right", "double_flick_up", "double_flick_down", "double_flick_left", "double_flick_right", "snap", "double_clap", "wave"], "max_probability_error": 2.384185791015625e-06, "replay_sha256": "c4b6454c9816c74925f1c9973e015e8b7b8861a25c3742a217178edf89cb8c11", "stride_samples": 6, "threshold": 0.5, "torch_version": "2.11.0", "window_samples": 50, "windows_checked": 1048}¢:
-+com.github.apple.coremltools.source_dialectTorchScript¢U
-checkpoint_sha256@77ed774f03ce3eaddbb8ac29ac8dfc1be32fdd7bef997b56c54157891aff26d5¢:
+ €¢ý¢:
 ,com.github.apple.coremltools.conversion_date
-2026-09-22²‹îœì
+2026-09-27¢:
++com.github.apple.coremltools.source_dialectTorchScript¢Â
+contractµ{"channels": ["shape", "scale", "saturation", "room", "impulse"], "checkpoint_sha256": "1158a0b6c0aaaccbc90ca6352791481aa3a734cc1ac4c75e959ad8588c56d6c7", "conversion": "float32 CPU only", "coremltools_version": "9.0", "despike": false, "frame": "identity", "labels": ["none", "flick_up", "flick_down", "flick_left", "flick_right", "double_flick_up", "double_flick_down", "double_flick_left", "double_flick_right", "snap", "double_clap", "wave"], "max_probability_error": 1.6689300537109375e-06, "replay_sha256": "c4b6454c9816c74925f1c9973e015e8b7b8861a25c3742a217178edf89cb8c11", "stride_samples": 6, "threshold": 0.5, "torch_version": "2.11.0", "window_samples": 50, "windows_checked": 1048}¢+
+$com.github.apple.coremltools.version9.0¢4
+#com.github.apple.coremltools.sourcetorch==2.11.0¢U
+checkpoint_sha256@1158a0b6c0aaaccbc90ca6352791481aa3a734cc1ac4c75e959ad8588c56d6c7²‹îœì
 main’ì
 #
 samples
 
 
-
+	
 2CoreML7àë
 CoreML7Óëprobabilities¨
 const.
 model_blocks_0_bottleneck_bias
 
 
- *4
-name,
-$
-"" 
-model_blocks_0_bottleneck_bias*9
+ *9
 val2
 
 
  *"
-@model_path/weights/weight.bin@Å
+@model_path/weights/weight.bin@*4
+name,
+$
+"" 
+model_blocks_0_bottleneck_biasÅ
 const<
  model_blocks_0_bottleneck_weight
 
  
-
-*6
-name.
-&
-$""
- model_blocks_0_bottleneck_weight*F
+	
+*F
 val?
 
  
-
+	
 *#
-@model_path/weights/weight.bin€©
+@model_path/weights/weight.bin€*6
+name.
+&
+$""
+ model_blocks_0_bottleneck_weight©
 const.
 model_blocks_0_branches_0_bias
 
 
- *4
-name,
-$
-"" 
-model_blocks_0_branches_0_bias*:
+ *:
 val3
 
 
  *#
-@model_path/weights/weight.binÀ
-Å
+@model_path/weights/weight.binÀ*4
+name,
+$
+"" 
+model_blocks_0_branches_0_biasÅ
 const<
  model_blocks_0_branches_0_weight
 
  
  
-	*6
-name.
-&
-$""
- model_blocks_0_branches_0_weight*F
+	*F
 val?
 
  
  
 	*#
-@model_path/weights/weight.bin€ª
+@model_path/weights/weight.bin€*6
+name.
+&
+$""
+ model_blocks_0_branches_0_weightª
 const.
 model_blocks_0_branches_1_bias
 
 
- *4
-name,
-$
-"" 
-model_blocks_0_branches_1_bias*;
+ *;
 val4
 
 
  *$
-@model_path/weights/weight.binÀ¬Æ
+@model_path/weights/weight.binÀ­*4
+name,
+$
+"" 
+model_blocks_0_branches_1_biasÆ
 const<
  model_blocks_0_branches_1_weight
 
  
  
-*6
-name.
-&
-$""
- model_blocks_0_branches_1_weight*G
+*G
 val@
 
  
  
 *$
-@model_path/weights/weight.bin€®ª
+@model_path/weights/weight.bin€¯*6
+name.
+&
+$""
+ model_blocks_0_branches_1_weightª
 const.
 model_blocks_0_branches_2_bias
 
 
- *4
-name,
-$
-"" 
-model_blocks_0_branches_2_bias*;
+ *;
 val4
 
 
  *$
-@model_path/weights/weight.binÀŽÆ
+@model_path/weights/weight.binÀ*4
+name,
+$
+"" 
+model_blocks_0_branches_2_biasÆ
 const<
  model_blocks_0_branches_2_weight
 
  
  
-'*6
-name.
-&
-$""
- model_blocks_0_branches_2_weight*G
+'*G
 val@
 
  
  
 '*$
-@model_path/weights/weight.bin€°
+@model_path/weights/weight.bin€‘*6
+name.
+&
+$""
+ model_blocks_0_branches_2_weight°
 const1
 !model_blocks_0_pool_branch_1_bias
 
 
- *7
-name/
-'
-%"#
-!model_blocks_0_pool_branch_1_bias*;
+ *;
 val4
 
 
  *$
-@model_path/weights/weight.binÀðÌ
+@model_path/weights/weight.binÀñ*7
+name/
+'
+%"#
+!model_blocks_0_pool_branch_1_biasÌ
 const?
 #model_blocks_0_pool_branch_1_weight
 
  
-
-*9
-name1
-)
-'"%
-#model_blocks_0_pool_branch_1_weight*G
+	
+*G
 val@
 
  
-
+	
 *$
-@model_path/weights/weight.bin€ò®
+@model_path/weights/weight.bin€ó*9
+name1
+)
+'"%
+#model_blocks_0_pool_branch_1_weight®
 const0
 model_blocks_0_norm_running_var
 
-€*5
+€*<
+val5
+
+€*$
+@model_path/weights/weight.binÀü*5
 name-
 %
 #"!
-model_blocks_0_norm_running_var*<
-val5
-
-€*$
-@model_path/weights/weight.binÀú°
+model_blocks_0_norm_running_var°
 const1
  model_blocks_0_norm_running_mean
 
-€*6
+€*<
+val5
+
+€*$
+@model_path/weights/weight.bin€*6
 name.
 &
 $""
- model_blocks_0_norm_running_mean*<
-val5
-
-€*$
-@model_path/weights/weight.bin€ÿ 
+ model_blocks_0_norm_running_mean 
 const)
 model_blocks_0_norm_bias
 
-€*.
+€*<
+val5
+
+€*$
+@model_path/weights/weight.binÀ…*.
 name&
 
 "
-model_blocks_0_norm_bias*<
-val5
-
-€*$
-@model_path/weights/weight.binÀƒ¤
+model_blocks_0_norm_bias¤
 const+
 model_blocks_0_norm_weight
 
-€*0
-name(
- 
-"
-model_blocks_0_norm_weight*<
+€*<
 val5
 
 €*$
-@model_path/weights/weight.bin€ˆª
+@model_path/weights/weight.bin€Š*0
+name(
+ 
+"
+model_blocks_0_norm_weightª
 const.
 model_blocks_1_bottleneck_bias
 
 
- *4
-name,
-$
-"" 
-model_blocks_1_bottleneck_bias*;
+ *;
 val4
 
 
  *$
-@model_path/weights/weight.binÀŒÈ
+@model_path/weights/weight.binÀŽ*4
+name,
+$
+"" 
+model_blocks_1_bottleneck_biasÈ
 const=
  model_blocks_1_bottleneck_weight
 
  
 €
-*6
-name.
-&
-$""
- model_blocks_1_bottleneck_weight*H
+*H
 valA
 
  
 €
 *$
-@model_path/weights/weight.bin€Žª
+@model_path/weights/weight.bin€*6
+name.
+&
+$""
+ model_blocks_1_bottleneck_weightª
 const.
 model_blocks_1_branches_0_bias
 
 
- *4
-name,
-$
-"" 
-model_blocks_1_branches_0_bias*;
+ *;
 val4
 
 
  *$
-@model_path/weights/weight.binÀŽÆ
+@model_path/weights/weight.binÀ*4
+name,
+$
+"" 
+model_blocks_1_branches_0_biasÆ
 const<
  model_blocks_1_branches_0_weight
 
  
  
-	*6
-name.
-&
-$""
- model_blocks_1_branches_0_weight*G
+	*G
 val@
 
  
  
 	*$
-@model_path/weights/weight.bin€ª
+@model_path/weights/weight.bin€’*6
+name.
+&
+$""
+ model_blocks_1_branches_0_weightª
 const.
 model_blocks_1_branches_1_bias
 
 
- *4
-name,
-$
-"" 
-model_blocks_1_branches_1_bias*;
+ *;
 val4
 
 
  *$
-@model_path/weights/weight.binÀ°Æ
+@model_path/weights/weight.binÀ²*4
+name,
+$
+"" 
+model_blocks_1_branches_1_biasÆ
 const<
  model_blocks_1_branches_1_weight
 
  
  
-*6
-name.
-&
-$""
- model_blocks_1_branches_1_weight*G
+*G
 val@
 
  
  
 *$
-@model_path/weights/weight.bin€²ª
+@model_path/weights/weight.bin€´*6
+name.
+&
+$""
+ model_blocks_1_branches_1_weightª
 const.
 model_blocks_1_branches_2_bias
 
 
- *4
-name,
-$
-"" 
-model_blocks_1_branches_2_bias*;
+ *;
 val4
 
 
  *$
-@model_path/weights/weight.binÀ’Æ
+@model_path/weights/weight.binÀ”*4
+name,
+$
+"" 
+model_blocks_1_branches_2_biasÆ
 const<
  model_blocks_1_branches_2_weight
 
  
  
-'*6
-name.
-&
-$""
- model_blocks_1_branches_2_weight*G
+'*G
 val@
 
  
  
 '*$
-@model_path/weights/weight.bin€”°
+@model_path/weights/weight.bin€–*6
+name.
+&
+$""
+ model_blocks_1_branches_2_weight°
 const1
 !model_blocks_1_pool_branch_1_bias
 
 
- *7
-name/
-'
-%"#
-!model_blocks_1_pool_branch_1_bias*;
+ *;
 val4
 
 
  *$
-@model_path/weights/weight.binÀô"Î
+@model_path/weights/weight.binÀö"*7
+name/
+'
+%"#
+!model_blocks_1_pool_branch_1_biasÎ
 const@
 #model_blocks_1_pool_branch_1_weight
 
  
 €
-*9
-name1
-)
-'"%
-#model_blocks_1_pool_branch_1_weight*H
+*H
 valA
 
  
 €
 *$
-@model_path/weights/weight.bin€ö"®
+@model_path/weights/weight.bin€ø"*9
+name1
+)
+'"%
+#model_blocks_1_pool_branch_1_weight®
 const0
 model_blocks_1_norm_running_var
 
-€*5
+€*<
+val5
+
+€*$
+@model_path/weights/weight.binÀø#*5
 name-
 %
 #"!
-model_blocks_1_norm_running_var*<
-val5
-
-€*$
-@model_path/weights/weight.binÀö#°
+model_blocks_1_norm_running_var°
 const1
  model_blocks_1_norm_running_mean
 
-€*6
+€*<
+val5
+
+€*$
+@model_path/weights/weight.bin€ý#*6
 name.
 &
 $""
- model_blocks_1_norm_running_mean*<
-val5
-
-€*$
-@model_path/weights/weight.bin€û# 
+ model_blocks_1_norm_running_mean 
 const)
 model_blocks_1_norm_bias
 
-€*.
+€*<
+val5
+
+€*$
+@model_path/weights/weight.binÀ$*.
 name&
 
 "
-model_blocks_1_norm_bias*<
-val5
-
-€*$
-@model_path/weights/weight.binÀÿ#¤
+model_blocks_1_norm_bias¤
 const+
 model_blocks_1_norm_weight
 
-€*0
-name(
- 
-"
-model_blocks_1_norm_weight*<
+€*<
 val5
 
 €*$
-@model_path/weights/weight.bin€„$ª
+@model_path/weights/weight.bin€†$*0
+name(
+ 
+"
+model_blocks_1_norm_weightª
 const.
 model_blocks_2_bottleneck_bias
 
 
- *4
-name,
-$
-"" 
-model_blocks_2_bottleneck_bias*;
+ *;
 val4
 
 
  *$
-@model_path/weights/weight.binÀˆ$È
+@model_path/weights/weight.binÀŠ$*4
+name,
+$
+"" 
+model_blocks_2_bottleneck_biasÈ
 const=
  model_blocks_2_bottleneck_weight
 
  
 €
-*6
-name.
-&
-$""
- model_blocks_2_bottleneck_weight*H
+*H
 valA
 
  
 €
 *$
-@model_path/weights/weight.bin€Š$ª
+@model_path/weights/weight.bin€Œ$*6
+name.
+&
+$""
+ model_blocks_2_bottleneck_weightª
 const.
 model_blocks_2_branches_0_bias
 
 
- *4
-name,
-$
-"" 
-model_blocks_2_branches_0_bias*;
+ *;
 val4
 
 
  *$
-@model_path/weights/weight.binÀŠ%Æ
+@model_path/weights/weight.binÀŒ%*4
+name,
+$
+"" 
+model_blocks_2_branches_0_biasÆ
 const<
  model_blocks_2_branches_0_weight
 
  
  
-	*6
-name.
-&
-$""
- model_blocks_2_branches_0_weight*G
+	*G
 val@
 
  
  
 	*$
-@model_path/weights/weight.bin€Œ%ª
+@model_path/weights/weight.bin€Ž%*6
+name.
+&
+$""
+ model_blocks_2_branches_0_weightª
 const.
 model_blocks_2_branches_1_bias
 
 
- *4
-name,
-$
-"" 
-model_blocks_2_branches_1_bias*;
+ *;
 val4
 
 
  *$
-@model_path/weights/weight.binÀ¬'Æ
+@model_path/weights/weight.binÀ®'*4
+name,
+$
+"" 
+model_blocks_2_branches_1_biasÆ
 const<
  model_blocks_2_branches_1_weight
 
  
  
-*6
-name.
-&
-$""
- model_blocks_2_branches_1_weight*G
+*G
 val@
 
  
  
 *$
-@model_path/weights/weight.bin€®'ª
+@model_path/weights/weight.bin€°'*6
+name.
+&
+$""
+ model_blocks_2_branches_1_weightª
 const.
 model_blocks_2_branches_2_bias
 
 
- *4
-name,
-$
-"" 
-model_blocks_2_branches_2_bias*;
+ *;
 val4
 
 
  *$
-@model_path/weights/weight.binÀŽ,Æ
+@model_path/weights/weight.binÀ,*4
+name,
+$
+"" 
+model_blocks_2_branches_2_biasÆ
 const<
  model_blocks_2_branches_2_weight
 
  
  
-'*6
-name.
-&
-$""
- model_blocks_2_branches_2_weight*G
+'*G
 val@
 
  
  
 '*$
-@model_path/weights/weight.bin€,°
+@model_path/weights/weight.bin€’,*6
+name.
+&
+$""
+ model_blocks_2_branches_2_weight°
 const1
 !model_blocks_2_pool_branch_1_bias
 
 
- *7
-name/
-'
-%"#
-!model_blocks_2_pool_branch_1_bias*;
+ *;
 val4
 
 
  *$
-@model_path/weights/weight.binÀð5Î
+@model_path/weights/weight.binÀò5*7
+name/
+'
+%"#
+!model_blocks_2_pool_branch_1_biasÎ
 const@
 #model_blocks_2_pool_branch_1_weight
 
  
 €
-*9
-name1
-)
-'"%
-#model_blocks_2_pool_branch_1_weight*H
+*H
 valA
 
  
 €
 *$
-@model_path/weights/weight.bin€ò5®
+@model_path/weights/weight.bin€ô5*9
+name1
+)
+'"%
+#model_blocks_2_pool_branch_1_weight®
 const0
 model_blocks_2_norm_running_var
 
-€*5
+€*<
+val5
+
+€*$
+@model_path/weights/weight.binÀô6*5
 name-
 %
 #"!
-model_blocks_2_norm_running_var*<
-val5
-
-€*$
-@model_path/weights/weight.binÀò6°
+model_blocks_2_norm_running_var°
 const1
  model_blocks_2_norm_running_mean
 
-€*6
+€*<
+val5
+
+€*$
+@model_path/weights/weight.bin€ù6*6
 name.
 &
 $""
- model_blocks_2_norm_running_mean*<
-val5
-
-€*$
-@model_path/weights/weight.bin€÷6 
+ model_blocks_2_norm_running_mean 
 const)
 model_blocks_2_norm_bias
 
-€*.
+€*<
+val5
+
+€*$
+@model_path/weights/weight.binÀý6*.
 name&
 
 "
-model_blocks_2_norm_bias*<
-val5
-
-€*$
-@model_path/weights/weight.binÀû6¤
+model_blocks_2_norm_bias¤
 const+
 model_blocks_2_norm_weight
 
-€*0
-name(
- 
-"
-model_blocks_2_norm_weight*<
+€*<
 val5
 
 €*$
-@model_path/weights/weight.bin€€7Œ
+@model_path/weights/weight.bin€‚7*0
+name(
+ 
+"
+model_blocks_2_norm_weightŒ
 const
 model_head_bias
 
 
-*%
-name
-
-"
-model_head_bias*;
+*;
 val4
 
 
 *$
-@model_path/weights/weight.binÀ„7ž
+@model_path/weights/weight.binÀ†7*%
+name
+
+"
+model_head_biasž
 const(
 model_head_weight
 
 
-€*'
-name
-
-"
-model_head_weight*B
+€*B
 val;
 
 
 €*$
-@model_path/weights/weight.binÀ…7J
+@model_path/weights/weight.binÀ‡7*'
+name
+
+"
+model_head_weightJ
 const
 var_7
-*
-name
-
-
-"
-op_7*
+*
 val
 
 
- J
-const
-var_9
-*
+ *
 name
 
 
 "
-op_9*
+op_7J
+const
+var_9
+*
 val
 
 
-O
+*
+name
+
+
+"
+op_9O
 const
 var_14
-*
-name
-
-	"
-op_14*
+*
 val
 
 
 
 
-¬Å'7i
+¬Å'7*
+name
+
+	"
+op_14i
 const
 input_1_pad_type_0
-*(
-name 
-
-"
-input_1_pad_type_0*
+*
 val
 
 	"
-valids
+valid*(
+name 
+
+"
+input_1_pad_type_0s
 const!
 input_1_strides_0
 
 
-*'
-name
-
-"
-input_1_strides_0*
+*
 val
 
 
 
 
-l
+*'
+name
+
+"
+input_1_strides_0l
 const
 input_1_pad_0
 
 
-*#
-name
-
-"
-input_1_pad_0*
+*
 val
 
 
 
 
-  w
+  *#
+name
+
+"
+input_1_pad_0w
 const#
 input_1_dilations_0
 
 
-*)
-name!
-
-"
-input_1_dilations_0*
+*
 val
 
 
 
 
-a
+*)
+name!
+
+"
+input_1_dilations_0a
 const
 input_1_groups_0
-*&
-name
-
-"
-input_1_groups_0*
+*
 val
 
 
-Þ
-conv.
-weight$
-"
- model_blocks_0_bottleneck_weight$
-	dilations
-
-input_1_dilations_0
-groups
-
-input_1_groups_0
+*&
+name
+
+"
+input_1_groups_0Þ
+conv
 pad
 
-input_1_pad_0*
-bias"
- 
-model_blocks_0_bottleneck_bias 
-strides
-
-input_1_strides_0
-x
-	
-samples"
+input_1_pad_0$
+	dilations
+
+input_1_dilations_0"
 pad_type
 
-input_1_pad_type_0#
+input_1_pad_type_0
+groups
+
+input_1_groups_0*
+bias"
+ 
+model_blocks_0_bottleneck_bias
+x
+	
+samples 
+strides
+
+input_1_strides_0.
+weight$
+"
+ model_blocks_0_bottleneck_weight#
 input_1
 
 
@@ -783,97 +782,97 @@ $""
 input_1g
 const
 var_46_pad_type_0
-*&
-name
-
-"
-op_46_pad_type_0*
+*
 val
 
 
 "
-customi
+custom*&
+name
+
+"
+op_46_pad_type_0i
 const
 var_46_pad_0
 
 
-*!
-name
-
-"
-op_46_pad_0*
+*
 val
 
 
 
 
-p
+*!
+name
+
+"
+op_46_pad_0p
 const 
 var_46_strides_0
 
 
-*%
-name
-
-"
-op_46_strides_0*
+*
 val
 
 
 
 
-t
+*%
+name
+
+"
+op_46_strides_0t
 const"
 var_46_dilations_0
 
 
-*'
-name
-
-"
-op_46_dilations_0*
+*
 val
 
 
 
 
-^
+*'
+name
+
+"
+op_46_dilations_0^
 const
 var_46_groups_0
-*$
-name
-
-"
-op_46_groups_0*
+*
 val
 
 
-Ö
-conv.
-weight$
-"
- model_blocks_0_branches_0_weight#
-	dilations
-
-var_46_dilations_0
-groups
-
-var_46_groups_0
+*$
+name
+
+"
+op_46_groups_0Ö
+conv
 pad
 
-var_46_pad_0*
-bias"
- 
-model_blocks_0_branches_0_bias
-strides
-
-var_46_strides_0
-x
-	
-input_1!
+var_46_pad_0#
+	dilations
+
+var_46_dilations_0!
 pad_type
 
-var_46_pad_type_0"
+var_46_pad_type_0
+groups
+
+var_46_groups_0*
+bias"
+ 
+model_blocks_0_branches_0_bias
+x
+	
+input_1
+strides
+
+var_46_strides_0.
+weight$
+"
+ model_blocks_0_branches_0_weight"
 var_46
 
 
@@ -885,97 +884,97 @@ $""
 op_46g
 const
 var_53_pad_type_0
-*&
-name
-
-"
-op_53_pad_type_0*
+*
 val
 
 
 "
-customi
+custom*&
+name
+
+"
+op_53_pad_type_0i
 const
 var_53_pad_0
 
 
-*!
-name
-
-"
-op_53_pad_0*
+*
 val
 
 
 
 
-		p
+		*!
+name
+
+"
+op_53_pad_0p
 const 
 var_53_strides_0
 
 
-*%
-name
-
-"
-op_53_strides_0*
+*
 val
 
 
 
 
-t
+*%
+name
+
+"
+op_53_strides_0t
 const"
 var_53_dilations_0
 
 
-*'
-name
-
-"
-op_53_dilations_0*
+*
 val
 
 
 
 
-^
+*'
+name
+
+"
+op_53_dilations_0^
 const
 var_53_groups_0
-*$
-name
-
-"
-op_53_groups_0*
+*
 val
 
 
-Ö
-conv.
-weight$
-"
- model_blocks_0_branches_1_weight#
-	dilations
-
-var_53_dilations_0
-groups
-
-var_53_groups_0
+*$
+name
+
+"
+op_53_groups_0Ö
+conv
 pad
 
-var_53_pad_0*
-bias"
- 
-model_blocks_0_branches_1_bias
-strides
-
-var_53_strides_0
-x
-	
-input_1!
+var_53_pad_0#
+	dilations
+
+var_53_dilations_0!
 pad_type
 
-var_53_pad_type_0"
+var_53_pad_type_0
+groups
+
+var_53_groups_0*
+bias"
+ 
+model_blocks_0_branches_1_bias
+x
+	
+input_1
+strides
+
+var_53_strides_0.
+weight$
+"
+ model_blocks_0_branches_1_weight"
 var_53
 
 
@@ -987,97 +986,97 @@ $""
 op_53g
 const
 var_60_pad_type_0
-*&
-name
-
-"
-op_60_pad_type_0*
+*
 val
 
 
 "
-customi
+custom*&
+name
+
+"
+op_60_pad_type_0i
 const
 var_60_pad_0
 
 
-*!
-name
-
-"
-op_60_pad_0*
+*
 val
 
 
 
 
-p
+*!
+name
+
+"
+op_60_pad_0p
 const 
 var_60_strides_0
 
 
-*%
-name
-
-"
-op_60_strides_0*
+*
 val
 
 
 
 
-t
+*%
+name
+
+"
+op_60_strides_0t
 const"
 var_60_dilations_0
 
 
-*'
-name
-
-"
-op_60_dilations_0*
+*
 val
 
 
 
 
-^
+*'
+name
+
+"
+op_60_dilations_0^
 const
 var_60_groups_0
-*$
-name
-
-"
-op_60_groups_0*
+*
 val
 
 
-Ö
-conv.
-weight$
-"
- model_blocks_0_branches_2_weight#
-	dilations
-
-var_60_dilations_0
-groups
-
-var_60_groups_0
+*$
+name
+
+"
+op_60_groups_0Ö
+conv
 pad
 
-var_60_pad_0*
-bias"
- 
-model_blocks_0_branches_2_bias
-strides
-
-var_60_strides_0
-x
-	
-input_1!
+var_60_pad_0#
+	dilations
+
+var_60_dilations_0!
 pad_type
 
-var_60_pad_type_0"
+var_60_pad_type_0
+groups
+
+var_60_groups_0*
+bias"
+ 
+model_blocks_0_branches_2_bias
+x
+	
+input_1
+strides
+
+var_60_strides_0.
+weight$
+"
+ model_blocks_0_branches_2_weight"
 var_60
 
 
@@ -1091,71 +1090,77 @@ $""
 var_62
 
 
-*
-name
-
-	"
-op_62*
+*
 val
 
 
 
 
-\
+*
+name
+
+	"
+op_62\
 const
 var_63
 
 
-*
-name
-
-	"
-op_63*
+*
 val
 
 
 
 
-j
+*
+name
+
+	"
+op_63j
 const
 input_3_pad_type_0
-*(
-name 
-
-"
-input_3_pad_type_0*
+*
 val
 
 
 "
-customl
+custom*(
+name 
+
+"
+input_3_pad_type_0l
 const
 input_3_pad_0
 
 
-*#
-name
-
-"
-input_3_pad_0*
+*
 val
 
 
 
 
-g
+*#
+name
+
+"
+input_3_pad_0g
 const
 input_3_ceil_mode_0
-*)
-name!
-
-"
-input_3_ceil_mode_0*
+*
 val
 
 
- ÷
-max_pool
+ *)
+name!
+
+"
+input_3_ceil_mode_0÷
+max_pool
+pad
+
+input_3_pad_0
+x
+	
+samples
 strides
 
 
@@ -1169,17 +1174,11 @@ $""
 var_62$
 	ceil_mode
 
-input_3_ceil_mode_0
-pad
-
-input_3_pad_0
-x
-	
-samples#
+input_3_ceil_mode_0#
 input_3
 
 
-
+	
 2*
 name
 
@@ -1187,96 +1186,96 @@ $""
 input_3f
 const
 var_73_pad_type_0
-*&
-name
-
-"
-op_73_pad_type_0*
+*
 val
 
 	"
-validp
+valid*&
+name
+
+"
+op_73_pad_type_0p
 const 
 var_73_strides_0
 
 
-*%
-name
-
-"
-op_73_strides_0*
+*
 val
 
 
 
 
-i
+*%
+name
+
+"
+op_73_strides_0i
 const
 var_73_pad_0
 
 
-*!
-name
-
-"
-op_73_pad_0*
+*
 val
 
 
 
 
-  t
+  *!
+name
+
+"
+op_73_pad_0t
 const"
 var_73_dilations_0
 
 
-*'
-name
-
-"
-op_73_dilations_0*
+*
 val
 
 
 
 
-^
+*'
+name
+
+"
+op_73_dilations_0^
 const
 var_73_groups_0
-*$
-name
-
-"
-op_73_groups_0*
+*
 val
 
 
-Ü
-conv1
-weight'
-%
-#model_blocks_0_pool_branch_1_weight#
-	dilations
-
-var_73_dilations_0
-groups
-
-var_73_groups_0
+*$
+name
+
+"
+op_73_groups_0Ü
+conv
 pad
 
-var_73_pad_0-
-bias%
-#
-!model_blocks_0_pool_branch_1_bias
-strides
-
-var_73_strides_0
-x
-	
-input_3!
+var_73_pad_0#
+	dilations
+
+var_73_dilations_0!
 pad_type
 
-var_73_pad_type_0"
+var_73_pad_type_0
+groups
+
+var_73_groups_0-
+bias%
+#
+!model_blocks_0_pool_branch_1_bias
+x
+	
+input_3
+strides
+
+var_73_strides_01
+weight'
+%
+#model_blocks_0_pool_branch_1_weight"
 var_73
 
 
@@ -1288,15 +1287,15 @@ $""
 op_73i
 const
 input_5_interleave_0
-**
-name"
-
-"
-input_5_interleave_0*
+*
 val
 
 
- ¼
+ **
+name"
+
+"
+input_5_interleave_0¼
 concat2
 values(
 
@@ -1306,14 +1305,14 @@ $""
 
 var_60
 
-var_73&
+var_73
+axis	
+
+var_9&
 
 interleave
 
-input_5_interleave_0
-axis	
-
-var_9$
+input_5_interleave_0$
 input_5
 
 
@@ -1324,23 +1323,23 @@ interleave
 "	
 input_5¨
 
-batch_norm
-x
-	
-input_5,
-mean$
-"
- model_blocks_0_norm_running_mean'
+batch_norm'
 gamma
 
-model_blocks_0_norm_weight/
+model_blocks_0_norm_weight
+x
+	
+input_5/
 variance#
 !
 model_blocks_0_norm_running_var
 epsilon
 
 
-var_14$
+var_14,
+mean$
+"
+ model_blocks_0_norm_running_mean$
 beta
 
 model_blocks_0_norm_bias$
@@ -1368,96 +1367,96 @@ batch_norm
 input_9k
 const
 input_11_pad_type_0
-*)
-name!
-
-"
-input_11_pad_type_0*
+*
 val
 
 	"
-validu
+valid*)
+name!
+
+"
+input_11_pad_type_0u
 const"
 input_11_strides_0
 
 
-*(
-name 
-
-"
-input_11_strides_0*
+*
 val
 
 
 
 
-n
+*(
+name 
+
+"
+input_11_strides_0n
 const
 input_11_pad_0
 
 
-*$
-name
-
-"
-input_11_pad_0*
+*
 val
 
 
 
 
-  y
+  *$
+name
+
+"
+input_11_pad_0y
 const$
 input_11_dilations_0
 
 
-**
-name"
-
-"
-input_11_dilations_0*
+*
 val
 
 
 
 
-c
+**
+name"
+
+"
+input_11_dilations_0c
 const
 input_11_groups_0
-*'
-name
-
-"
-input_11_groups_0*
+*
 val
 
 
-å
-conv.
-weight$
-"
- model_blocks_1_bottleneck_weight%
-	dilations
-
-input_11_dilations_0
-groups
-
-input_11_groups_0
+*'
+name
+
+"
+input_11_groups_0å
+conv
 pad
 
-input_11_pad_0*
-bias"
- 
-model_blocks_1_bottleneck_bias!
-strides
-
-input_11_strides_0
-x
-	
-input_9#
+input_11_pad_0%
+	dilations
+
+input_11_dilations_0#
 pad_type
 
-input_11_pad_type_0$
+input_11_pad_type_0
+groups
+
+input_11_groups_0*
+bias"
+ 
+model_blocks_1_bottleneck_bias
+x
+	
+input_9!
+strides
+
+input_11_strides_0.
+weight$
+"
+ model_blocks_1_bottleneck_weight$
 input_11
 
 
@@ -1470,98 +1469,98 @@ batch_norm
 input_11i
 const
 var_104_pad_type_0
-*'
-name
-
-"
-op_104_pad_type_0*
+*
 val
 
 
 "
-customk
+custom*'
+name
+
+"
+op_104_pad_type_0k
 const
 var_104_pad_0
 
 
-*"
-name
-
-"
-op_104_pad_0*
+*
 val
 
 
 
 
-r
+*"
+name
+
+"
+op_104_pad_0r
 const!
 var_104_strides_0
 
 
-*&
-name
-
-"
-op_104_strides_0*
+*
 val
 
 
 
 
-v
+*&
+name
+
+"
+op_104_strides_0v
 const#
 var_104_dilations_0
 
 
-*(
-name 
-
-"
-op_104_dilations_0*
+*
 val
 
 
 
 
-`
+*(
+name 
+
+"
+op_104_dilations_0`
 const
 var_104_groups_0
-*%
-name
-
-"
-op_104_groups_0*
+*
 val
 
 
-Þ
-conv.
-weight$
-"
- model_blocks_1_branches_0_weight$
-	dilations
-
-var_104_dilations_0
-groups
-
-var_104_groups_0
+*%
+name
+
+"
+op_104_groups_0Þ
+conv
 pad
 
-var_104_pad_0*
+var_104_pad_0$
+	dilations
+
+var_104_dilations_0"
+pad_type
+
+var_104_pad_type_0
+groups
+
+var_104_groups_0*
 bias"
  
-model_blocks_1_branches_0_bias 
-strides
-
-var_104_strides_0
+model_blocks_1_branches_0_bias
 x
 
 
-input_11"
-pad_type
-
-var_104_pad_type_0#
+input_11 
+strides
+
+var_104_strides_0.
+weight$
+"
+ model_blocks_1_branches_0_weight#
 var_104
 
 
@@ -1574,98 +1573,98 @@ batch_norm
 op_104i
 const
 var_111_pad_type_0
-*'
-name
-
-"
-op_111_pad_type_0*
+*
 val
 
 
 "
-customk
+custom*'
+name
+
+"
+op_111_pad_type_0k
 const
 var_111_pad_0
 
 
-*"
-name
-
-"
-op_111_pad_0*
+*
 val
 
 
 
 
-		r
+		*"
+name
+
+"
+op_111_pad_0r
 const!
 var_111_strides_0
 
 
-*&
-name
-
-"
-op_111_strides_0*
+*
 val
 
 
 
 
-v
+*&
+name
+
+"
+op_111_strides_0v
 const#
 var_111_dilations_0
 
 
-*(
-name 
-
-"
-op_111_dilations_0*
+*
 val
 
 
 
 
-`
+*(
+name 
+
+"
+op_111_dilations_0`
 const
 var_111_groups_0
-*%
-name
-
-"
-op_111_groups_0*
+*
 val
 
 
-Þ
-conv.
-weight$
-"
- model_blocks_1_branches_1_weight$
-	dilations
-
-var_111_dilations_0
-groups
-
-var_111_groups_0
+*%
+name
+
+"
+op_111_groups_0Þ
+conv
 pad
 
-var_111_pad_0*
+var_111_pad_0$
+	dilations
+
+var_111_dilations_0"
+pad_type
+
+var_111_pad_type_0
+groups
+
+var_111_groups_0*
 bias"
  
-model_blocks_1_branches_1_bias 
-strides
-
-var_111_strides_0
+model_blocks_1_branches_1_bias
 x
 
 
-input_11"
-pad_type
-
-var_111_pad_type_0#
+input_11 
+strides
+
+var_111_strides_0.
+weight$
+"
+ model_blocks_1_branches_1_weight#
 var_111
 
 
@@ -1678,98 +1677,98 @@ batch_norm
 op_111i
 const
 var_118_pad_type_0
-*'
-name
-
-"
-op_118_pad_type_0*
+*
 val
 
 
 "
-customk
+custom*'
+name
+
+"
+op_118_pad_type_0k
 const
 var_118_pad_0
 
 
-*"
-name
-
-"
-op_118_pad_0*
+*
 val
 
 
 
 
-r
+*"
+name
+
+"
+op_118_pad_0r
 const!
 var_118_strides_0
 
 
-*&
-name
-
-"
-op_118_strides_0*
+*
 val
 
 
 
 
-v
+*&
+name
+
+"
+op_118_strides_0v
 const#
 var_118_dilations_0
 
 
-*(
-name 
-
-"
-op_118_dilations_0*
+*
 val
 
 
 
 
-`
+*(
+name 
+
+"
+op_118_dilations_0`
 const
 var_118_groups_0
-*%
-name
-
-"
-op_118_groups_0*
+*
 val
 
 
-Þ
-conv.
-weight$
-"
- model_blocks_1_branches_2_weight$
-	dilations
-
-var_118_dilations_0
-groups
-
-var_118_groups_0
+*%
+name
+
+"
+op_118_groups_0Þ
+conv
 pad
 
-var_118_pad_0*
+var_118_pad_0$
+	dilations
+
+var_118_dilations_0"
+pad_type
+
+var_118_pad_type_0
+groups
+
+var_118_groups_0*
 bias"
  
-model_blocks_1_branches_2_bias 
-strides
-
-var_118_strides_0
+model_blocks_1_branches_2_bias
 x
 
 
-input_11"
-pad_type
-
-var_118_pad_type_0#
+input_11 
+strides
+
+var_118_strides_0.
+weight$
+"
+ model_blocks_1_branches_2_weight#
 var_118
 
 
@@ -1784,73 +1783,79 @@ batch_norm
 var_120
 
 
-*
-name
-
-
-"
-op_120*
+*
 val
 
 
 
 
-^
+*
+name
+
+
+"
+op_120^
 const
 var_121
 
 
-*
-name
-
-
-"
-op_121*
+*
 val
 
 
 
 
-l
+*
+name
+
+
+"
+op_121l
 const
 input_13_pad_type_0
-*)
-name!
-
-"
-input_13_pad_type_0*
+*
 val
 
 
 "
-customn
+custom*)
+name!
+
+"
+input_13_pad_type_0n
 const
 input_13_pad_0
 
 
-*$
-name
-
-"
-input_13_pad_0*
+*
 val
 
 
 
 
-i
+*$
+name
+
+"
+input_13_pad_0i
 const
 input_13_ceil_mode_0
-**
-name"
-
-"
-input_13_ceil_mode_0*
+*
 val
 
 
- ÿ
-max_pool
+ **
+name"
+
+"
+input_13_ceil_mode_0ÿ
+max_pool
+pad
+
+input_13_pad_0
+x
+	
+input_9
 strides
 	
 var_121#
@@ -1862,13 +1867,7 @@ batch_norm
 var_120%
 	ceil_mode
 
-input_13_ceil_mode_0
-pad
-
-input_13_pad_0
-x
-	
-input_9%
+input_13_ceil_mode_0%
 input_13
 
 
@@ -1881,97 +1880,97 @@ batch_norm
 input_13h
 const
 var_131_pad_type_0
-*'
-name
-
-"
-op_131_pad_type_0*
+*
 val
 
 	"
-validr
+valid*'
+name
+
+"
+op_131_pad_type_0r
 const!
 var_131_strides_0
 
 
-*&
-name
-
-"
-op_131_strides_0*
+*
 val
 
 
 
 
-k
+*&
+name
+
+"
+op_131_strides_0k
 const
 var_131_pad_0
 
 
-*"
-name
-
-"
-op_131_pad_0*
+*
 val
 
 
 
 
-  v
+  *"
+name
+
+"
+op_131_pad_0v
 const#
 var_131_dilations_0
 
 
-*(
-name 
-
-"
-op_131_dilations_0*
+*
 val
 
 
 
 
-`
+*(
+name 
+
+"
+op_131_dilations_0`
 const
 var_131_groups_0
-*%
-name
-
-"
-op_131_groups_0*
+*
 val
 
 
-ä
-conv1
-weight'
-%
-#model_blocks_1_pool_branch_1_weight$
-	dilations
-
-var_131_dilations_0
-groups
-
-var_131_groups_0
+*%
+name
+
+"
+op_131_groups_0ä
+conv
 pad
 
-var_131_pad_0-
+var_131_pad_0$
+	dilations
+
+var_131_dilations_0"
+pad_type
+
+var_131_pad_type_0
+groups
+
+var_131_groups_0-
 bias%
 #
-!model_blocks_1_pool_branch_1_bias 
-strides
-
-var_131_strides_0
+!model_blocks_1_pool_branch_1_bias
 x
 
 
-input_13"
-pad_type
-
-var_131_pad_type_0#
+input_13 
+strides
+
+var_131_strides_01
+weight'
+%
+#model_blocks_1_pool_branch_1_weight#
 var_131
 
 
@@ -1984,15 +1983,15 @@ batch_norm
 op_131k
 const
 input_15_interleave_0
-*+
-name#
-
-"
-input_15_interleave_0*
+*
 val
 
 
- Ã
+ *+
+name#
+
+"
+input_15_interleave_0Ã
 concat6
 values,
 	
@@ -2002,14 +2001,14 @@ batch_norm
 	
 var_118
 	
-var_131'
+var_131
+axis	
+
+var_9'
 
 interleave
 
-input_15_interleave_0
-axis	
-
-var_9%
+input_15_interleave_0%
 input_15
 
 
@@ -2021,24 +2020,24 @@ interleave
 
 input_15«
 
-batch_norm
+batch_norm'
+gamma
+
+model_blocks_1_norm_weight
 x
 
 
-input_15,
-mean$
-"
- model_blocks_1_norm_running_mean'
-gamma
-
-model_blocks_1_norm_weight/
+input_15/
 variance#
 !
 model_blocks_1_norm_running_var
 epsilon
 
 
-var_14$
+var_14,
+mean$
+"
+ model_blocks_1_norm_running_mean$
 beta
 
 model_blocks_1_norm_bias%
@@ -2069,97 +2068,97 @@ batch_norm
 input_19k
 const
 input_21_pad_type_0
-*)
-name!
-
-"
-input_21_pad_type_0*
+*
 val
 
 	"
-validu
+valid*)
+name!
+
+"
+input_21_pad_type_0u
 const"
 input_21_strides_0
 
 
-*(
-name 
-
-"
-input_21_strides_0*
+*
 val
 
 
 
 
-n
+*(
+name 
+
+"
+input_21_strides_0n
 const
 input_21_pad_0
 
 
-*$
-name
-
-"
-input_21_pad_0*
+*
 val
 
 
 
 
-  y
+  *$
+name
+
+"
+input_21_pad_0y
 const$
 input_21_dilations_0
 
 
-**
-name"
-
-"
-input_21_dilations_0*
+*
 val
 
 
 
 
-c
+**
+name"
+
+"
+input_21_dilations_0c
 const
 input_21_groups_0
-*'
-name
-
-"
-input_21_groups_0*
+*
 val
 
 
-æ
-conv.
-weight$
-"
- model_blocks_2_bottleneck_weight%
-	dilations
-
-input_21_dilations_0
-groups
-
-input_21_groups_0
+*'
+name
+
+"
+input_21_groups_0æ
+conv
 pad
 
-input_21_pad_0*
+input_21_pad_0%
+	dilations
+
+input_21_dilations_0#
+pad_type
+
+input_21_pad_type_0
+groups
+
+input_21_groups_0*
 bias"
  
-model_blocks_2_bottleneck_bias!
-strides
-
-input_21_strides_0
+model_blocks_2_bottleneck_bias
 x
 
 
-input_19#
-pad_type
-
-input_21_pad_type_0$
+input_19!
+strides
+
+input_21_strides_0.
+weight$
+"
+ model_blocks_2_bottleneck_weight$
 input_21
 
 
@@ -2172,98 +2171,98 @@ batch_norm
 input_21i
 const
 var_162_pad_type_0
-*'
-name
-
-"
-op_162_pad_type_0*
+*
 val
 
 
 "
-customk
+custom*'
+name
+
+"
+op_162_pad_type_0k
 const
 var_162_pad_0
 
 
-*"
-name
-
-"
-op_162_pad_0*
+*
 val
 
 
 
 
-r
+*"
+name
+
+"
+op_162_pad_0r
 const!
 var_162_strides_0
 
 
-*&
-name
-
-"
-op_162_strides_0*
+*
 val
 
 
 
 
-v
+*&
+name
+
+"
+op_162_strides_0v
 const#
 var_162_dilations_0
 
 
-*(
-name 
-
-"
-op_162_dilations_0*
+*
 val
 
 
 
 
-`
+*(
+name 
+
+"
+op_162_dilations_0`
 const
 var_162_groups_0
-*%
-name
-
-"
-op_162_groups_0*
+*
 val
 
 
-Þ
-conv.
-weight$
-"
- model_blocks_2_branches_0_weight$
-	dilations
-
-var_162_dilations_0
-groups
-
-var_162_groups_0
+*%
+name
+
+"
+op_162_groups_0Þ
+conv
 pad
 
-var_162_pad_0*
+var_162_pad_0$
+	dilations
+
+var_162_dilations_0"
+pad_type
+
+var_162_pad_type_0
+groups
+
+var_162_groups_0*
 bias"
  
-model_blocks_2_branches_0_bias 
-strides
-
-var_162_strides_0
+model_blocks_2_branches_0_bias
 x
 
 
-input_21"
-pad_type
-
-var_162_pad_type_0#
+input_21 
+strides
+
+var_162_strides_0.
+weight$
+"
+ model_blocks_2_branches_0_weight#
 var_162
 
 
@@ -2276,98 +2275,98 @@ batch_norm
 op_162i
 const
 var_169_pad_type_0
-*'
-name
-
-"
-op_169_pad_type_0*
+*
 val
 
 
 "
-customk
+custom*'
+name
+
+"
+op_169_pad_type_0k
 const
 var_169_pad_0
 
 
-*"
-name
-
-"
-op_169_pad_0*
+*
 val
 
 
 
 
-		r
+		*"
+name
+
+"
+op_169_pad_0r
 const!
 var_169_strides_0
 
 
-*&
-name
-
-"
-op_169_strides_0*
+*
 val
 
 
 
 
-v
+*&
+name
+
+"
+op_169_strides_0v
 const#
 var_169_dilations_0
 
 
-*(
-name 
-
-"
-op_169_dilations_0*
+*
 val
 
 
 
 
-`
+*(
+name 
+
+"
+op_169_dilations_0`
 const
 var_169_groups_0
-*%
-name
-
-"
-op_169_groups_0*
+*
 val
 
 
-Þ
-conv.
-weight$
-"
- model_blocks_2_branches_1_weight$
-	dilations
-
-var_169_dilations_0
-groups
-
-var_169_groups_0
+*%
+name
+
+"
+op_169_groups_0Þ
+conv
 pad
 
-var_169_pad_0*
+var_169_pad_0$
+	dilations
+
+var_169_dilations_0"
+pad_type
+
+var_169_pad_type_0
+groups
+
+var_169_groups_0*
 bias"
  
-model_blocks_2_branches_1_bias 
-strides
-
-var_169_strides_0
+model_blocks_2_branches_1_bias
 x
 
 
-input_21"
-pad_type
-
-var_169_pad_type_0#
+input_21 
+strides
+
+var_169_strides_0.
+weight$
+"
+ model_blocks_2_branches_1_weight#
 var_169
 
 
@@ -2380,98 +2379,98 @@ batch_norm
 op_169i
 const
 var_176_pad_type_0
-*'
-name
-
-"
-op_176_pad_type_0*
+*
 val
 
 
 "
-customk
+custom*'
+name
+
+"
+op_176_pad_type_0k
 const
 var_176_pad_0
 
 
-*"
-name
-
-"
-op_176_pad_0*
+*
 val
 
 
 
 
-r
+*"
+name
+
+"
+op_176_pad_0r
 const!
 var_176_strides_0
 
 
-*&
-name
-
-"
-op_176_strides_0*
+*
 val
 
 
 
 
-v
+*&
+name
+
+"
+op_176_strides_0v
 const#
 var_176_dilations_0
 
 
-*(
-name 
-
-"
-op_176_dilations_0*
+*
 val
 
 
 
 
-`
+*(
+name 
+
+"
+op_176_dilations_0`
 const
 var_176_groups_0
-*%
-name
-
-"
-op_176_groups_0*
+*
 val
 
 
-Þ
-conv.
-weight$
-"
- model_blocks_2_branches_2_weight$
-	dilations
-
-var_176_dilations_0
-groups
-
-var_176_groups_0
+*%
+name
+
+"
+op_176_groups_0Þ
+conv
 pad
 
-var_176_pad_0*
+var_176_pad_0$
+	dilations
+
+var_176_dilations_0"
+pad_type
+
+var_176_pad_type_0
+groups
+
+var_176_groups_0*
 bias"
  
-model_blocks_2_branches_2_bias 
-strides
-
-var_176_strides_0
+model_blocks_2_branches_2_bias
 x
 
 
-input_21"
-pad_type
-
-var_176_pad_type_0#
+input_21 
+strides
+
+var_176_strides_0.
+weight$
+"
+ model_blocks_2_branches_2_weight#
 var_176
 
 
@@ -2486,73 +2485,80 @@ batch_norm
 var_178
 
 
-*
-name
-
-
-"
-op_178*
+*
 val
 
 
 
 
-^
+*
+name
+
+
+"
+op_178^
 const
 var_179
 
 
-*
-name
-
-
-"
-op_179*
+*
 val
 
 
 
 
-l
+*
+name
+
+
+"
+op_179l
 const
 input_23_pad_type_0
-*)
-name!
-
-"
-input_23_pad_type_0*
+*
 val
 
 
 "
-customn
+custom*)
+name!
+
+"
+input_23_pad_type_0n
 const
 input_23_pad_0
 
 
-*$
-name
-
-"
-input_23_pad_0*
+*
 val
 
 
 
 
-i
+*$
+name
+
+"
+input_23_pad_0i
 const
 input_23_ceil_mode_0
-**
-name"
-
-"
-input_23_ceil_mode_0*
+*
 val
 
 
- €
-max_pool
+ **
+name"
+
+"
+input_23_ceil_mode_0€
+max_pool
+pad
+
+input_23_pad_0
+x
+
+
+input_19
 strides
 	
 var_179#
@@ -2564,14 +2570,7 @@ batch_norm
 var_178%
 	ceil_mode
 
-input_23_ceil_mode_0
-pad
-
-input_23_pad_0
-x
-
-
-input_19%
+input_23_ceil_mode_0%
 input_23
 
 
@@ -2584,97 +2583,97 @@ batch_norm
 input_23h
 const
 var_189_pad_type_0
-*'
-name
-
-"
-op_189_pad_type_0*
+*
 val
 
 	"
-validr
+valid*'
+name
+
+"
+op_189_pad_type_0r
 const!
 var_189_strides_0
 
 
-*&
-name
-
-"
-op_189_strides_0*
+*
 val
 
 
 
 
-k
+*&
+name
+
+"
+op_189_strides_0k
 const
 var_189_pad_0
 
 
-*"
-name
-
-"
-op_189_pad_0*
+*
 val
 
 
 
 
-  v
+  *"
+name
+
+"
+op_189_pad_0v
 const#
 var_189_dilations_0
 
 
-*(
-name 
-
-"
-op_189_dilations_0*
+*
 val
 
 
 
 
-`
+*(
+name 
+
+"
+op_189_dilations_0`
 const
 var_189_groups_0
-*%
-name
-
-"
-op_189_groups_0*
+*
 val
 
 
-ä
-conv1
-weight'
-%
-#model_blocks_2_pool_branch_1_weight$
-	dilations
-
-var_189_dilations_0
-groups
-
-var_189_groups_0
+*%
+name
+
+"
+op_189_groups_0ä
+conv
 pad
 
-var_189_pad_0-
+var_189_pad_0$
+	dilations
+
+var_189_dilations_0"
+pad_type
+
+var_189_pad_type_0
+groups
+
+var_189_groups_0-
 bias%
 #
-!model_blocks_2_pool_branch_1_bias 
-strides
-
-var_189_strides_0
+!model_blocks_2_pool_branch_1_bias
 x
 
 
-input_23"
-pad_type
-
-var_189_pad_type_0#
+input_23 
+strides
+
+var_189_strides_01
+weight'
+%
+#model_blocks_2_pool_branch_1_weight#
 var_189
 
 
@@ -2687,15 +2686,15 @@ batch_norm
 op_189k
 const
 input_25_interleave_0
-*+
-name#
-
-"
-input_25_interleave_0*
+*
 val
 
 
- Ã
+ *+
+name#
+
+"
+input_25_interleave_0Ã
 concat6
 values,
 	
@@ -2705,14 +2704,14 @@ batch_norm
 	
 var_176
 	
-var_189'
+var_189
+axis	
+
+var_9'
 
 interleave
 
-input_25_interleave_0
-axis	
-
-var_9%
+input_25_interleave_0%
 input_25
 
 
@@ -2724,24 +2723,24 @@ interleave
 
 input_25«
 
-batch_norm
+batch_norm'
+gamma
+
+model_blocks_2_norm_weight
 x
 
 
-input_25,
-mean$
-"
- model_blocks_2_norm_running_mean'
-gamma
-
-model_blocks_2_norm_weight/
+input_25/
 variance#
 !
 model_blocks_2_norm_running_var
 epsilon
 
 
-var_14$
+var_14,
+mean$
+"
+ model_blocks_2_norm_running_mean$
 beta
 
 model_blocks_2_norm_bias%
@@ -2771,124 +2770,124 @@ batch_norm
 z_1k
 const
 input_29_pad_type_0
-*)
-name!
-
-"
-input_29_pad_type_0*
+*
 val
 
 	"
-validu
+valid*)
+name!
+
+"
+input_29_pad_type_0u
 const"
 input_29_strides_0
 
 
-*(
-name 
-
-"
-input_29_strides_0*
+*
 val
 
 
 
 
-n
+*(
+name 
+
+"
+input_29_strides_0n
 const
 input_29_pad_0
 
 
-*$
-name
-
-"
-input_29_pad_0*
+*
 val
 
 
 
 
-  y
+  *$
+name
+
+"
+input_29_pad_0y
 const$
 input_29_dilations_0
 
 
-**
-name"
-
-"
-input_29_dilations_0*
+*
 val
 
 
 
 
-c
+**
+name"
+
+"
+input_29_dilations_0c
 const
 input_29_groups_0
-*'
-name
-
-"
-input_29_groups_0*
+*
 val
 
 
-–
+*'
+name
+
+"
+input_29_groups_0–
 const$
 const_0
 
 €
-
-*
-name
-
-"	
-const_0*H
+	
+*H
 valA
 
 €
-
+	
 *$
-@model_path/weights/weight.bin€–8~
-const
-const_1
-
-€*
+@model_path/weights/weight.bin€˜8*
 name
 
 "	
-const_1*<
+const_0~
+const
+const_1
+
+€*<
 val5
 
 €*$
-@model_path/weights/weight.binÀ¶8³
-conv
-weight
-	
-const_0%
-	dilations
-
-input_29_dilations_0
-groups
-
-input_29_groups_0
+@model_path/weights/weight.binÀ¼8*
+name
+
+"	
+const_1³
+conv
 pad
 
-input_29_pad_0
-bias
-	
-const_1!
-strides
-
-input_29_strides_0
-x
-	
-samples#
+input_29_pad_0%
+	dilations
+
+input_29_dilations_0#
 pad_type
 
-input_29_pad_type_0$
+input_29_pad_type_0
+groups
+
+input_29_groups_0
+bias
+	
+const_1
+x
+	
+samples!
+strides
+
+input_29_strides_0
+weight
+	
+const_0$
 var_211
 
 
@@ -2933,36 +2932,36 @@ batch_norm
 var_215_axes_0
 
 
-*#
-name
-
-"
-op_215_axes_0*
+*
 val
 
 
 
 
-f
+*#
+name
+
+"
+op_215_axes_0f
 const
 var_215_keep_dims_0
-*(
-name 
-
-"
-op_215_keep_dims_0*
+*
 val
 
 
- ™
-reduce_mean$
-	keep_dims
-
-var_215_keep_dims_0
+ *(
+name 
+
+"
+op_215_keep_dims_0™
+reduce_mean
 
 x
 
-z
+z$
+	keep_dims
+
+var_215_keep_dims_0
 axes
 
 var_215_axes_0
@@ -2979,26 +2978,26 @@ batch_norm
 var_217_axes_0
 
 
-*#
-name
-
-"
-op_217_axes_0*
+*
 val
 
 
 
 
-Š
+*#
+name
+
+"
+op_217_axes_0Š
 
-reduce_max
-	keep_dims	
-
-var_7
+reduce_max
 
 x
 
-z
+z
+	keep_dims	
+
+var_7
 axes
 
 var_217_axes_0
@@ -3015,36 +3014,36 @@ reduce_max
 reduce_mean_0_axes_0
 
 
-**
-name"
-
-"
-reduce_mean_0_axes_0*
+*
 val
 
 
 
 
-s
+**
+name"
+
+"
+reduce_mean_0_axes_0s
 const!
 reduce_mean_0_keep_dims_0
-*/
-name'
-
-"
-reduce_mean_0_keep_dims_0*
+*
 val
 
 
-¸
-reduce_mean*
-	keep_dims
-
-reduce_mean_0_keep_dims_0
+*/
+name'
+
+"
+reduce_mean_0_keep_dims_0¸
+reduce_mean
 
 x
 
-z 
+z*
+	keep_dims
+
+reduce_mean_0_keep_dims_0 
 axes
 
 reduce_mean_0_axes_0*
@@ -3092,36 +3091,36 @@ reduce_max
 reduce_mean_1_axes_0
 
 
-**
-name"
-
-"
-reduce_mean_1_axes_0*
+*
 val
 
 
 
 
-s
+**
+name"
+
+"
+reduce_mean_1_axes_0s
 const!
 reduce_mean_1_keep_dims_0
-*/
-name'
-
-"
-reduce_mean_1_keep_dims_0*
+*
 val
 
 
- ¹
-reduce_mean*
-	keep_dims
-
-reduce_mean_1_keep_dims_0
+ */
+name'
+
+"
+reduce_mean_1_keep_dims_0¹
+reduce_mean
 x
 
 
-square_0 
+square_0*
+	keep_dims
+
+reduce_mean_1_keep_dims_0 
 axes
 
 reduce_mean_1_axes_0$
@@ -3136,18 +3135,18 @@ reduce_max
 const
 
 real_div_0
-* 
-name
-
-"
-
-real_div_0*
+*
 val
 
 
 
 
-¼œ‚?m
+¼œ‚?* 
+name
+
+"
+
+real_div_0m
 mul
 x
 
@@ -3179,15 +3178,15 @@ real_div_0
 sqrt_0k
 const
 input_31_interleave_0
-*+
-name#
-
-"
-input_31_interleave_0*
+*
 val
 
 
- ±
+ *+
+name#
+
+"
+input_31_interleave_0±
 concat*
 values 
 	
@@ -3195,14 +3194,14 @@ real_div_0
 	
 var_217
 
-sqrt_0'
+sqrt_0
+axis	
+
+var_9'
 
 interleave
 
-input_31_interleave_0
-axis	
-
-var_9
+input_31_interleave_0
 input_31
 
 
@@ -3212,17 +3211,17 @@ interleave
 "
 
 input_31˜
-linear
-weight
-
-model_head_weight
-bias
-
-model_head_bias
+linear
 x
 
 
-input_31
+input_31
+bias
+
+model_head_bias
+weight
+
+model_head_weight
 var_225
 
 
@@ -3234,16 +3233,16 @@ interleave
 linear_0N
 const
 var_226
-*
+*
+val
+
+
+*
 name
 
 
 "
-op_226*
-val
-
-
-s
+op_226s
 softmax
 x
 	

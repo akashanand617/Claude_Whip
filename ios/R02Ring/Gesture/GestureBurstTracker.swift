@@ -2,6 +2,10 @@ import Foundation
 
 /// Port of whip.events.BurstTracker, pinned by full recorded-stream replay tests.
 final class GestureBurstTracker {
+    // Five 25 Hz sample intervals. A shorter core is one shock/recoil, even if
+    // overlapping CNN windows vote for a double class. Mirrors
+    // whip.events.MIN_DOUBLE_BURST_S and is deliberately amplitude-independent.
+    private static let minimumDoubleBurstSeconds = 5.0 / 25.0
     private struct Vote {
         let start: Double
         let label: String
@@ -148,6 +152,9 @@ final class GestureBurstTracker {
             }
         }
         guard best.count >= 2 else { return nil }
+        if best[0].label.hasPrefix("double_") && b.off - b.on < Self.minimumDoubleBurstSeconds {
+            return nil
+        }
         return RingGestureEvent(name: best[0].label, direction: dominant(best.map(\.direction).filter { $0 != "none" }),
                                 time: b.on, confidence: best.reduce(0, { $0 + $1.confidence }) / Double(best.count),
                                 votes: best.count, latency: now - b.on, end: b.off)

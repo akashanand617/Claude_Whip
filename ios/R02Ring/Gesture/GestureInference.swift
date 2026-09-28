@@ -12,7 +12,7 @@ struct RingGestureEvent: Equatable {
 }
 
 enum GestureContract {
-    static let checkpointSHA = "77ed774f03ce3eaddbb8ac29ac8dfc1be32fdd7bef997b56c54157891aff26d5"
+    static let checkpointSHA = "1158a0b6c0aaaccbc90ca6352791481aa3a734cc1ac4c75e959ad8588c56d6c7"
     static let labels = ["none", "flick_up", "flick_down", "flick_left", "flick_right",
                          "double_flick_up", "double_flick_down", "double_flick_left", "double_flick_right",
                          "snap", "double_clap", "wave"]
@@ -26,7 +26,7 @@ enum GestureContract {
         return [6, 2, 4].map { Double(Int16(bitPattern: UInt16(packet[$0]) << 8 | UInt16(packet[$0 + 1]))) }
     }
 
-    /// Shape/scale/saturation/room, channel-major float32 [1, 8, 50]. Python
+    /// Shape/scale/saturation/room/impulse, channel-major float32 [1, 9, 50]. Python
     /// removes the mean in float64, then casts to float32 before deriving channels.
     static func features(_ samples: [[Double]]) throws -> [Float] {
         guard samples.count == 50, samples.allSatisfy({ $0.count == 3 && $0.allSatisfy(\.isFinite) }) else {
@@ -66,6 +66,16 @@ enum GestureContract {
                 result.append(Float(dot / Double(peak)))
             }
         }
+        // Force-normalized temporal shock envelope. This is deliberately the
+        // magnitude of the already high-passed motion, not a derivative or a
+        // ring-specific gain correction; it exposes stroke count while staying
+        // invariant to board axes and gesture strength.
+        for t in 0..<50 {
+            let magnitude = (linear[0][t] * linear[0][t]
+                             + linear[1][t] * linear[1][t]
+                             + linear[2][t] * linear[2][t]).squareRoot()
+            result.append(Float(magnitude / Double(peak)))
+        }
         return result
     }
 }
@@ -84,8 +94,8 @@ final class PinnedGestureClassifier {
     }
 
     func probabilities(_ features: [Float]) throws -> [Float] {
-        guard features.count == 400, features.allSatisfy(\.isFinite) else { throw RingProtocolError.invalidPacket }
-        let input = try MLMultiArray(shape: [1, 8, 50], dataType: .float32)
+        guard features.count == 450, features.allSatisfy(\.isFinite) else { throw RingProtocolError.invalidPacket }
+        let input = try MLMultiArray(shape: [1, 9, 50], dataType: .float32)
         for i in features.indices { input[i] = NSNumber(value: features[i]) }
         let result = try model.prediction(from: MLDictionaryFeatureProvider(dictionary: ["samples": input]))
         guard let values = result.featureValue(for: "probabilities")?.multiArrayValue, values.count == 12 else {
@@ -101,6 +111,7 @@ final class PinnedGestureClassifier {
 /// Calibration/lifecycle gates are outside this replay-equivalent numerical core.
 final class GestureInference {
     private let predict: ([Float]) throws -> [Float]
+    private let traceEnabled = ProcessInfo.processInfo.environment["WHIP_GESTURE_TRACE"] == "1"
     private var samples: [[Double]] = []
     private var times: [Double] = []
     private var sinceWindow = 0
@@ -122,9 +133,13 @@ final class GestureInference {
         let mag = (0..<3).reduce(0.0) { value, axis in value + pow(counts[axis] / 8005 - gravity[axis], 2) }.squareRoot()
         var events = tracker.sample(time, magnitude: mag)
         if samples.count > 50 { samples.removeFirst(); times.removeFirst() }
-        guard samples.count == 50, sinceWindow >= 6 else { return events }
+        guard samples.count == 50, sinceWindow >= 6 else {
+            trace(events)
+            return events
+        }
         sinceWindow = 0
-        let probabilities = try predict(GestureContract.features(samples))
+        let featureVector = try GestureContract.features(samples)
+        let probabilities = try predict(featureVector)
         guard probabilities.count == 12 else { throw RingProtocolError.invalidPacket }
         var collapsed: [Float] = [probabilities[0], 0, 0, probabilities[9], probabilities[10], probabilities[11]]
         for i in 1...4 { collapsed[1] += probabilities[i] }
@@ -133,7 +148,22 @@ final class GestureInference {
         let winner = collapsed.indices.max { collapsed[$0] == collapsed[$1] ? $0 > $1 : collapsed[$0] < collapsed[$1] }!
         let label = winner != 0 && collapsed[winner] >= 0.5 ? GestureContract.collapsed[winner] : "none"
         let direction = label != "none" && (1...8).contains(raw) ? ["up", "down", "left", "right"][(raw - 1) % 4] : "none"
+        if traceEnabled {
+            let peakG = pow(10, Double(featureVector[150]))
+            let rawLabel = GestureContract.labels[raw]
+            print(String(format: "R02 CNN t=%.3f raw=%@ raw_p=%.3f collapsed=%@ collapsed_p=%.3f peak_g=%.3f direction=%@",
+                         times[0], rawLabel, probabilities[raw], label, collapsed[winner], peakG, direction))
+        }
         events += tracker.window(times[0], label: label, confidence: Double(collapsed[winner]), direction: direction)
+        trace(events)
         return events
+    }
+
+    private func trace(_ events: [RingGestureEvent]) {
+        guard traceEnabled else { return }
+        for event in events {
+            print(String(format: "R02 GESTURE event=%@ direction=%@ confidence=%.3f votes=%d latency=%.3f",
+                         event.name, event.direction, event.confidence, event.votes, event.latency ?? -1))
+        }
     }
 }

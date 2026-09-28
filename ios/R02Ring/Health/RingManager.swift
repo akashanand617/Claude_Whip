@@ -59,6 +59,7 @@ final class RingManager: NSObject, ObservableObject {
     private var hasAnnouncedReady = false
     private var hasBegun = false
     private var pendingCharacteristicDiscoveries = 0
+    private var pendingIdentityReads = 0
     private var lastUARTWriteAt = Date.distantPast
     // Legacy replies have no request IDs. After a timeout, do not allow another
     // request to consume a delayed reply; reconnect is the correlation boundary.
@@ -69,6 +70,7 @@ final class RingManager: NSObject, ObservableObject {
     private let restoreIDKey = "colmiCentralRestoreIdentifier"
     private let discoveryFilterVersionKey = "colmiDiscoveryFilterVersion"
     private let recoveryTraceKey = "ringConnectionRecoveryTrace"
+    private let suppressedRecoveryIDsKey = "suppressedColmiR02RecoveryIdentifiers"
 
     private struct PendingUART {
         let id: UUID
@@ -191,6 +193,7 @@ final class RingManager: NSObject, ObservableObject {
             scan()
             return
         }
+        allowRecovery(of: candidate.id)
         isPairing = true
         connect(target)
     }
@@ -202,8 +205,15 @@ final class RingManager: NSObject, ObservableObject {
 
     func forget() {
         reconnectTask?.cancel()
+        let forgotten = Set([pairedIdentifier, peripheral?.identifier, candidate?.id].compactMap { $0 })
+        suppressRecovery(of: forgotten)
         if let peripheral { central.cancelPeripheralConnection(peripheral) }
-        UserDefaults.standard.removeObject(forKey: savedRingKey)
+        let defaults = UserDefaults.standard
+        defaults.removeObject(forKey: savedRingKey)
+        // A fresh restoration namespace prevents CoreBluetooth from resurrecting
+        // the intentionally abandoned peripheral on the next app launch.
+        defaults.set(UUID().uuidString, forKey: restoreIDKey)
+        isPairing = false
         self.peripheral = nil
         resetCharacteristics()
         candidate = nil
@@ -225,6 +235,31 @@ final class RingManager: NSObject, ObservableObject {
         candidates = []
         candidate = nil
         if state == .scanning || state == .discovered { state = .idle }
+    }
+
+    func isRecoverySuppressed(_ identifier: UUID) -> Bool {
+        suppressedRecoveryIdentifiers.contains(identifier)
+    }
+
+    private var suppressedRecoveryIdentifiers: Set<UUID> {
+        let values = UserDefaults.standard.stringArray(forKey: suppressedRecoveryIDsKey) ?? []
+        return Set(values.compactMap(UUID.init(uuidString:)))
+    }
+
+    private func suppressRecovery(of identifiers: Set<UUID>) {
+        guard !identifiers.isEmpty else { return }
+        let combined = suppressedRecoveryIdentifiers.union(identifiers)
+        UserDefaults.standard.set(
+            combined.map(\.uuidString).sorted(), forKey: suppressedRecoveryIDsKey
+        )
+    }
+
+    private func allowRecovery(of identifier: UUID) {
+        var suppressed = suppressedRecoveryIdentifiers
+        guard suppressed.remove(identifier) != nil else { return }
+        UserDefaults.standard.set(
+            suppressed.map(\.uuidString).sorted(), forKey: suppressedRecoveryIDsKey
+        )
     }
 
     func writeUART(_ data: Data) throws {
@@ -398,7 +433,7 @@ final class RingManager: NSObject, ObservableObject {
     }
 
     private func restoreOrScan() {
-        if let identifier = pairedIdentifier,
+        if let identifier = pairedIdentifier, !isRecoverySuppressed(identifier),
            let saved = central.retrievePeripherals(withIdentifiers: [identifier]).first {
             if let name = saved.name, !name.uppercased().contains("R02") {
 #if DEBUG
@@ -410,6 +445,9 @@ final class RingManager: NSObject, ObservableObject {
             }
             connect(saved)
         } else {
+            if let identifier = pairedIdentifier, isRecoverySuppressed(identifier) {
+                UserDefaults.standard.removeObject(forKey: savedRingKey)
+            }
             if recoverSystemConnectedRing() { return }
             if recoverHistoricallyKnownRing() { return }
             startAdvertisementScan()
@@ -422,8 +460,9 @@ final class RingManager: NSObject, ObservableObject {
     @discardableResult
     private func recoverHistoricallyKnownRing() -> Bool {
         let defaults = UserDefaults.standard
+        let suppressed = suppressedRecoveryIdentifiers
         let ids = RingRecoverySelector.historicalIdentifiers(
-            from: Array(defaults.dictionaryRepresentation().keys)
+            from: Array(defaults.dictionaryRepresentation().keys), excluding: suppressed
         )
         guard !ids.isEmpty else { return false }
 
@@ -501,7 +540,8 @@ final class RingManager: NSObject, ObservableObject {
         }
 
         guard let selectedID = RingRecoverySelector.select(
-            descriptors, preferredID: pairedIdentifier
+            descriptors, preferredID: pairedIdentifier,
+            excluding: suppressedRecoveryIdentifiers
         ), let selected = peripherals[selectedID] else {
 #if DEBUG
             if !descriptors.isEmpty {
@@ -566,10 +606,16 @@ final class RingManager: NSObject, ObservableObject {
         hardwareCharacteristic = nil
         hasAnnouncedReady = false
         pendingCharacteristicDiscoveries = 0
+        pendingIdentityReads = 0
     }
 
     private func announceReadyIfPossible() {
-        guard pendingCharacteristicDiscoveries == 0, !hasAnnouncedReady else { return }
+        // Firmware routing runs from both Device Information values. Do not
+        // announce the UART as ready while those reads are still in flight:
+        // AppModel would otherwise classify the session as unknown and never
+        // retry when the values arrive a moment later.
+        guard pendingCharacteristicDiscoveries == 0, pendingIdentityReads == 0,
+              !hasAnnouncedReady else { return }
         let uartReady = uartWrite != nil && uartNotify?.isNotifying == true
             && (bigNotify == nil || bigNotify?.isNotifying == true)
         let recoveryReady = !uartReady && canFlashFirmware
@@ -712,6 +758,11 @@ extension RingManager: CBCentralManagerDelegate {
         let restored = (dict[CBCentralManagerRestoredStatePeripheralsKey] as? [CBPeripheral])?.first
         Task { @MainActor in
             guard let restored else { return }
+            if isRecoverySuppressed(restored.identifier) {
+                central.cancelPeripheralConnection(restored)
+                if hasBegun, central.state == .poweredOn { startAdvertisementScan() }
+                return
+            }
             peripheral = restored
             restored.delegate = self
             guard hasBegun else { return }
@@ -754,9 +805,16 @@ extension RingManager: CBCentralManagerDelegate {
             } else {
                 candidates.append(found)
             }
-            candidates.sort { $0.rssi > $1.rssi }
+            candidates.sort {
+                let lhsSuppressed = isRecoverySuppressed($0.id)
+                let rhsSuppressed = isRecoverySuppressed($1.id)
+                if lhsSuppressed != rhsSuppressed { return !lhsSuppressed }
+                return $0.rssi > $1.rssi
+            }
             if candidates.count > 8 { candidates.removeLast(candidates.count - 8) }
-            if candidate == nil || candidate?.id == found.id {
+            if !isRecoverySuppressed(found.id),
+               candidate == nil || candidate.map({ isRecoverySuppressed($0.id) }) == true
+                    || candidate?.id == found.id {
                 candidate = found
             }
             state = .discovered
@@ -881,9 +939,11 @@ extension RingManager: CBPeripheralDelegate {
                         peripheral.setNotifyValue(true, for: characteristic)
                     case ColmiR02Protocol.firmwareRevision:
                         firmwareCharacteristic = characteristic
+                        pendingIdentityReads += 1
                         peripheral.readValue(for: characteristic)
                     case ColmiR02Protocol.hardwareRevision:
                         hardwareCharacteristic = characteristic
+                        pendingIdentityReads += 1
                         peripheral.readValue(for: characteristic)
                     default: break
                     }
@@ -897,20 +957,32 @@ extension RingManager: CBPeripheralDelegate {
     nonisolated func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic,
                                 error: Error?) {
         Task { @MainActor in
+            let uuid = characteristic.uuid.uuidString.uppercased()
+            if uuid == ColmiR02Protocol.firmwareRevision
+                || uuid == ColmiR02Protocol.hardwareRevision {
+                pendingIdentityReads = max(0, pendingIdentityReads - 1)
+                if error == nil, let data = characteristic.value {
+                    let value = String(data: data, encoding: .utf8)?
+                        .trimmingCharacters(in: .controlCharacters)
+                    if uuid == ColmiR02Protocol.firmwareRevision {
+                        firmware = value
+#if DEBUG
+                        print("R02 FIRMWARE", firmware ?? "<unreadable>")
+#endif
+                    } else {
+                        hardware = value
+#if DEBUG
+                        print("R02 HARDWARE", hardware ?? "<unreadable>")
+#endif
+                    }
+                }
+                announceReadyIfPossible()
+                return
+            }
             guard error == nil, let data = characteristic.value else { return }
-            switch characteristic.uuid.uuidString.uppercased() {
+            switch uuid {
             case ColmiR02Protocol.uartNotify: receiveUART(data)
             case ColmiR02Protocol.bigDataNotify: receiveBigData(data)
-            case ColmiR02Protocol.firmwareRevision:
-                firmware = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .controlCharacters)
-#if DEBUG
-                print("R02 FIRMWARE", firmware ?? "<unreadable>")
-#endif
-            case ColmiR02Protocol.hardwareRevision:
-                hardware = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .controlCharacters)
-#if DEBUG
-                print("R02 HARDWARE", hardware ?? "<unreadable>")
-#endif
             default: break
             }
         }

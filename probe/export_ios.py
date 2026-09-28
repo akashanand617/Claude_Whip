@@ -16,8 +16,8 @@ import torch
 
 from whip import accel, model as gm, realtime
 
-MODEL_SHA = "77ed774f03ce3eaddbb8ac29ac8dfc1be32fdd7bef997b56c54157891aff26d5"
-CHANNELS = ["shape", "scale", "saturation", "room"]
+MODEL_SHA = "1158a0b6c0aaaccbc90ca6352791481aa3a734cc1ac4c75e959ad8588c56d6c7"
+CHANNELS = ["shape", "scale", "saturation", "room", "impulse"]
 
 
 def main():
@@ -31,7 +31,7 @@ def main():
         raise ValueError("Checkpoint changed; review model contract before exporting")
     torch.set_num_threads(1)
     model, meta = gm.load(args.checkpoint)
-    if meta["channels"] != CHANNELS or meta["n_channels"] != 8 or meta["window_samples"] != 50:
+    if meta["channels"] != CHANNELS or meta["n_channels"] != 9 or meta["window_samples"] != 50:
         raise ValueError("Unexpected preprocessing contract")
 
     class Probabilities(torch.nn.Module):
@@ -44,8 +44,8 @@ def main():
 
     import coremltools as ct
     wrapper = Probabilities().eval()
-    traced = torch.jit.trace(wrapper, torch.zeros(1, 8, 50))
-    converted = ct.convert(traced, inputs=[ct.TensorType(name="samples", shape=(1, 8, 50), dtype=np.float32)],
+    traced = torch.jit.trace(wrapper, torch.zeros(1, 9, 50))
+    converted = ct.convert(traced, inputs=[ct.TensorType(name="samples", shape=(1, 9, 50), dtype=np.float32)],
                            outputs=[ct.TensorType(name="probabilities", dtype=np.float32)],
                            minimum_deployment_target=ct.target.iOS17, convert_to="mlprogram",
                            compute_precision=ct.precision.FLOAT32, compute_units=ct.ComputeUnit.CPU_ONLY)

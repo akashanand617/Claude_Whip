@@ -36,7 +36,7 @@ from pathlib import Path
 
 import numpy as np
 
-from whip import accel, despike, events, protocol
+from whip import accel, despike, events, protocol, ring_profile
 from whip.dataset import STRIDE_SAMPLES, WINDOW_SAMPLES
 from whip.registry import Registry, load_registry
 
@@ -123,6 +123,7 @@ class Engine:
         # hours). `auto_frame` watches for that pose in the live stream.
         self.frame = np.eye(3)
         self.frame_name = "identity"
+        self.signal_adapter = ring_profile.SignalAdapter(ring_profile.RT02CR)
         self.auto_frame = True
         self._pose: list[np.ndarray] = []          # recent raw samples, for auto-frame
         self.frame_changes: list[tuple[float, str]] = []
@@ -141,6 +142,20 @@ class Engine:
         if name != self.frame_name:
             self.frame_changes.append((t_s, name))
         self.frame, self.frame_name = self.FLIPS[name], name
+
+    def set_signal_profile(self, hardware: str | None, firmware: str | None) -> None:
+        """Route source packet axes into the model's RT02 canonical frame."""
+        self.signal_adapter = ring_profile.adapter_for_identity(hardware, firmware)
+
+    def set_sensor_calibration(self, calibration: ring_profile.SensorCalibration) -> None:
+        """Install calibration measured for this exact physical ring."""
+        calibration.validate()
+        self.signal_adapter = ring_profile.SignalAdapter(
+            self.signal_adapter.profile, calibration
+        )
+
+    def canonical_xyz(self, xyz) -> np.ndarray:
+        return np.asarray(self.signal_adapter.model_counts(xyz), dtype="float64")
 
     @staticmethod
     def pose_check(raw_samples) -> dict:
@@ -185,7 +200,8 @@ class Engine:
 
     def calibrate(self, raw_samples, t_s: float = 0.0) -> str | None:
         """Set the frame from a fingers-down pose; returns the frame name, or None if the pose was not held."""
-        name = self.frame_from_pose(raw_samples)
+        canonical = [self.canonical_xyz(sample) for sample in raw_samples]
+        name = self.frame_from_pose(canonical)
         if name is not None:
             self.set_frame(name, t_s)
         return name
@@ -215,7 +231,7 @@ class Engine:
                 or payload[1] != protocol.SUBTYPE_ACCEL:
             return []
         sample = accel.decode(payload)
-        raw = np.array((sample.x, sample.y, sample.z), dtype="float64")
+        raw = self.canonical_xyz((sample.x, sample.y, sample.z))
         if self.auto_frame:
             self._watch_pose(raw, t_s)
         xyz = self.frame @ raw

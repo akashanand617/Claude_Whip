@@ -2,6 +2,13 @@ import XCTest
 @testable import R02Ring
 
 final class GestureReplayTests: XCTestCase {
+    private final class LockedClock: @unchecked Sendable {
+        private let lock = NSLock()
+        private var value = 0.0
+        func set(_ next: Double) { lock.lock(); value = next; lock.unlock() }
+        func get() -> Double { lock.lock(); defer { lock.unlock() }; return value }
+    }
+
     private struct Fixture: Decodable {
         struct Window: Decodable { let start: Int; let features: [Float]; let probabilities: [Float] }
         struct Event: Decodable {
@@ -25,7 +32,7 @@ final class GestureReplayTests: XCTestCase {
         for window in fixture.windows {
             let samples = fixture.samples[window.start..<(window.start + 50)].map { Array($0.dropFirst()) }
             let features = try GestureContract.features(samples)
-            XCTAssertEqual(features.count, 400)
+            XCTAssertEqual(features.count, 450)
             for i in features.indices { XCTAssertEqual(features[i], window.features[i], accuracy: 1e-6, "sample \(window.start) feature \(i)") }
             let probabilities = try classifier.probabilities(features)
             for i in probabilities.indices { XCTAssertEqual(probabilities[i], window.probabilities[i], accuracy: 1e-5) }
@@ -63,6 +70,101 @@ final class GestureReplayTests: XCTestCase {
         XCTAssertEqual(pose?.frame, "flip_axis0")
         var wrongPose = GestureCalibration()
         for index in 0..<100 { pose = wrongPose.feed(time: Double(index) * 0.04, counts: [8005, 0, 0]) }
+        XCTAssertNil(pose?.frame)
+        XCTAssertEqual(pose?.reason, "Point fingers down")
+    }
+
+    func testRepeatedStationaryRT12SamplesCanCompleteCalibration() throws {
+        let clock = LockedClock(), delivered = DispatchSemaphore(value: 0)
+        let classifier = try PinnedGestureClassifier()
+        var lastPose: GesturePose?
+        var invalidReason: String?
+        let session = GestureSession(signalAdapter: .rt12col(), clock: clock.get, output: { output in
+            lastPose = output.pose
+            delivered.signal()
+        }, invalid: { _, reason in
+            invalidReason = reason
+            delivered.signal()
+        })
+        _ = session.start(session: 7, classifier: classifier)
+        // RT12COL may quantize a motionless calibration pose to the exact same
+        // counts repeatedly. Packet receipt time and sequence still advance.
+        // GestureContract.decode returns [packet 6..7, 2..3, 4..5]. A physical
+        // RT12 fingertips-down capture puts gravity on the third of those;
+        // the RT12 rotation moves it to canonical model axis 1.
+        let packet = ColmiR02Protocol.packet(
+            command: 0xa1, payload: [0x03, 0, 0, 0xe0, 0xbb, 0, 0]
+        )
+        for index in 0..<75 {
+            let time = Double(index) * 0.04
+            clock.set(time)
+            session.ingest(packet, session: 7, sequence: UInt32(index + 1), receivedAt: time)
+            XCTAssertEqual(delivered.wait(timeout: .now() + 1), .success)
+            XCTAssertNil(invalidReason)
+        }
+        XCTAssertEqual(lastPose?.frame, "flip_axis0")
+        XCTAssertEqual(lastPose?.reason, "Ready")
+    }
+
+    func testHardwareAxisMapsAreExactPermutations() throws {
+        let decoded = [11.0, 22.0, 33.0]
+        XCTAssertEqual(try GestureAxisMap.rt02cr.apply(decoded), decoded)
+        XCTAssertEqual(try GestureAxisMap.rt12col.apply(decoded), [11, 33, -22])
+    }
+
+    func testSignalAdaptersNormalizeInMGThenReturnRT02EquivalentCounts() throws {
+        let decoded = [11.0, 22.0, 33.0]
+        XCTAssertEqual(try GestureSignalAdapter.rt02cr().modelCounts(decodedCounts: decoded), decoded)
+        XCTAssertEqual(try GestureSignalAdapter.rt12col().modelCounts(decodedCounts: decoded), [11, 33, -22])
+
+        let mg = try GestureSignalAdapter.rt12col().canonicalMG(decodedCounts: [32_767, -32_768, 4])
+        XCTAssertEqual(mg[0], GestureSignalAdapter.rt02MaxMG, accuracy: 1e-12)
+        XCTAssertEqual(mg[1], 4 * GestureSignalAdapter.rt02MGPerCount, accuracy: 1e-12)
+        XCTAssertEqual(mg[2], GestureSignalAdapter.rt02MaxMG, accuracy: 1e-12)
+
+        let fractional = try GestureSignalAdapter.rt12col().modelCounts(
+            decodedCounts: [1.25, 2.5, 3.75]
+        )
+        XCTAssertEqual(fractional, [1.25, 3.75, -2.5])
+    }
+
+    func testPerRingCalibrationIsAppliedAfterRotationAndPersistsByDevice() throws {
+        let calibration = GestureSensorCalibration(
+            offsetMG: [1, 2, 3], gain: [2, 1, 0.5]
+        )
+        let adapter = GestureSignalAdapter.rt12col(calibration: calibration)
+        let raw = [800.0, 1_600.0, 2_400.0]
+        let mg = try adapter.canonicalMG(decodedCounts: raw)
+        let grid = GestureSignalAdapter.rt02MGPerCount
+        XCTAssertEqual(mg[0], (800 * grid - 1) * 2, accuracy: 1e-9)
+        XCTAssertEqual(mg[1], 2_400 * grid - 2, accuracy: 1e-9)
+        XCTAssertEqual(mg[2], (-1_600 * grid - 3) * 0.5, accuracy: 1e-9)
+
+        let suite = "GestureSignalAdapterTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        try calibration.store(for: "ring-a", defaults: defaults)
+        XCTAssertEqual(GestureSensorCalibration.stored(for: "ring-a", defaults: defaults), calibration)
+        XCTAssertEqual(GestureSensorCalibration.stored(for: "ring-b", defaults: defaults), .identity)
+
+        let saturating = GestureSignalAdapter.rt02cr(calibration: .init(
+            offsetMG: [0, 0, 0], gain: [2, 2, 2]
+        ))
+        let rails = try saturating.canonicalMG(decodedCounts: [32_767, -32_768, 0])
+        XCTAssertEqual(rails, [
+            GestureSignalAdapter.rt02MaxMG,
+            GestureSignalAdapter.rt02MinMG,
+            0,
+        ])
+    }
+
+    func testRT12ForwardPoseIsRejectedByDownOnlyGate() throws {
+        var calibration = GestureCalibration()
+        var pose: GesturePose?
+        let forward = try GestureAxisMap.rt12col.apply([8005, 0, 0])
+        for index in 0..<100 {
+            pose = calibration.feed(time: Double(index) * 0.04, counts: forward)
+        }
         XCTAssertNil(pose?.frame)
         XCTAssertEqual(pose?.reason, "Point fingers down")
     }

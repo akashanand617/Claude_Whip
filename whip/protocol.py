@@ -143,6 +143,13 @@ BATTERY_PACKET = make_packet(CMD_BATTERY)
 # `A1 02` then clears the PPG raw bit in case a 0x01/0x06/0x07 mode was used.
 STOP_RAW_SENSOR_PACKETS = (STOP_RAW_SENSOR, DISABLE_RAW_SENSOR)
 
+# RT12COL's experimental Health-default/Gesture image uses this existing,
+# volatile motion feature to wake/hold the STK while raw Gesture ownership is
+# active. It is not needed on RT02CR. The required lifecycle is A1 04, hold on;
+# then A1 05, A1 02, hold off. Keep these packets exact and non-persistent.
+MOTION_HOLD_ENABLE = make_packet(0x3B, bytes([0x02, 0x01, 0x03]))
+MOTION_HOLD_DISABLE = make_packet(0x3B, bytes([0x02, 0x01, 0x00]))
+
 
 # Health-command probes, not a raw-stream optical-off switch. On the pinned
 # 25 Hz firmware, sub_050dc routes 69 06 04 through disable(bit 1) at 0x5294

@@ -52,8 +52,139 @@ final class RingProtocolTests: XCTestCase {
         XCTAssertEqual(RingRecoverySelector.historicalIdentifiers(from: keys), [id])
     }
 
+    func testIntentionalForgetSuppressesAutomaticButNotExplicitDiscovery() {
+        let old = RingRecoveryCandidate(
+            id: UUID(), name: "R02_CC07", matchedRingSpecificService: true
+        )
+        let replacement = RingRecoveryCandidate(
+            id: UUID(), name: "R02_DE07", matchedRingSpecificService: true
+        )
+        XCTAssertEqual(
+            RingRecoverySelector.select(
+                [old, replacement], preferredID: old.id, excluding: [old.id]
+            ),
+            replacement.id
+        )
+        XCTAssertNil(RingRecoverySelector.select(
+            [old], preferredID: old.id, excluding: [old.id]
+        ))
+        let keys = ["lastHealthSync.\(old.id.uuidString)",
+                    "ringFirmwareMode.\(replacement.id.uuidString)"]
+        XCTAssertEqual(
+            RingRecoverySelector.historicalIdentifiers(from: keys, excluding: [old.id]),
+            [replacement.id]
+        )
+    }
+
     func testRevokedUnifiedFirmwareCannotBeInstalled() {
         XCTAssertFalse(BundledFirmware.unifiedInstallEnabled)
+    }
+
+    func testFirmwareRoutingRequiresMatchingHardwareAndFirmwareFamilies() {
+        XCTAssertEqual(
+            RingHardwareFamily.route(
+                hardware: "RT02CR_V3.1", firmware: FirmwareIdentity.stockVersion
+            ),
+            .rt02cr
+        )
+        XCTAssertEqual(
+            RingHardwareFamily.route(
+                hardware: "RT12COL_V1.0", firmware: "RT12COL_1.00.00_260520"
+            ),
+            .rt12col
+        )
+        XCTAssertNil(RingHardwareFamily.route(
+            hardware: "RT12COL_V1.0", firmware: FirmwareIdentity.stockVersion
+        ))
+        XCTAssertNil(RingHardwareFamily.route(
+            hardware: "RT02CR_V3.1", firmware: "future_unknown_1.0"
+        ))
+        XCTAssertNil(RingHardwareFamily.route(hardware: nil, firmware: FirmwareIdentity.stockVersion))
+        XCTAssertTrue(BundledFirmware.routedCatalog(
+            hardware: "RT02CR_V3.1", firmware: "RT02CR_future_unknown"
+        ).isEmpty)
+    }
+
+    func testFirmwareCatalogRoutesOnlyImagesForItsExactFamily() {
+        let rt02cr = BundledFirmware.routedCatalog(
+            hardware: "RT02CR_V3.1", firmware: FirmwareIdentity.stockVersion
+        )
+        XCTAssertEqual(Set(rt02cr.map(\.family)), [.rt02cr])
+        XCTAssertEqual(Set(rt02cr.map(\.mode)), [.health, .gesture, .unified])
+
+        let rt12col = BundledFirmware.routedCatalog(
+            hardware: "RT12COL_V1.0", firmware: "RT12COL_1.00.00_260520"
+        )
+        XCTAssertEqual(Set(rt12col.map(\.family)), [.rt12col])
+        XCTAssertEqual(Set(rt12col.map(\.mode)), [.health, .unified])
+        XCTAssertEqual(BundledFirmware.routedImage(
+            for: .unified,
+            hardware: "RT12COL_V1.0",
+            firmware: "RT12COL_1.00.00_260520"
+        )?.sha256, BundledFirmware.rt12colUnified.sha256)
+        XCTAssertFalse(rt12col.contains { $0.family == .rt02cr })
+    }
+
+    func testRT12COLV6IsARecognizedInstalledIdentity() throws {
+        XCTAssertTrue(FirmwareIdentity.isKnownInstalledVersion(
+            FirmwareIdentity.rt12colUnifiedV6Version, family: .rt12col
+        ))
+        XCTAssertEqual(
+            RingHardwareFamily.route(
+                hardware: "RT12COL_V1.0",
+                firmware: FirmwareIdentity.rt12colUnifiedV6Version
+            ),
+            .rt12col
+        )
+        let image = try BundledFirmware.rt12colUnifiedLegacyV6.load()
+        XCTAssertEqual(
+            String(data: image[0x10..<0x30], encoding: .utf8)?
+                .trimmingCharacters(in: .controlCharacters),
+            FirmwareIdentity.rt12colUnifiedV6Version
+        )
+    }
+
+    func testFirmwareCatalogFailsClosedOnIdentityConflict() {
+        XCTAssertTrue(BundledFirmware.routedCatalog(
+            hardware: "RT12COL_V1.0", firmware: FirmwareIdentity.gestureVersion
+        ).isEmpty)
+        XCTAssertNil(BundledFirmware.routedImage(
+            for: .gesture,
+            hardware: "RT12COL_V1.0",
+            firmware: FirmwareIdentity.gestureVersion
+        ))
+    }
+
+    func testRT12COLCandidateAndRollbackAreSeparatelyPinned() throws {
+        XCTAssertEqual(BundledFirmware.rt12colUnified.initType, 4)
+        XCTAssertFalse(BundledFirmware.rt12colUnified.installEnabled)
+        XCTAssertFalse(BundledFirmware.rt12colUnifiedLegacyV6.installEnabled)
+        XCTAssertFalse(BundledFirmware.rt12colUnifiedLegacyV3.installEnabled)
+        XCTAssertFalse(BundledFirmware.rt12colUnifiedLegacyV1.installEnabled)
+        XCTAssertEqual(BundledFirmware.rt12colHealth.initType, 4)
+        XCTAssertNotEqual(BundledFirmware.rt12colUnified.sha256,
+                          BundledFirmware.rt12colHealth.sha256)
+        XCTAssertNotEqual(BundledFirmware.rt12colUnified.sha256,
+                          BundledFirmware.rt12colUnifiedLegacyV1.sha256)
+        XCTAssertNotEqual(BundledFirmware.rt12colUnified.sha256,
+                          BundledFirmware.rt12colUnifiedLegacyV3.sha256)
+        XCTAssertNotEqual(BundledFirmware.rt12colUnified.sha256,
+                          BundledFirmware.rt12colUnifiedLegacyV6.sha256)
+        XCTAssertEqual(try BundledFirmware.rt12colUnified.declaredHardware(
+            in: BundledFirmware.rt12colUnified.load()
+        ), "RT12COL_V1.0")
+        XCTAssertEqual(try BundledFirmware.rt12colUnifiedLegacyV1.declaredHardware(
+            in: BundledFirmware.rt12colUnifiedLegacyV1.load()
+        ), "RT12COL_V1.0")
+        XCTAssertEqual(try BundledFirmware.rt12colUnifiedLegacyV3.declaredHardware(
+            in: BundledFirmware.rt12colUnifiedLegacyV3.load()
+        ), "RT12COL_V1.0")
+        XCTAssertEqual(try BundledFirmware.rt12colUnifiedLegacyV6.declaredHardware(
+            in: BundledFirmware.rt12colUnifiedLegacyV6.load()
+        ), "RT12COL_V1.0")
+        XCTAssertEqual(try BundledFirmware.rt12colHealth.declaredHardware(
+            in: BundledFirmware.rt12colHealth.load()
+        ), "RT12COL_V1.0")
     }
 
     func testPacketHasSixteenBytesAndChecksum() {
@@ -209,12 +340,51 @@ final class RingProtocolTests: XCTestCase {
         XCTAssertEqual(FirmwareIdentity.sites.reduce(0) { $0 + $1.length }, 244)
         XCTAssertEqual(FirmwareIdentity.unifiedSites.count, 9)
         XCTAssertEqual(FirmwareIdentity.unifiedSites.reduce(0) { $0 + $1.length }, 72)
-        for site in FirmwareIdentity.sites + FirmwareIdentity.unifiedSites {
+        XCTAssertEqual(FirmwareIdentity.rt12colUnifiedV1Sites.count, 11)
+        XCTAssertEqual(FirmwareIdentity.rt12colUnifiedV1Sites.reduce(0) { $0 + $1.length }, 92)
+        XCTAssertEqual(FirmwareIdentity.rt12colUnifiedV2Sites.count, 24)
+        XCTAssertEqual(FirmwareIdentity.rt12colUnifiedV2Sites.reduce(0) { $0 + $1.length }, 266)
+        XCTAssertEqual(FirmwareIdentity.rt12colUnifiedV3Sites.count, 31)
+        XCTAssertEqual(FirmwareIdentity.rt12colUnifiedV3Sites.reduce(0) { $0 + $1.length }, 364)
+        XCTAssertEqual(FirmwareIdentity.rt12colUnifiedSites.count, 41)
+        XCTAssertEqual(FirmwareIdentity.rt12colUnifiedSites.reduce(0) { $0 + $1.length }, 335)
+        for site in FirmwareIdentity.sites + FirmwareIdentity.unifiedSites
+                + FirmwareIdentity.rt12colUnifiedV1Sites
+                + FirmwareIdentity.rt12colUnifiedV2Sites
+                + FirmwareIdentity.rt12colUnifiedV3Sites
+                + FirmwareIdentity.rt12colUnifiedSites {
+            XCTAssertLessThanOrEqual(site.length, 14)
             let packet = FirmwareIdentity.readPacket(site)
             XCTAssertEqual(packet[0], 0xcd)
             XCTAssertEqual(packet[1], 1)
             XCTAssertTrue(ColmiR02Protocol.isValidPacket(packet))
         }
+    }
+
+    func testRT12COLV6FingerprintCoversEveryChangedApplicationByte() throws {
+        let stock = try BundledFirmware.rt12colHealth.load()
+        let v6 = try BundledFirmware.rt12colUnifiedLegacyV6.load()
+        XCTAssertEqual(stock.count, v6.count)
+        let covered = Set(FirmwareIdentity.rt12colUnifiedV6Sites.flatMap { site in
+            site.offset..<(site.offset + site.length)
+        })
+        let changedApplication = Set((0x450..<v6.count).filter { stock[$0] != v6[$0] })
+        XCTAssertFalse(changedApplication.isEmpty)
+        XCTAssertTrue(changedApplication.isSubset(of: covered))
+        XCTAssertEqual(covered.count, 335)
+    }
+
+    func testRT12COLV7FingerprintCoversEveryChangedApplicationByte() throws {
+        let stock = try BundledFirmware.rt12colHealth.load()
+        let v7 = try BundledFirmware.rt12colUnified.load()
+        XCTAssertEqual(stock.count, v7.count)
+        let covered = Set(FirmwareIdentity.rt12colUnifiedSites.flatMap { site in
+            site.offset..<(site.offset + site.length)
+        })
+        let changedApplication = Set((0x450..<v7.count).filter { stock[$0] != v7[$0] })
+        XCTAssertFalse(changedApplication.isEmpty)
+        XCTAssertTrue(changedApplication.isSubset(of: covered))
+        XCTAssertEqual(covered.count, 335)
     }
 
     func testBundledFirmwareImagesArePinnedAndCompatible() throws {

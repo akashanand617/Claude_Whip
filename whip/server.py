@@ -219,6 +219,7 @@ class RingManager:
             self.config = RouterConfig.load()
             self.engine = Engine.from_checkpoint(self.checkpoint,
                                                  threshold=self.config.threshold)
+            self.engine.set_signal_profile(self.info.hardware, self.info.firmware)
             self._event_log = EventLog()
             self._queue.clear()
             self._stop_stream = asyncio.Event()
@@ -276,9 +277,10 @@ class RingManager:
                             and payload[1] == protocol.SUBTYPE_ACCEL:
                         from whip import accel
                         s = accel.decode(payload)
-                        recent.append((round(t, 3), s.x, s.y, s.z))
+                        xyz = engine.canonical_xyz((s.x, s.y, s.z))
+                        recent.append((round(t, 3), *(float(value) for value in xyz)))
                         if not self.calibrated:
-                            cal = calibrator.feed(t, (s.x, s.y, s.z))
+                            cal = calibrator.feed(t, xyz)
                     if not self.calibrated:
                         if cal is None:
                             continue
@@ -336,7 +338,8 @@ class RingManager:
             self._raw_sink = raw_sink
             await capture.stream(self.client, duration=0, stop=stop,
                                  param=protocol.RAW_ENABLE_ALL,
-                                 on_record=self._queue.append, capture=rec, sink=raw_sink)
+                                 on_record=self._queue.append, capture=rec, sink=raw_sink,
+                                 motion_hold=engine.signal_profile.family == "rt12col")
         except Exception as exc:  # noqa: BLE001 - surface, then settle state
             logger.warning("stream ended: %s", exc)
             await self.broadcast({"type": "error", "message": f"stream ended: {exc}"})

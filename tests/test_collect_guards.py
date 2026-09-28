@@ -10,8 +10,8 @@ from probe import collect
 from whip import capture, protocol
 
 
-def _info(name, firmware):
-    return capture.DeviceInfo(address="X", name=name, firmware=firmware)
+def _info(name, firmware, hardware=None):
+    return capture.DeviceInfo(address="X", name=name, firmware=firmware, hardware=hardware)
 
 
 def test_the_project_ring_on_gesture_firmware_passes():
@@ -30,6 +30,14 @@ def test_stock_firmware_is_refused_unless_allowed():
         collect.check_ring(_info("R02_CC07", "RT02CR_3.12.02_260824"), "R02_CC07", allow_stock=False)
     collect.check_ring(_info("R02_CC07", "RT02CR_3.12.02_260824"), "R02_CC07", allow_stock=True)
     assert protocol.is_expected_ring("COLMI R02_CC07") and not protocol.is_expected_ring("COLMI R02_D507")
+
+
+def test_rt12_candidate_is_a_known_gesture_stream_but_rt12_stock_is_not():
+    collect.check_ring(_info("COLMI R02_DE07", "RT12COL_1.00.01_260927", "RT12COL_V1.0"),
+                       "DE07", allow_stock=False)
+    with pytest.raises(SystemExit, match="unknown"):
+        collect.check_ring(_info("COLMI R02_DE07", "RT12COL_1.00.00_260520", "RT12COL_V1.0"),
+                           "DE07", allow_stock=False)
 
 
 def test_no_motion_packets_aborts_before_any_cue():

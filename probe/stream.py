@@ -63,6 +63,7 @@ async def run(args: argparse.Namespace) -> int:
                 client, args.duration, param=args.param, sink=sink, capture=rec,
                 quiet_optical=args.quiet_optical,
                 disable_logging=args.disable_logging,
+                motion_hold=args.motion_hold,
             )
         finally:
             progress.cancel()
@@ -125,6 +126,11 @@ def main() -> int:
         "--stationary",
         action="store_true",
         help="ring was motionless: also rank the candidate 12 bit unpackers",
+    )
+    parser.add_argument(
+        "--motion-hold",
+        action="store_true",
+        help="apply the measured temporary RT12 motion hold during the raw stream",
     )
     parser.add_argument("--debug", action="store_true")
     args = parser.parse_args()

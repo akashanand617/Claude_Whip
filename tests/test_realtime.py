@@ -171,6 +171,17 @@ def test_engine_ignores_non_accelerometer_payloads():
     assert engine.feed(0.0, b"\x03") == []                          # short battery frame
 
 
+def test_engine_routes_rt12_source_axes_before_calibration_and_inference():
+    engine = Engine(trained_stub(["none", "flick"]),
+                    make_provenance(["none", "flick"]))
+    engine.set_signal_profile("RT12COL_V1.0", "RT12COL_1.00.01_260927")
+    assert np.array_equal(engine.canonical_xyz((11, 22, 33)), [11, 33, -22])
+    # A source-axis-2 down pose is canonical axis 1 and must calibrate. The old
+    # RT02 identity path rejected this exact physical RT12 pose.
+    pose = [(0, 0, 8005)] * 50
+    assert engine.calibrate(pose) == "identity"
+
+
 def test_engine_reports_live_probabilities_for_the_ui():
     labels = ["none", "flick", "double_flick", "wave"]
     engine = Engine(trained_stub(labels), make_provenance(labels))

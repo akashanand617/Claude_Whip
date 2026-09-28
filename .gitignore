@@ -72,6 +72,7 @@ Testing/
 __pycache__/
 *.py[cod]
 .venv/
+.venv-ios-export/
 venv/
 .pytest_cache/
 *.egg-info/

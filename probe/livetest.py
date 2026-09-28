@@ -230,6 +230,7 @@ async def run(args: argparse.Namespace) -> int:
     async with capture.connected(device) as client:
         info = await capture.read_device_info(client, device)
         check_ring(info, None if args.any_ring else protocol.EXPECTED_RING, False)
+        engine.set_signal_profile(info.hardware, info.firmware)
         battery = await capture.read_battery(client)
         print(f"connected   {info.name}  fw {info.firmware}" + (f"  battery {battery[0]}%" if battery else ""))
         rec = capture.Capture(device=info, started_wall=time.time(), param=protocol.RAW_ENABLE_ALL, label=session_id,
@@ -237,7 +238,9 @@ async def run(args: argparse.Namespace) -> int:
         consumer = asyncio.create_task(consume()); cuer = asyncio.create_task(cue_all(rec))
         started = time.perf_counter()
         try:
-            await capture.stream(client, duration=0, stop=stop, param=protocol.RAW_ENABLE_ALL, on_record=queue.append, capture=rec, sink=sink)
+            await capture.stream(client, duration=0, stop=stop, param=protocol.RAW_ENABLE_ALL,
+                                 on_record=queue.append, capture=rec, sink=sink,
+                                 motion_hold=engine.signal_profile.family == "rt12col")
         finally:
             stop.set(); cuer.cancel()
             if not args.free:

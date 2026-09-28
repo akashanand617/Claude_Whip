@@ -25,7 +25,7 @@ import random
 import time
 from pathlib import Path
 
-from whip import capture, protocol, session
+from whip import capture, protocol, ring_profile, session
 
 DATA_DIR = Path("data/sessions")
 
@@ -98,14 +98,13 @@ def check_ring(info, expected_name: str | None, allow_stock: bool) -> None:
     (which streams motion at 1 Hz and answers A1 04 with an error). Pure, so
     it is testable without a ring.
     """
-    from whip import flashing
-
     if expected_name and not protocol.is_expected_ring(info.name, expected_name):
         raise WrongRing(f"connected to {info.name!r} at {info.address}, not {expected_name!r}. "
                         "Another ring is advertising and ours is not (asleep, bonded, or in the "
                         "charger). Wake ours, or pass --any-ring to record from this one anyway.")
-    mode = flashing.detect_mode(info.firmware)
-    if mode != "gesture" and not allow_stock:
+    if not ring_profile.supports_gesture_stream(info.firmware) and not allow_stock:
+        from whip import flashing
+        mode = flashing.detect_mode(info.firmware)
         raise WrongRing(f"{info.name} runs firmware {info.firmware!r} ({mode}); it will not stream motion at "
                         "25 Hz. Flash the gesture firmware (python -m probe.serve), or pass --allow-stock.")
 
@@ -131,10 +130,11 @@ async def frame_witness(rec, sink: Path) -> str | None:
 
     print(f"\n  ---- FRAME: let your arm hang, fingers pointing at the floor, hold still ({POSE_S:.0f} s) ----", flush=True)
     await asyncio.sleep(POSE_S)
+    profile = ring_profile.for_identity(rec.device.hardware, rec.device.firmware)
     recent = []
     for _, p in list(rec.records)[-int(POSE_S * 25 * 0.8):]:
         if len(p) >= 8 and p[0] == protocol.CMD_RAW_SENSOR and p[1] == protocol.SUBTYPE_ACCEL:
-            s_ = accel_decode(p); recent.append((s_.x, s_.y, s_.z))
+            s_ = profile.canonical_sample(accel_decode(p)); recent.append((s_.x, s_.y, s_.z))
     name = Engine.frame_from_pose(recent)
     if name is None:
         print("       pose not held -- no frame witness for this session (the audit will flag it); carry on", flush=True)
@@ -285,7 +285,9 @@ async def run(args: argparse.Namespace) -> int:
             tasks.append(asyncio.create_task(_tick(duration, rec)))
 
         try:
-            await capture.stream(client, duration, sink=sink, capture=rec)
+            profile = ring_profile.for_identity(info.hardware, info.firmware)
+            await capture.stream(client, duration, sink=sink, capture=rec,
+                                 motion_hold=profile.family == "rt12col")
         finally:
             for t in tasks:
                 t.cancel()

@@ -360,6 +360,12 @@ MARGIN_S = 0.08          # two samples of context either side of the core
 MIN_VOTES = 2            # agreeing windows containing the core; the ablation put min_run 2 at zero ambient cost
 MIN_BLIP_PEAK_G = 1.5    # a single sample above ONSET_G but under this is a blip, not a movement (the audit's WEAK floor)
 GRAVITY_SAMPLES = 25     # causal moving average for the impulsive magnitude, 1 s
+# A double must span at least five delivered sample intervals. Shorter cores
+# are one impact/recoil at 25 Hz, even when overlapping model windows vote for a
+# double class. This is a temporal-resolution rule, not an amplitude heuristic:
+# 151/151 valid double-flicks and 64/65 matched valid double-claps clear it,
+# while all three double-clap events on the session-held-out ambient hour do not.
+MIN_DOUBLE_BURST_S = 5 / 25
 
 
 def impulsive_magnitude(stream_g: "np.ndarray") -> "np.ndarray":
@@ -605,6 +611,9 @@ class BurstTracker:
         label, confs = max(tally.items(), key=lambda kv: (len(kv[1]), sum(kv[1])))
         if len(confs) < self.min_votes:
             b.outcome = "no_consensus"
+            return None
+        if label.startswith("double_") and b.duration_s < MIN_DOUBLE_BURST_S:
+            b.outcome = "double_too_short"
             return None
         dirs = [d for _, l, _, d in b.votes if l == label and d != NONE_LABEL]
         direction = dominant_direction(dirs)

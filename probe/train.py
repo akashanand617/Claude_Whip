@@ -154,9 +154,9 @@ def main() -> int:
                           else gm.random_frames(len(ii), frame_rng, flips=False, spin_deg=180.0))
                 xr, gr = gm.rotate_frame(raw_tr[ii], grav_tr if grav_tr is None else grav_tr[ii], frames)
                 xb = torch.tensor(gm.to_model_input(xr, channels, gravity=gr), device=device)
-                xb = gm.augment(xb, rotation_deg=0.0)   # spin already applied to the frame
+                xb = gm.augment(xb, rotation_deg=0.0, channels=channels)  # frame spin already applied
             else:
-                xb = gm.augment(xt[idx])
+                xb = gm.augment(xt[idx], channels=channels)
             gesture_logits, direction_logits = net.forward_heads(xb)
             per_sample = loss_fn(gesture_logits, yt[idx])
             loss = (per_sample * wt[idx]).sum() / wt[idx].sum()
@@ -180,7 +180,24 @@ def main() -> int:
             trained_on=[s for s in sorted(set(sessions.tolist())) if s not in held],
             held_out=sorted(held), labels=labels, channels=channels,
             direction_names=direction_names,
-            direction_trained=args.direction_weight > 0)
+            direction_trained=args.direction_weight > 0,
+            training_config={
+                "seed": args.seed,
+                "epochs": args.epochs,
+                "learning_rate": args.lr,
+                "weight_decay": args.weight_decay,
+                "batch_size": args.batch,
+                "architecture": args.architecture,
+                "direction_weight": args.direction_weight,
+                "frame_augmentation": args.frame_aug,
+                "channels": list(channels),
+                "amplitude_range": gm.AMPLITUDE_RANGE,
+                "rotation_degrees": gm.ROTATION_DEGREES,
+                "noise_g": gm.NOISE_G,
+                "loud_factor": args.loud_factor,
+                "loud_g": float(loud_g),
+                "windows": str(args.windows),
+            })
 
     n_params = sum(p.numel() for p in net.parameters())
     print(f"\nwrote {args.out}  {args.architecture} ({n_params:,} params)")

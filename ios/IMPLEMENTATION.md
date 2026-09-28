@@ -1,5 +1,67 @@
 # R02 Ring — SwiftUI implementation
 
+## 2026-09-27: RT12COL exact images and hardware-family routing
+
+Firmware maintenance routes from both Device Information fields and fails
+closed unless hardware and firmware identify the same known family. RT02CR sees
+only RT02CR images. RT12COL sees its independently acquired stock application
+restore and exact-source Health-default / temporary-Gesture candidate. Both are
+SHA-pinned and their outer hardware header must remain `RT12COL_V1.0`; unknown
+versions, missing identity and cross-family combinations expose no image. The
+transfer path repeats routing before any Health import, battery check or DFU
+write. The revoked RT02 unified-V1 descriptor remains disabled.
+
+V1 (`RT12COL_1.00.01_260927`) physically booted and streamed, but retained the
+stock 25 Hz LIS2DW12 source. V3 (`CTRL1=0x62`) is revoked: both `0x62` and stock
+`0x32` select LP mode 3, and its repeated `A1 04` re-entered sensor/timer setup.
+Its install descriptor is disabled. V5-LP1 (`0x60`) subsequently booted in a
+bounded physical test but is also revoked: 49.0% of adjacent payloads were
+duplicates in an almost strict pair pattern. It was rolled back to verified V1
+and has no app descriptor. V4-LP2 (`0x61`) was then physically tested and
+revoked for the same failure: 49.3976% paired duplicates during its active
+lease. It was also rolled back to verified V1. Neither image is bundled as an
+install choice.
+
+Static analysis then confirmed that stock writes `WAKE_UP_THS=0x41`
+(`SLEEP_ON=1`), `WAKE_UP_DUR=0x40` (`SLEEP_DUR=0`) and `CTRL7=0x20`
+(`INTERRUPTS_ENABLE=1`). V6 is an off-ring single-variable experiment: Gesture
+writes `WAKE_UP_THS=0x01`, while explicit stop, disconnect and lease expiry
+restore exact stock 0x41. It retains V4's LP2 configuration and lease-only
+renewal. V6 is hash-pinned in firmware provenance but is not bundled and has no
+app descriptor or install route. A separate guarded CLI deployment passed DFU
+CHECK and reboot identity. Its first bounded source test subsequently passed
+with 250/250 distinct payloads at 25.0004 Hz, but Health continuity remains
+unvalidated. A later 20-second run crossed two physical lease renewals with
+501/501 distinct payloads and no boundary duplicates. The intended snap was
+still classified as `flick left`, so firmware admission and RT12 model/domain
+adaptation must remain separate gates.
+
+The corrected firmware gate makes `A1 04` lease-only once Gesture is active:
+only the lease byte changes, with no register writes, one-shot producer, or
+timer restart. The app also waits for ten packets after renewal and compares
+packet spacing and consecutive duplicates across the boundary; write success
+alone is not accepted. Failure requests `A1 05` / `A1 02`, while the ten-second
+firmware lease remains the final Health-return backstop.
+
+The ten-second firmware lease is not a user-facing session limit. While the app
+is active and successfully processing fresh motion, it renews V6 continuously.
+The Gesture screen now persists a separate **Return to Health** policy: Off by
+default, or 1/5/15/30 minutes. Off means no app timer; explicit return remains
+available. App suspension, stale inference or disconnect still stops renewal
+and therefore fails back to Health because no phone-side CNN can run then. The
+future gesture-to-Health action belongs at the same explicit return boundary;
+it is not enabled before RT12 classification is qualified. App version is
+2.8.1 (1150); the focused 21-test UnifiedMode suite passes on iPhone 18 Pro
+Simulator.
+
+The first physical V1 deployment passed DFU CHECK/END, reboot, identity,
+fingerprint and app-recognized Health default. Archived exact RT02 controls
+measured 0.0333%-0.0556% duplicates. V4 and V5 failed the corrected-source gate
+and were rolled back; neither validates any continuity gate. V6 must first pass
+a separately authorized, bounded source-freshness test before optical Health,
+long-term continuity or stock rollback testing is justified.
+See `../docs/RT12COL_FIRMWARE.md` for provenance, exact patches and device gates.
+
 ## 2026-09-25: compact unified image and runtime switch
 
 The app now bundles and SHA-pins the size-neutral candidate documented in
@@ -37,6 +99,13 @@ forces HR logging on. Settings changes are explicit user actions.
 Built from the design handoff in `~/design_handoff_r02_ring/` (`README.md` and
 `R02 Health Dashboard.dc.html`), which stayed outside this repo.
 Open `R02Ring.xcodeproj` and run the `R02Ring` scheme. Target iOS 17, portrait iPhone.
+
+RT12COL motion is rotated into the RT02/model coordinate system as
+`[source0, source2, -source1]`. This is based on paired physical forward and
+fingertips-down captures, not a hardware-label guess. Calibration remains a
+down-only gate. Packet equality alone is not treated as stale delivery because
+RT12 can quantize a stationary pose to repeated values; checksum, receipt age,
+bounded gaps, monotonic sequence and the initial distinct-motion gate remain.
 
 ```
 R02Ring/

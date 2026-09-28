@@ -16,7 +16,8 @@ struct GesturesScreen: View {
                     BatteryPill(percent: model.ring.batteryPercent)
                 }
 
-                GestureSessionControl(coordinator: model.modes) { enabled in
+                GestureSessionControl(coordinator: model.modes,
+                                      autoReturn: $model.gestureAutoReturn) { enabled in
                     await model.setGestureSession(enabled)
                 }
                 .padding(.horizontal, Tok.side)
@@ -26,6 +27,23 @@ struct GesturesScreen: View {
                     Text("Detected: \(event.name) \(event.direction == "none" ? "" : event.direction)")
                         .font(.mono(11)).foregroundStyle(Tok.accent)
                 }
+                VStack(alignment: .leading, spacing: 6) {
+                    Button(model.diagnosticRecording ? "Cancel waveform analysis" : "Record cross-ring waveform set") {
+                        if model.diagnosticRecording { model.cancelGestureDiagnosticWorkflow() }
+                        else { model.startGestureDiagnosticWorkflow() }
+                    }
+                    .font(.mono(11))
+                    .foregroundStyle(model.gestureStatus == "Ready" || model.diagnosticRecording ? Tok.accent : Tok.muted)
+                    .buttonStyle(.plain)
+                    .disabled(model.gestureStatus != "Ready" && !model.diagnosticRecording)
+                    if !model.diagnosticPrompt.isEmpty {
+                        Text(model.diagnosticPrompt).font(.mono(14)).foregroundStyle(Tok.accent)
+                    }
+                    if !model.diagnosticProgress.isEmpty {
+                        Text(model.diagnosticProgress).font(.mono(10)).foregroundStyle(Tok.muted)
+                    }
+                }
+                .padding(.horizontal, Tok.side).padding(.vertical, 8)
 
                 VStack(spacing: 0) {
                     Hairline()
@@ -60,6 +78,7 @@ struct GesturesScreen: View {
 
 private struct GestureSessionControl: View {
     @ObservedObject var coordinator: UnifiedModeCoordinator
+    @Binding var autoReturn: GestureAutoReturn
     let change: (Bool) async -> Void
 
     var body: some View {
@@ -73,7 +92,23 @@ private struct GestureSessionControl: View {
             .frame(maxWidth: .infinity, minHeight: Tok.tapTarget, alignment: .leading)
             .buttonStyle(.plain)
             .disabled(!coordinator.available || coordinator.status?.mode == .returningHealth)
-            Text(coordinator.available ? "Health returns when the session ends, data becomes stale, the app backgrounds, or the ring disconnects."
+            HStack {
+                Text("Return to Health")
+                Spacer()
+                Picker("Return to Health", selection: $autoReturn) {
+                    ForEach(GestureAutoReturn.allCases) { option in
+                        Text(option.title).tag(option)
+                    }
+                }
+                .labelsHidden()
+                .pickerStyle(.menu)
+                .tint(Tok.accent)
+            }
+            .font(.mono(11))
+            Text(coordinator.available
+                 ? (autoReturn == .off
+                    ? "No timer. Gesture stays active while the app is running; stale data, backgrounding, or disconnect still restores Health."
+                    : "The timer starts when Gesture becomes active. Stale data, backgrounding, or disconnect still restores Health immediately.")
                  : "Runtime toggle is available only on the verified unified image. Firmware maintenance remains under Settings.")
                 .font(.mono(10)).foregroundStyle(Tok.muted)
         }

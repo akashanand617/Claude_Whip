@@ -252,6 +252,39 @@ def test_a_different_gesture_right_after_another_is_not_absorbed():
     assert all(v[0] >= 8.28 for v in ev[1].__dict__.get("votes", [])) or ev[1].run_length >= 2
 
 
+def test_double_label_requires_a_resolved_five_interval_burst():
+    """One short shock may look double in overlapping windows; time says it is not."""
+    from whip.events import detect_bursts
+
+    # Three above-threshold samples span only 80 ms. The model votes cannot
+    # manufacture a second physical stroke.
+    t, mag, starts, labels = _burst_case(
+        ((3.0, 3.12),),
+        lambda s, e: "double_clap" if _contains(s, e, 3.0, 3.12) else "none",
+    )
+    assert detect_bursts(labels, starts, t, mag,
+                         policies={"double_clap": RunPolicy()}) == []
+
+    # Two resolved strokes span more than five 25 Hz intervals and retain the
+    # exact same CNN voting path.
+    t, mag, starts, labels = _burst_case(
+        ((3.0, 3.12), (3.28, 3.40)),
+        lambda s, e: "double_clap" if _contains(s, e, 3.0, 3.40) else "none",
+    )
+    got = detect_bursts(labels, starts, t, mag,
+                        policies={"double_clap": RunPolicy()})
+    assert [event.label for event in got] == ["double_clap"]
+
+
+def test_short_single_gesture_is_not_affected_by_double_duration_gate():
+    from whip.events import detect_bursts
+
+    t, mag, starts, labels = _burst_case(
+        ((3.0, 3.12),), lambda s, e: "snap" if _contains(s, e, 3.0, 3.12) else "none")
+    got = detect_bursts(labels, starts, t, mag, policies={"snap": RunPolicy()})
+    assert [event.label for event in got] == ["snap"]
+
+
 def test_continuous_motion_is_not_chopped_into_gestures():
     """A 5 s shake the model calls double_flick throughout is one burst, too long to be impulsive: no event."""
     from whip.events import detect_bursts, BurstTracker

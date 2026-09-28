@@ -69,6 +69,29 @@ enum GestureID: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
+/// User-facing session policy. The firmware's short lease remains an invisible
+/// crash backstop; while the app is active it renews Gesture continuously until
+/// this policy, the explicit button, or a future gesture mapping asks for Health.
+enum GestureAutoReturn: Int, CaseIterable, Identifiable {
+    case off = 0
+    case oneMinute = 60
+    case fiveMinutes = 300
+    case fifteenMinutes = 900
+    case thirtyMinutes = 1_800
+
+    var id: Int { rawValue }
+    var seconds: TimeInterval? { self == .off ? nil : TimeInterval(rawValue) }
+    var title: String {
+        switch self {
+        case .off: return "Off"
+        case .oneMinute: return "1 minute"
+        case .fiveMinutes: return "5 minutes"
+        case .fifteenMinutes: return "15 minutes"
+        case .thirtyMinutes: return "30 minutes"
+        }
+    }
+}
+
 /// The phone-side action a gesture is mapped to.
 struct GestureAction: Hashable {
     var name: String
@@ -104,6 +127,12 @@ final class AppModel: ObservableObject {
     @Published private(set) var heartRateSettingsKnown = false
     @Published private(set) var heartRateIntervalMinutes = 5
     @Published var units: Units = .metric
+    @Published var gestureAutoReturn: GestureAutoReturn {
+        didSet {
+            UserDefaults.standard.set(gestureAutoReturn.rawValue, forKey: Self.gestureAutoReturnKey)
+            scheduleGestureAutoReturn()
+        }
+    }
 
     @Published var ring = RingDevice()
     @Published var user = User()
@@ -113,6 +142,7 @@ final class AppModel: ObservableObject {
     @Published var liveHeartRate: Int?
     @Published var syncMessage = "Not synced"
     @Published private(set) var firmwareMode: RingFirmwareMode = .unknown
+    @Published private(set) var firmwareFamily: RingHardwareFamily?
     @Published private(set) var unifiedFirmwareInstalled = false
     @Published private(set) var isFirmwareSwitching = false
     @Published private(set) var firmwareProgress = 0.0
@@ -121,6 +151,10 @@ final class AppModel: ObservableObject {
     @Published private(set) var dataRevision = 0
     @Published private(set) var gestureStatus = "Health is the default. Start a Gesture session when needed."
     @Published private(set) var recentGestures: [RingGestureEvent] = []
+    @Published private(set) var diagnosticPrompt = ""
+    @Published private(set) var diagnosticProgress = ""
+    @Published private(set) var diagnosticCaptureName: String?
+    @Published private(set) var diagnosticRecording = false
     @Published private(set) var healthCoverageMessage: String?
     let modes: UnifiedModeCoordinator
 
@@ -135,12 +169,17 @@ final class AppModel: ObservableObject {
     private var firmwareOperation: UUID?
     private var gestureDriver: GestureSession?
     private var gestureGeneration: UUID?
+    private var diagnosticRecorder: GestureDiagnosticRecorder?
+    private var diagnosticTask: Task<Void, Never>?
+    private var gestureSensorCalibration: GestureSensorCalibration = .identity
     private var heartbeatTask: Task<Void, Never>?
+    private var gestureAutoReturnTask: Task<Void, Never>?
     private var started = false
     private var pendingFirmwareTarget: RingFirmwareMode?
     private var firmwareSwitchStartedAt: Date?
     private var a1ModeTransport: A1UnifiedModeTransport?
     private let lastSyncKeyPrefix = "lastHealthSync."
+    private static let gestureAutoReturnKey = "gestureAutoReturnSeconds"
 
     @Published var gestureMappings: [GestureID: GestureAction] = [
         .flick_up:            .init(name: "Volume up"),
@@ -158,9 +197,28 @@ final class AppModel: ObservableObject {
 
     var mappedCount: Int { gestureMappings.count }
 
-    let appVersion = "R02 · 2.8.0 (1149)"
+    var firmwareOptions: [BundledFirmware] {
+        BundledFirmware.routedCatalog(
+            hardware: ringManager.hardware ?? ring.hardware,
+            firmware: ringManager.firmware ?? ring.firmware
+        ).filter { $0.mode != firmwareMode }
+    }
+
+    var firmwareRoutingMessage: String {
+        let hardware = ringManager.hardware ?? ring.hardware
+        let firmware = ringManager.firmware ?? ring.firmware
+        guard let family = RingHardwareFamily.route(hardware: hardware, firmware: firmware) else {
+            return "Connect a ring with a consistent hardware and firmware identity. Unknown or conflicting identities cannot be flashed."
+        }
+        return "Only images for the detected \(family.title) family are shown."
+    }
+
+    let appVersion = "R02 · 2.8.1 (1150)"
 
     init() {
+        gestureAutoReturn = GestureAutoReturn(
+            rawValue: UserDefaults.standard.integer(forKey: Self.gestureAutoReturnKey)
+        ) ?? .off
         let gate = RingOperationGate()
         operations = gate
         modes = UnifiedModeCoordinator(gate: gate)
@@ -178,26 +236,107 @@ final class AppModel: ObservableObject {
     /// to each checksum-valid accelerometer notification at BLE receipt.
     func acceptMotionSample(_ packet: Data, session: UInt32, sequence: UInt32, receivedAt: Double) {
         guard modes.available, modes.status?.mode == .gesture, modes.status?.session == session else { return }
+        diagnosticRecorder?.append(packet: packet, receivedAt: receivedAt)
         gestureDriver?.ingest(packet, session: session, sequence: sequence, receivedAt: receivedAt)
+    }
+
+    func startGestureDiagnosticWorkflow(repetitions: Int = 3) {
+        guard !diagnosticRecording, modes.status?.mode == .gesture, gestureStatus == "Ready" else {
+            diagnosticProgress = "Start Gesture mode and complete the fingers-down calibration first."
+            return
+        }
+        do {
+            let recorder = try GestureDiagnosticRecorder(
+                name: ring.id,
+                hardware: ringManager.hardware ?? ring.hardware,
+                firmware: ringManager.firmware ?? ring.firmware,
+                deviceID: activeDeviceID,
+                signalCalibration: gestureSensorCalibration
+            )
+            diagnosticRecorder = recorder
+            diagnosticRecording = true
+            diagnosticCaptureName = nil
+            let prompts = GestureDiagnosticPlan.prompts(repetitions: repetitions)
+            diagnosticTask = Task { [weak self] in
+                guard let self else { return }
+                do {
+                    self.diagnosticPrompt = "Get ready"
+                    self.diagnosticProgress = "Recording a quiet pre-roll"
+                    try await Task.sleep(for: .seconds(2))
+                    for (index, prompt) in prompts.enumerated() {
+                        for count in stride(from: 3, through: 1, by: -1) {
+                            try Task.checkCancellation()
+                            self.diagnosticPrompt = "Next: \(prompt.spoken) · \(count)"
+                            self.diagnosticProgress = "\(index + 1) of \(prompts.count)"
+                            try await Task.sleep(for: .seconds(1))
+                        }
+                        try Task.checkCancellation()
+                        self.diagnosticRecorder?.mark(prompt, at: ProcessInfo.processInfo.systemUptime)
+                        self.diagnosticPrompt = "NOW: \(prompt.spoken)"
+                        try await Task.sleep(for: .seconds(3))
+                    }
+                    self.diagnosticPrompt = "Natural movement"
+                    self.diagnosticProgress = "30-second ambient tail"
+                    try await Task.sleep(for: .seconds(30))
+                    self.finishGestureDiagnostic(cancelled: false)
+                    await self.setGestureSession(false)
+                } catch is CancellationError {
+                    self.finishGestureDiagnostic(cancelled: true)
+                } catch {
+                    self.diagnosticProgress = error.localizedDescription
+                    self.finishGestureDiagnostic(cancelled: true)
+                }
+            }
+        } catch {
+            diagnosticProgress = "Could not start capture: \(error.localizedDescription)"
+        }
+    }
+
+    func cancelGestureDiagnosticWorkflow() {
+        diagnosticTask?.cancel()
+        diagnosticTask = nil
+        finishGestureDiagnostic(cancelled: true)
+    }
+
+    private func finishGestureDiagnostic(cancelled: Bool) {
+        let recorder = diagnosticRecorder
+        diagnosticRecorder = nil
+        diagnosticRecording = false
+        diagnosticTask = nil
+        diagnosticPrompt = ""
+        guard let recorder else { return }
+        do {
+            diagnosticCaptureName = try recorder.finish(cancelled: cancelled)
+            diagnosticProgress = cancelled ? "Saved partial capture \(recorder.sessionID)" : "Saved \(recorder.sessionID)"
+        } catch {
+            diagnosticProgress = "Capture close failed: \(error.localizedDescription)"
+        }
     }
 
     private func runtimeModeChanged(previous: ModeStatus?, current: ModeStatus?) {
         gestureDriver?.stop(); gestureGeneration = nil
         heartbeatTask?.cancel(); heartbeatTask = nil
+        gestureAutoReturnTask?.cancel(); gestureAutoReturnTask = nil
         if let current, let deviceID = activeDeviceID {
             do { try coverageStore?.observe(deviceID: deviceID, mode: current.mode, firmware: ring.firmware, at: .now) }
             catch { syncMessage = "Could not record health coverage: \(error.localizedDescription)" }
         }
         guard let current, current.mode == .gesture, !current.charging else {
+            if diagnosticRecording { cancelGestureDiagnosticWorkflow() }
             gestureStatus = current?.mode == .health ? "Health mode · gesture recognition off" : "Gesture recognition paused"
             return
         }
         do {
             let classifier = try PinnedGestureClassifier()
-            let driver = GestureSession(output: { [weak self] output in
+            let calibration = GestureSensorCalibration.stored(for: activeDeviceID)
+            gestureSensorCalibration = calibration
+            let signalAdapter: GestureSignalAdapter = firmwareFamily == .rt12col
+                ? .rt12col(calibration: calibration) : .rt02cr(calibration: calibration)
+            let driver = GestureSession(signalAdapter: signalAdapter, output: { [weak self] output in
                 Task { @MainActor in
                     guard let self, self.gestureGeneration == output.generation else { return }
                     self.gestureStatus = output.pose.reason
+                    self.diagnosticRecorder?.setFrame(output.pose.frame)
                     self.modes.didProcess(session: output.session, sequence: output.sequence, at: output.receivedAt)
                     self.recentGestures.append(contentsOf: output.events)
                     if self.recentGestures.count > 20 { self.recentGestures.removeFirst(self.recentGestures.count - 20) }
@@ -213,6 +352,7 @@ final class AppModel: ObservableObject {
             })
             gestureDriver = driver
             gestureGeneration = driver.start(session: current.session, classifier: classifier)
+            scheduleGestureAutoReturn()
             heartbeatTask = Task { [weak self] in
                 while !Task.isCancelled {
                     do {
@@ -231,6 +371,24 @@ final class AppModel: ObservableObject {
         } catch {
             gestureStatus = "Gesture model unavailable: \(error.localizedDescription)"
             Task { await setGestureSession(false) }
+        }
+    }
+
+    private func scheduleGestureAutoReturn() {
+        gestureAutoReturnTask?.cancel()
+        gestureAutoReturnTask = nil
+        guard let seconds = gestureAutoReturn.seconds,
+              let active = modes.status, active.mode == .gesture else { return }
+        let session = active.session
+        gestureAutoReturnTask = Task { [weak self] in
+            do { try await Task.sleep(for: .seconds(seconds)) }
+            catch { return }
+            guard !Task.isCancelled, let self,
+                  self.modes.status?.mode == .gesture,
+                  self.modes.status?.session == session else { return }
+            self.gestureAutoReturnTask = nil
+            self.gestureStatus = "Session timer ended · returning to Health"
+            await self.setGestureSession(false)
         }
     }
 
@@ -443,15 +601,34 @@ final class AppModel: ObservableObject {
     }
 
     func switchFirmware(to target: RingFirmwareMode) async {
-        if target == .unified, !BundledFirmware.unifiedInstallEnabled {
-            syncMessage = "Unified firmware is disabled after failed boot validation"
-            return
-        }
-        guard target != .unknown, target != firmwareMode, !isFirmwareSwitching, !isSyncing,
+        guard firmwareMode != .unknown, target != .unknown, target != firmwareMode,
+              !isFirmwareSwitching, !isSyncing,
               (!modes.available || modes.status?.mode == .health),
-              let descriptor = BundledFirmware.image(for: target),
               let ringClient, ringManager.isReady else {
             if !ringManager.isReady { syncMessage = "Connect the ring before switching modes" }
+            return
+        }
+
+        let actualHardware = ringManager.hardware ?? ring.hardware
+        let actualFirmware = ringManager.firmware ?? ring.firmware
+        guard let family = RingHardwareFamily.route(
+            hardware: actualHardware, firmware: actualFirmware
+        ) else {
+            syncMessage = FirmwareSwitchError.unroutableIdentity(
+                hardware: actualHardware, firmware: actualFirmware
+            ).localizedDescription
+            return
+        }
+        guard let descriptor = BundledFirmware.routedImage(
+            for: target, hardware: actualHardware, firmware: actualFirmware
+        ) else {
+            syncMessage = FirmwareSwitchError.noCompatibleImage(
+                mode: target, family: family
+            ).localizedDescription
+            return
+        }
+        guard descriptor.installEnabled else {
+            syncMessage = descriptor.disabledReason ?? "This firmware image is disabled"
             return
         }
 
@@ -521,16 +698,129 @@ final class AppModel: ObservableObject {
 
     private func identifyFirmwareMode() async {
         unifiedFirmwareInstalled = false
+        firmwareFamily = nil
         ring.linked = true
         ring.id = ringManager.connectedName ?? ringManager.candidate?.name ?? "Colmi R02"
-        ring.hardware = ringManager.hardware ?? ring.hardware
 
         // DIS reads can finish just after UART discovery. The two 25 Hz images
         // deliberately report the same version and are fingerprinted below.
-        for _ in 0..<10 where ringManager.firmware == nil {
+        for _ in 0..<10 where ringManager.firmware == nil || ringManager.hardware == nil {
             try? await Task.sleep(for: .milliseconds(100))
         }
         ring.firmware = ringManager.firmware ?? ring.firmware
+        ring.hardware = ringManager.hardware ?? ring.hardware
+        guard let family = RingHardwareFamily.route(
+            hardware: ringManager.hardware, firmware: ringManager.firmware
+        ) else {
+            firmwareMode = .unknown
+            syncMessage = "Unknown or conflicting ring identity · firmware actions and automatic health sync paused"
+            return
+        }
+        firmwareFamily = family
+
+        if family == .rt12col {
+            guard let version = ringManager.firmware else {
+                firmwareMode = .unknown
+                syncMessage = "Unknown RT12COL firmware · firmware actions and automatic health sync paused"
+                return
+            }
+            if version == FirmwareIdentity.rt12colStockVersion {
+                firmwareMode = .health
+                UserDefaults.standard.set(firmwareMode.rawValue, forKey: firmwareModeKey)
+                return
+            }
+            if version == FirmwareIdentity.rt12colUnifiedVersion {
+                do {
+                    let candidate = try BundledFirmware.rt12colUnified.load()
+                    guard try await imageMatches(
+                        candidate, sites: FirmwareIdentity.rt12colUnifiedSites
+                    ) else { throw FirmwareSwitchError.unrecognizedFirmware }
+                    firmwareMode = .unified
+                    unifiedFirmwareInstalled = true
+                    UserDefaults.standard.set(firmwareMode.rawValue, forKey: firmwareModeKey)
+                    return
+                } catch {
+                    firmwareMode = .unknown
+                    syncMessage = "RT12COL firmware fingerprint uncertain · health sync paused"
+                    return
+                }
+            }
+            if version == FirmwareIdentity.rt12colUnifiedV6Version {
+                do {
+                    let candidate = try BundledFirmware.rt12colUnifiedLegacyV6.load()
+                    guard try await imageMatches(
+                        candidate, sites: FirmwareIdentity.rt12colUnifiedV6Sites
+                    ) else { throw FirmwareSwitchError.unrecognizedFirmware }
+                    firmwareMode = .unified
+                    unifiedFirmwareInstalled = true
+                    syncMessage = "RT12COL V6 verified · unified Health/Gesture ready"
+                    UserDefaults.standard.set(firmwareMode.rawValue, forKey: firmwareModeKey)
+                    return
+                } catch {
+                    firmwareMode = .unknown
+                    syncMessage = "RT12COL firmware fingerprint uncertain · health sync paused"
+                    return
+                }
+            }
+            if version == FirmwareIdentity.rt12colUnifiedV3Version {
+                do {
+                    let candidate = try BundledFirmware.rt12colUnifiedLegacyV3.load()
+                    guard try await imageMatches(
+                        candidate, sites: FirmwareIdentity.rt12colUnifiedV3Sites
+                    ) else { throw FirmwareSwitchError.unrecognizedFirmware }
+                    firmwareMode = .unified
+                    // Legacy images may be recovered or replaced, not entered.
+                    unifiedFirmwareInstalled = false
+                    syncMessage = "RT12COL V3 revoked · use stock recovery before a reviewed update"
+                    UserDefaults.standard.set(firmwareMode.rawValue, forKey: firmwareModeKey)
+                    return
+                } catch {
+                    firmwareMode = .unknown
+                    syncMessage = "RT12COL firmware fingerprint uncertain · health sync paused"
+                    return
+                }
+            }
+            if version == FirmwareIdentity.rt12colUnifiedV2Version {
+                do {
+                    let candidate = try BundledFirmware.rt12colUnifiedLegacyV2.load()
+                    guard try await imageMatches(
+                        candidate, sites: FirmwareIdentity.rt12colUnifiedV2Sites
+                    ) else { throw FirmwareSwitchError.unrecognizedFirmware }
+                    firmwareMode = .unified
+                    // Legacy images may be recovered or replaced, not entered.
+                    unifiedFirmwareInstalled = false
+                    syncMessage = "RT12COL V2 draft detected · wide-band leased update available"
+                    UserDefaults.standard.set(firmwareMode.rawValue, forKey: firmwareModeKey)
+                    return
+                } catch {
+                    firmwareMode = .unknown
+                    syncMessage = "RT12COL firmware fingerprint uncertain · health sync paused"
+                    return
+                }
+            }
+            if version == FirmwareIdentity.rt12colUnifiedV1Version {
+                do {
+                    let candidate = try BundledFirmware.rt12colUnifiedLegacyV1.load()
+                    guard try await imageMatches(
+                        candidate, sites: FirmwareIdentity.rt12colUnifiedV1Sites
+                    ) else { throw FirmwareSwitchError.unrecognizedFirmware }
+                    firmwareMode = .unified
+                    // Legacy images may be recovered or replaced, not entered.
+                    unifiedFirmwareInstalled = false
+                    syncMessage = "RT12COL V1 detected · wide-band leased V3 update available"
+                    UserDefaults.standard.set(firmwareMode.rawValue, forKey: firmwareModeKey)
+                    return
+                } catch {
+                    firmwareMode = .unknown
+                    syncMessage = "RT12COL firmware fingerprint uncertain · health sync paused"
+                    return
+                }
+            }
+            firmwareMode = .unknown
+            syncMessage = "Unknown RT12COL firmware · firmware actions and automatic health sync paused"
+            return
+        }
+
         if ringManager.firmware == FirmwareIdentity.stockVersion {
             firmwareMode = .health
             UserDefaults.standard.set(firmwareMode.rawValue, forKey: firmwareModeKey)
@@ -576,9 +866,12 @@ final class AppModel: ObservableObject {
     }
 
     private func attachUnifiedMode() async {
+        let leaseSafeRT12 = ringManager.firmware == FirmwareIdentity.rt12colUnifiedVersion
+            || ringManager.firmware == FirmwareIdentity.rt12colUnifiedV6Version
         let transport = A1UnifiedModeTransport(link: ringManager, charging: { [weak self] in
             self?.ring.charging ?? false
-        })
+        }, requiresMotionHold: firmwareFamily == .rt12col,
+           firmwareLeaseSeconds: leaseSafeRT12 ? 10 : 0)
         transport.onMotion = { [weak self] packet, session, sequence, time in
             self?.acceptMotionSample(packet, session: session, sequence: sequence, receivedAt: time)
         }

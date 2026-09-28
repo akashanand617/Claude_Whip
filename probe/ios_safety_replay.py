@@ -110,7 +110,11 @@ def main():
                 golden.append(dict(name=f"{label}:{index}:{rotation}", label=str(label), rotation=rotation,
                                    counts=samples.tolist(), features=x.reshape(-1).tolist(), probabilities=probabilities))
 
-    traces = [synthetic_trace(label, meta, [(75, 77)], label) for label in meta["labels"]]
+    traces = [synthetic_trace(
+        label, meta,
+        [(75, 77), (82, 84)] if label.startswith("double_") else [(75, 77)],
+        label,
+    ) for label in meta["labels"]]
     traces += [synthetic_trace("single_sample_below_floor", meta, [(75, 75)], pulse_counts=10000),
                synthetic_trace("double_internal_gap_not_split", meta, [(75, 77), (87, 89)], "double_clap"),
                synthetic_trace("consecutive_same_class", meta, [(75, 79), (105, 109)]),

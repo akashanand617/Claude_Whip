@@ -8,6 +8,9 @@ from whip import fwimage
 FIRMWARE = Path(__file__).resolve().parent.parent / "firmware"
 LOW_LATENCY = FIRMWARE / "rt02cr-low-latency.bin"
 STOCK = FIRMWARE / "rt02cr-stock-3.12.02.bin"
+RT12_V5_REVOKED = FIRMWARE / "rt12col-25hz-health-default-gesture-v5-lp1-experimental.bin"
+RT12_V4_REVOKED = FIRMWARE / "rt12col-25hz-health-default-gesture-v4-lp2-experimental.bin"
+RT12_V7 = FIRMWARE / "rt12col-25hz-health-default-gesture-v7-100hz-comparison-experimental.bin"
 
 pytestmark = pytest.mark.skipif(not LOW_LATENCY.exists(), reason="firmware images not present")
 
@@ -34,6 +37,15 @@ def test_stock_image_is_pinned_by_local_checksums():
     entry = flash.load_catalogue_entry(fwimage.inspect(STOCK))
     assert entry is not None
     assert entry["sha256"] == fwimage.inspect(STOCK).sha256
+
+
+def test_v7_bounded_comparison_is_exactly_pinned_and_not_revoked(capsys):
+    image = fwimage.inspect(RT12_V7)
+    entry = flash.load_catalogue_entry(image)
+    assert entry is not None
+    assert entry["sha256"] == image.sha256
+    flash.preflight(image, entry, allow_unpinned=False)
+    assert "sha256 OK" in capsys.readouterr().out
 
 
 def test_this_ring_is_compatible_with_the_low_latency_image():
@@ -90,6 +102,28 @@ def test_preflight_allows_an_unpinned_image_when_asked(tmp_path, capsys):
 
     flash.preflight(fwimage.inspect(unknown), None, allow_unpinned=True)
     assert "NOT PINNED" in capsys.readouterr().out
+
+
+def test_preflight_permanently_rejects_v5_by_hash_even_if_renamed_and_pinned(tmp_path, capsys):
+    renamed = tmp_path / "apparently-safe.bin"
+    renamed.write_bytes(RT12_V5_REVOKED.read_bytes())
+    image = fwimage.inspect(renamed)
+    entry = {"id": "local:renamed", "sha256": image.sha256}
+
+    with pytest.raises(flash.FlashAborted, match=r"revoked image:.*49\.0%"):
+        flash.preflight(image, entry, allow_unpinned=True)
+    capsys.readouterr()
+
+
+def test_preflight_permanently_rejects_v4_by_hash_even_if_renamed_and_pinned(tmp_path, capsys):
+    renamed = tmp_path / "apparently-safe-v4.bin"
+    renamed.write_bytes(RT12_V4_REVOKED.read_bytes())
+    image = fwimage.inspect(renamed)
+    entry = {"id": "local:renamed", "sha256": image.sha256}
+
+    with pytest.raises(flash.FlashAborted, match=r"revoked image:.*49\.4%"):
+        flash.preflight(image, entry, allow_unpinned=True)
+    capsys.readouterr()
 
 
 def test_battery_floor_keeps_a_margin_over_the_protocol_minimum():

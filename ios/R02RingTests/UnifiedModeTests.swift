@@ -5,12 +5,23 @@ import SwiftData
 
 @MainActor
 final class UnifiedModeTests: XCTestCase {
+    func testGestureAutoReturnPolicyDefaultsOffAndMapsVisibleDurations() {
+        XCTAssertNil(GestureAutoReturn.off.seconds)
+        XCTAssertEqual(GestureAutoReturn.oneMinute.seconds, 60)
+        XCTAssertEqual(GestureAutoReturn.fiveMinutes.seconds, 300)
+        XCTAssertEqual(GestureAutoReturn.fifteenMinutes.seconds, 900)
+        XCTAssertEqual(GestureAutoReturn.thirtyMinutes.seconds, 1_800)
+        XCTAssertEqual(GestureAutoReturn.allCases.map(\.title),
+                       ["Off", "1 minute", "5 minutes", "15 minutes", "30 minutes"])
+    }
     final class A1Link: A1ModeLink {
         var isReady = true
         var writes: [Data] = []
+        var onWrite: ((Data) -> Void)?
         func writeUART(_ data: Data) throws {
             guard isReady else { throw RingProtocolError.notReady }
             writes.append(data)
+            onWrite?(data)
         }
     }
 
@@ -89,6 +100,188 @@ final class UnifiedModeTests: XCTestCase {
         XCTAssertEqual(capabilities.leaseSeconds, 0)
         do { _ = try await transport.setGesture(true, requestID: 1); XCTFail("charging") }
         catch FirmwareSwitchError.charging {} catch { XCTFail("unexpected error: \(error)") }
+        XCTAssertTrue(link.writes.isEmpty)
+    }
+
+    func testRT12ExactA1AddsVolatileMotionHoldAndReleasesItAfterBothStops() async throws {
+        let link = A1Link()
+        let transport = A1UnifiedModeTransport(
+            link: link, charging: { false }, requiresMotionHold: true, connectionID: 9
+        )
+        let start = Task { try await transport.setGesture(true, requestID: 21) }
+        try await Task.sleep(for: .milliseconds(320))
+        XCTAssertEqual(link.writes.prefix(2), [
+            ColmiR02Protocol.startRawMotionPacket,
+            ColmiR02Protocol.gestureMotionHoldPacket(enabled: true),
+        ])
+        for value: UInt8 in 1...3 {
+            transport.receiveMotion(
+                ColmiR02Protocol.packet(command: 0xa1, payload: [0x03, value]),
+                at: ProcessInfo.processInfo.systemUptime
+            )
+        }
+        let started = try await start.value
+        XCTAssertEqual(started.status.mode, .gesture)
+        _ = try await transport.setGesture(false, requestID: 22)
+        XCTAssertEqual(Array(link.writes.suffix(3)), [
+            ColmiR02Protocol.rawSensorPacket(0x05),
+            ColmiR02Protocol.rawSensorPacket(0x02),
+            ColmiR02Protocol.gestureMotionHoldPacket(enabled: false),
+        ])
+    }
+
+    func testCorrectedExactA1RenewalWaitsForContinuousFreshBoundary() async throws {
+        let link = A1Link()
+        let transport = A1UnifiedModeTransport(
+            link: link, charging: { false }, firmwareLeaseSeconds: 10, connectionID: 10
+        )
+        let capabilities = try await transport.capabilities()
+        XCTAssertTrue(capabilities.supported)
+        XCTAssertEqual(capabilities.leaseSeconds, 10)
+
+        var timestamp = ProcessInfo.processInfo.systemUptime - 0.36
+        let start = Task { try await transport.setGesture(true, requestID: 31) }
+        try await Task.sleep(for: .milliseconds(10))
+        for value: UInt8 in 1...3 {
+            transport.receiveMotion(
+                ColmiR02Protocol.packet(command: 0xa1, payload: [0x03, value]),
+                at: timestamp
+            )
+            timestamp += 0.04
+        }
+        let started = try await start.value
+        XCTAssertEqual(started.status.mode, .gesture)
+        XCTAssertEqual(link.writes, [ColmiR02Protocol.startRawMotionPacket])
+
+        for value: UInt8 in 4...10 {
+            transport.receiveMotion(
+                ColmiR02Protocol.packet(command: 0xa1, payload: [0x03, value]),
+                at: timestamp
+            )
+            timestamp += 0.04
+        }
+        let renewal = Task {
+            try await transport.renew(
+                session: started.status.session, processedSequence: 10, requestID: 32
+            )
+        }
+        try await Task.sleep(for: .milliseconds(170))
+        XCTAssertEqual(link.writes, [
+            ColmiR02Protocol.startRawMotionPacket,
+            ColmiR02Protocol.startRawMotionPacket,
+        ])
+        for value: UInt8 in 11...20 {
+            transport.receiveMotion(
+                ColmiR02Protocol.packet(command: 0xa1, payload: [0x03, value]),
+                at: timestamp
+            )
+            timestamp += 0.04
+        }
+        let renewed = try await renewal.value
+        XCTAssertEqual(renewed.requestID, 32)
+        let metrics = try XCTUnwrap(transport.lastRenewalMetrics)
+        XCTAssertEqual(metrics.baselineMedianSpacing, 0.04, accuracy: 1e-6)
+        XCTAssertEqual(metrics.renewalMedianSpacing, 0.04, accuracy: 1e-6)
+        XCTAssertEqual(metrics.renewalDuplicateFraction, 0, accuracy: 1e-12)
+    }
+
+    func testRenewalArmsPostBoundaryCollectorBeforeUARTWriteCanReturnMotion() async throws {
+        let link = A1Link()
+        let transport = A1UnifiedModeTransport(
+            link: link, charging: { false }, firmwareLeaseSeconds: 10, connectionID: 13
+        )
+        var timestamp = ProcessInfo.processInfo.systemUptime - 0.36
+        let start = Task { try await transport.setGesture(true, requestID: 61) }
+        try await Task.sleep(for: .milliseconds(10))
+        for value: UInt8 in 1...10 {
+            transport.receiveMotion(
+                ColmiR02Protocol.packet(command: 0xa1, payload: [0x03, value]),
+                at: timestamp
+            )
+            timestamp += 0.04
+        }
+        let started = try await start.value
+
+        var injected = false
+        link.onWrite = { packet in
+            guard !injected, Array(packet.prefix(2)) == [0xa1, 0x04] else { return }
+            injected = true
+            transport.receiveMotion(
+                ColmiR02Protocol.packet(command: 0xa1, payload: [0x03, 11]),
+                at: timestamp
+            )
+            timestamp += 0.04
+        }
+        let renewal = Task {
+            try await transport.renew(
+                session: started.status.session, processedSequence: 10, requestID: 62
+            )
+        }
+        try await Task.sleep(for: .milliseconds(170))
+        for value: UInt8 in 12...20 {
+            transport.receiveMotion(
+                ColmiR02Protocol.packet(command: 0xa1, payload: [0x03, value]),
+                at: timestamp
+            )
+            timestamp += 0.04
+        }
+        let renewed = try await renewal.value
+        XCTAssertEqual(renewed.requestID, 62)
+        XCTAssertTrue(injected)
+        let metrics = try XCTUnwrap(transport.lastRenewalMetrics)
+        XCTAssertEqual(metrics.boundarySpacing, 0.04, accuracy: 1e-6)
+        XCTAssertEqual(metrics.renewalDuplicateFraction, 0, accuracy: 1e-12)
+    }
+
+    func testCorrectedExactA1RenewalRejectsDuplicateBurstAndReturnsHealth() async throws {
+        let link = A1Link()
+        let transport = A1UnifiedModeTransport(
+            link: link, charging: { false }, firmwareLeaseSeconds: 10, connectionID: 11
+        )
+        var timestamp = ProcessInfo.processInfo.systemUptime - 0.36
+        let start = Task { try await transport.setGesture(true, requestID: 41) }
+        try await Task.sleep(for: .milliseconds(10))
+        for value: UInt8 in 1...10 {
+            transport.receiveMotion(
+                ColmiR02Protocol.packet(command: 0xa1, payload: [0x03, value]),
+                at: timestamp
+            )
+            timestamp += 0.04
+        }
+        let started = try await start.value
+        let renewal = Task {
+            try await transport.renew(
+                session: started.status.session, processedSequence: 10, requestID: 42
+            )
+        }
+        try await Task.sleep(for: .milliseconds(170))
+        let duplicate = ColmiR02Protocol.packet(command: 0xa1, payload: [0x03, 10])
+        for _ in 0..<10 {
+            transport.receiveMotion(duplicate, at: timestamp)
+            timestamp += 0.04
+        }
+        do {
+            _ = try await renewal.value
+            XCTFail("duplicate burst crossed renewal gate")
+        } catch UnifiedModeError.renewalBoundary {} catch {
+            XCTFail("unexpected error: \(error)")
+        }
+        let metrics = try XCTUnwrap(transport.lastRenewalMetrics)
+        XCTAssertEqual(metrics.renewalDuplicateFraction, 1, accuracy: 1e-12)
+        try await Task.sleep(for: .milliseconds(320))
+        XCTAssertEqual(link.writes.suffix(2).map { Array($0.prefix(2)) },
+                       [[0xa1, 0x05], [0xa1, 0x02]])
+    }
+
+    func testA1RenewalCannotWriteOutsideActiveGesture() async {
+        let link = A1Link()
+        let transport = A1UnifiedModeTransport(
+            link: link, charging: { false }, firmwareLeaseSeconds: 10, connectionID: 12
+        )
+        do {
+            _ = try await transport.renew(session: 0, processedSequence: 1, requestID: 51)
+            XCTFail("renewed outside Gesture")
+        } catch {}
         XCTAssertTrue(link.writes.isEmpty)
     }
 

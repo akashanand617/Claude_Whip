@@ -71,6 +71,20 @@ FLASH_TARGETS = {
 GESTURE_FIRMWARE_STRINGS = {"RT02CR_3.12.07_260514", "RT02CR_3.12.00_251205"}
 STOCK_FIRMWARE_STRINGS = {"RT02CR_3.12.02_260824"}
 
+# These exact images are retained for reproducibility and postmortem work, but
+# must never reach the radio again. This check is by content hash, not filename,
+# so renaming a revoked artifact cannot bypass it. There is deliberately no CLI
+# override: rebuilding/disassembling remains possible without making a known-bad
+# image flashable.
+REVOKED_IMAGE_REASONS = {
+    "ea5b7a61041d7c64213307018a29f7dc6d803a135afd94d1f1a25178c0ab5026":
+        "RT12COL V3: wrong LP mode and unsafe repeated A1 04 path",
+    "21de9507955e102e846932f1d3c1b16e736a73d9d355560af8cf89cc61093d78":
+        "RT12COL V4-LP2: physical test measured 49.4% paired duplicate payloads",
+    "23267b5e25e65591349861048c24b72b5cdbc60ea2d583a58315b4cd33d38217":
+        "RT12COL V5-LP1: physical test measured 49.0% paired duplicate payloads",
+}
+
 
 def detect_mode(firmware: str | None) -> str:
     if not firmware:
@@ -169,6 +183,9 @@ def preflight(image: fwimage.FirmwareImage, entry: dict | None, allow_unpinned: 
           value=f"{stats['crc16']} / {stats['checksum16']}")
     _emit(progress, stage="fact", name="chunks",
           value=f"{dfu.chunk_count(image.size)} x {dfu.CHUNK_SIZE_BYTES} bytes")
+
+    if reason := REVOKED_IMAGE_REASONS.get(image.sha256):
+        raise FlashAborted(f"revoked image: {reason}")
 
     if entry is None:
         if not allow_unpinned:

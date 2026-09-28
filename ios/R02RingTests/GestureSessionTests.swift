@@ -41,7 +41,7 @@ final class GestureSessionTests: XCTestCase {
         await fulfillment(of: [rejected, noOutput], timeout: 0.5)
     }
 
-    func testReplayClockGapChecksumAndFrozenSamplesFailClosed() async throws {
+    func testReplayClockGapAndChecksumFailClosedButStationarySamplesRemainValid() async throws {
         let classifier = try PinnedGestureClassifier()
         var damaged = packet; damaged[15] ^= 1
         let scenarios: [(String, [(Double, UInt32, Data)], Bool)] = [
@@ -51,7 +51,9 @@ final class GestureSessionTests: XCTestCase {
             ("delivery gap", [(1, 1, packet), (1.28, 2, packet)], true),
             ("backwards clock", [(1, 1, packet), (0.96, 2, packet)], true),
             ("checksum", [(1, 1, packet), (1.04, 2, damaged)], true),
-            ("frozen", (0..<14).map { (1 + Double($0) * 0.04, UInt32($0 + 1), packet) }, true),
+            // Identical RT12 values during a still pose remain valid when
+            // receipt time and the app-assigned sequence keep advancing.
+            ("stationary", (0..<14).map { (1 + Double($0) * 0.04, UInt32($0 + 1), packet) }, false),
             ("valid sequence wrap", [(1, UInt32.max, packet), (1.04, 0, packet)], false),
         ]
         for (name, samples, shouldReject) in scenarios {

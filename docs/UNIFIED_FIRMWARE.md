@@ -6,6 +6,17 @@ disabled on that installed image. Workflow 3's bounded descriptor read matched
 sampled V2 code, not the entire live image. See
 [the completed workflow](UNIFIED_WORKFLOW_3.md) for scope and hardware evidence.
 
+**Gesture-model follow-up — 2026-09-27:** the app's offline model bundle now
+uses the physically constrained RT12COL adapter and 9-channel shape model in
+[GESTURE_MODEL_V2.md](GESTURE_MODEL_V2.md). Checkpoint SHA-256 is
+`1158a0b6c0aaaccbc90ca6352791481aa3a734cc1ac4c75e959ad8588c56d6c7`;
+7,627 Python/Core ML windows, 15 targeted Swift replay tests and the complete
+87-test iOS simulator suite pass with zero skips. This supersedes the 8-channel
+model identity later in this historical document. It does not approve a unified
+firmware image. RT12COL V7 was later physically tested and remains a
+recognition-only diagnostic identity; that comparison did not approve an app
+install route or replace V6 as the signal baseline.
+
 **Current handoff:** [UNIFIED_RESOURCE_BUDGET.md](UNIFIED_RESOURCE_BUDGET.md)
 and [timer creation/resume evidence](UNIFIED_TIMER_RESUME_READ.md) supersede the
 historical counts and unread-code claims below. The fixed 452-byte timer-code
@@ -219,7 +230,8 @@ The boot path calls `update_ram_layout(0x7000, 0x7400, 0)`. The 1028 nominal byt
 after the overlay are not an approved allocation. Heap/stack/ROM ownership and
 indirect references still need closure; no safe controller allocation is certified.
 
-Model: `data/model.pt`, SHA-256
+Historical model (superseded by the 2026-09-27 follow-up above):
+`data/model.pt`, SHA-256
 `77ed774f03ce3eaddbb8ac29ac8dfc1be32fdd7bef997b56c54157891aff26d5`.
 Eight channels: shape(3), scale(1), saturation(1), room(3); 50 samples, stride 6,
 threshold 0.5; twelve labels including none. Counts/g 8005; signed16 BE axes

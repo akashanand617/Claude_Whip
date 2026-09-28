@@ -1,0 +1,44 @@
+{
+  "definition": "consecutive checksum-valid A1/03 packet[2:8] byte equality within completed optical_stop_mode3 phase",
+  "rt02_controls": [
+    {
+      "cleanup": "verified_000100",
+      "consecutive_duplicate_count": 25,
+      "consecutive_duplicate_fraction": 0.0005555432101508855,
+      "notification_rate_hz": 25.000843854634063,
+      "observed_s": 1799.9792431669775,
+      "samples": 45002,
+      "source": "data/batterycheck/battery_1790109591966012000.jsonl",
+      "source_sha256": "db01ad1a30f8efa9b9c6adb06e12e3d275e3f783d9f4a8b5baddd656e81c8521"
+    },
+    {
+      "cleanup": "verified_000100",
+      "consecutive_duplicate_count": 23,
+      "consecutive_duplicate_fraction": 0.0005110997533388147,
+      "notification_rate_hz": 25.000756859677132,
+      "observed_s": 1799.985506542027,
+      "samples": 45002,
+      "source": "data/batterycheck/battery_1790111870918145000.jsonl",
+      "source_sha256": "3ba1e3c939a62c5e15b9c581aba07b04a5c86340ce7fae5cd806e62a66f15d08"
+    },
+    {
+      "cleanup": "verified_000100",
+      "consecutive_duplicate_count": 5,
+      "consecutive_duplicate_fraction": 0.00033331111259249385,
+      "notification_rate_hz": 25.000660992536137,
+      "observed_s": 600.0241355409962,
+      "samples": 15002,
+      "source": "data/batterycheck/battery_1790075332801725000.jsonl",
+      "source_sha256": "489aea3bedbdfac45366108d7b9df7a3637c597c030ec5756cf8e82a852b6f57"
+    }
+  ],
+  "rt12_v1_comparison": {
+    "consecutive_duplicate_count": 1034,
+    "consecutive_duplicate_fraction": 0.17457369576228263,
+    "distinct_notification_rate_hz": 20.637150076268515,
+    "notification_rate_hz": 25.001808120625572,
+    "samples": 5924,
+    "source": "data/sessions/phone_domain_20260927_180327/phone_domain_20260927_180327.jsonl",
+    "source_sha256": "3c5239c4499859f8a3c7030f27641805f581667e108c609e90ef39266ef747f7"
+  }
+}

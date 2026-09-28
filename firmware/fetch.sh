@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
-# Rebuild firmware/ from public sources and verify against SHA256SUMS.
+# Rebuild public-source RT02CR firmware and verify every archived image against
+# SHA256SUMS. RT12COL stock was acquired locally and is never downloaded here.
 #
 # The two downloadable images come from the vendor CDN and from upstream; the
 # rate variants are built by probe/build.py; the experimental optical-off
 # candidate is derived from the pinned 25 Hz image by probe/build_optical_off.py;
-# the compact unified candidate is derived by probe/build_unified_mode.py. See
-# PROVENANCE.md for what each is and why.
+# the compact unified candidate is derived by probe/build_unified_mode.py. The
+# RT12COL candidate is rebuilt only when its exact local stock restore exists.
+# See PROVENANCE.md for what each is and why.
 set -euo pipefail
 
 cd "$(dirname "$0")"
@@ -42,6 +44,17 @@ if [ ! -e "rt02cr-25hz-optical-off-v2-experimental.bin" ]; then
 fi
 if [ ! -e "rt02cr-25hz-health-default-gesture-v1-experimental.bin" ]; then
   (cd .. && "$PY" -m probe.build_unified_mode --out firmware/rt02cr-25hz-health-default-gesture-v1-experimental.bin)
+fi
+if [ -e "rt12col-stock-1.00.00.bin" ]; then
+  for revision in v1 v2 v3-revoked v4-lp2 v5-lp1 v6-sleep-fix; do
+    case "$revision" in
+      v3-revoked) artifact="rt12col-25hz-health-default-gesture-v3-experimental.bin" ;;
+      *) artifact="rt12col-25hz-health-default-gesture-${revision}-experimental.bin" ;;
+    esac
+    if [ ! -e "$artifact" ]; then
+      (cd .. && "$PY" -m probe.build_rt12col_unified --revision "$revision" --out "firmware/$artifact")
+    fi
+  done
 fi
 
 echo

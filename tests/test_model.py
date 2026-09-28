@@ -1,4 +1,5 @@
 import pytest
+import numpy as np
 
 torch = pytest.importorskip("torch")
 
@@ -113,24 +114,37 @@ def test_checkpoint_records_what_it_trained_on(tmp_path):
     assert "trained_on" in provenance and provenance["trained_on"]
 
 
+def test_checkpoint_records_exact_training_recipe(tmp_path):
+    path = tmp_path / "m.pt"
+    recipe = {"seed": 7, "channels": ["shape", "impulse"], "frame_augmentation": "spin"}
+    gm.save(gm.GestureNet(), path, trained_on=["a"], held_out=["b"],
+            labels=["none", "flick", "double_flick", "wave"],
+            training_config=recipe)
+    _, provenance = gm.load(path)
+    assert provenance["training_config"] == recipe
+
+
 def test_augmentation_preserves_shape_and_finger_axis():
     """
-    Rotation models the ring turning on the finger, which spins axes 1 and 2
-    about axis 0. Rotating all three would model wearing it on another finger.
+    Rotation models the ring turning on the finger, which preserves measured
+    finger axis 1 and spins axes 0 and 2. Rotating all three would model wearing
+    it on another finger.
     """
     batch = a_batch(8)
     out = gm.augment(batch, amplitude=0.0, rotation_deg=30.0, noise_g=0.0)
     assert out.shape == batch.shape
-    assert torch.allclose(out[:, 0], batch[:, 0], atol=1e-6)
+    assert torch.allclose(out[:, gm.FINGER_AXIS], batch[:, gm.FINGER_AXIS], atol=1e-6)
     # the other two moved
-    assert not torch.allclose(out[:, 1], batch[:, 1], atol=1e-3)
+    for axis in (axis for axis in range(3) if axis != gm.FINGER_AXIS):
+        assert not torch.allclose(out[:, axis], batch[:, axis], atol=1e-3)
 
 
 def test_rotation_preserves_magnitude_in_the_rotated_plane():
     batch = a_batch(8)
     out = gm.augment(batch, amplitude=0.0, rotation_deg=25.0, noise_g=0.0)
-    before = (batch[:, 1] ** 2 + batch[:, 2] ** 2).sqrt()
-    after = (out[:, 1] ** 2 + out[:, 2] ** 2).sqrt()
+    a, b = [axis for axis in range(3) if axis != gm.FINGER_AXIS]
+    before = (batch[:, a] ** 2 + batch[:, b] ** 2).sqrt()
+    after = (out[:, a] ** 2 + out[:, b] ** 2).sqrt()
     assert torch.allclose(before, after, atol=1e-5)
 
 
@@ -205,6 +219,44 @@ def test_amplitude_augmentation_moves_the_scale_channel_not_the_waveform():
     assert not torch.allclose(out[:, gm.N_AXES:], batch[:, gm.N_AXES:], atol=1e-4)
 
 
+def test_amplitude_augmentation_does_not_corrupt_saturation_or_room_channels():
+    channels = ("shape", "scale", "saturation", "room")
+    batch = a_batch(8, channels=gm.n_channels_for(channels))
+    out = gm.augment(batch, amplitude=0.2, rotation_deg=0.0, noise_g=0.0,
+                     channels=channels)
+    layout = gm.channel_slices(channels)
+    assert torch.allclose(out[:, layout["shape"]], batch[:, layout["shape"]])
+    assert not torch.allclose(out[:, layout["scale"]], batch[:, layout["scale"]])
+    assert torch.allclose(out[:, layout["saturation"]], batch[:, layout["saturation"]])
+    assert torch.allclose(out[:, layout["room"]], batch[:, layout["room"]])
+
+
+def test_post_feature_rotation_uses_measured_finger_axis_and_skips_room_frame():
+    channels = ("shape", "scale", "saturation", "room")
+    batch = a_batch(8, channels=gm.n_channels_for(channels))
+    out = gm.augment(batch, amplitude=0.0, rotation_deg=25.0, noise_g=0.0,
+                     channels=channels)
+    layout = gm.channel_slices(channels)
+    finger = layout["shape"].start + gm.FINGER_AXIS
+    assert torch.allclose(out[:, finger], batch[:, finger], atol=1e-6)
+    assert torch.allclose(out[:, layout["room"]], batch[:, layout["room"]])
+
+
+def test_impulse_channel_is_force_and_rotation_invariant_but_keeps_stroke_shape():
+    rng = np.random.default_rng(12)
+    raw = rng.normal(size=(4, 3, gm.WINDOW_SAMPLES)).astype("float32")
+    gravity = rng.normal(size=(4, 3)).astype("float32")
+    frames = gm.random_frames(4, rng, flips=False, spin_deg=180)
+    rotated, rotated_gravity = gm.rotate_frame(raw, gravity, frames)
+    base = gm.to_model_input(raw, ("impulse",), gravity=gravity)
+    spun = gm.to_model_input(rotated, ("impulse",), gravity=rotated_gravity)
+    louder = gm.to_model_input(raw * 1.7, ("impulse",), gravity=gravity * 1.7)
+    assert base.shape == (4, 1, gm.WINDOW_SAMPLES)
+    assert np.allclose(base, spun, atol=1e-5)
+    assert np.allclose(base, louder, atol=1e-5)
+    assert np.std(base, axis=2).min() > 0, "the channel must preserve temporal stroke shape"
+
+
 def test_three_channel_models_still_work():
     """The pre-split representation stays loadable, so old checkpoints still run."""
     net = gm.GestureNet(n_channels=3)
@@ -273,11 +325,13 @@ def test_channel_groups_have_the_advertised_widths():
     import numpy as np
 
     raw = np.random.randn(4, gm.N_AXES, gm.WINDOW_SAMPLES).astype("float32")
+    gravity = np.random.randn(4, gm.N_AXES).astype("float32")
     for groups in (("shape", "scale"),
                    ("gravity", "linear", "scale"),
                    ("gravity", "linear", "scale", "saturation"),
-                   ("shape", "scale", "saturation")):
-        out = gm.to_model_input(raw, groups)
+                   ("shape", "scale", "saturation"),
+                   ("shape", "scale", "saturation", "room", "impulse")):
+        out = gm.to_model_input(raw, groups, gravity=gravity)
         assert out.shape == (4, gm.n_channels_for(groups), gm.WINDOW_SAMPLES)
 
 

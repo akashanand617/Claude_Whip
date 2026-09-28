@@ -1,0 +1,137 @@
+{
+  "kind": "rt12_activity_inactivity_hypothesis",
+  "date": "2026-09-27",
+  "device_io": false,
+  "stock_image": {
+    "path": "firmware/rt12col-stock-1.00.00.bin",
+    "sha256": "b180b27a3fddd24db8a49de7c6b0041b94621062187300ceeb79af3d7908c639"
+  },
+  "references": {
+    "register_definitions": "https://github.com/STMicroelectronics/lis2dw12-pid/blob/master/lis2dw12_reg.h",
+    "driver_timing": "https://github.com/STMicroelectronics/lis2dw12-pid/blob/master/lis2dw12_reg.c",
+    "activity_example": "https://github.com/STMicroelectronics/STMems_Standard_C_drivers/blob/master/lis2dw12_STdC/examples/lis2dw12_activity.c"
+  },
+  "fixed_stock_writes": [
+    {"call_site": "0xc036", "register": "0x3f", "value": "0x00"},
+    {"call_site": "0xc606", "register": "0x3f", "value": "0x20"},
+    {"call_site": "0xc644", "register": "0x3f", "value": "0x00"},
+    {"call_site": "0xc9fe", "register": "0x3f", "value": "0x00"},
+    {"call_site": "0xca0a", "register": "0x35", "value": "0x40"},
+    {"call_site": "0xca16", "register": "0x34", "value": "0x41"},
+    {"call_site": "0xca2e", "register": "0x3f", "value": "0x20"}
+  ],
+  "decoded_active_configuration": {
+    "wake_up_ths_0x34": "0x41",
+    "sleep_on": true,
+    "wake_threshold_lsb": 1,
+    "wake_threshold_at_4g_mg": 62.5,
+    "wake_up_dur_0x35": "0x40",
+    "sleep_dur": 0,
+    "stationary": false,
+    "wake_dur": 2,
+    "ctrl7_0x3f": "0x20",
+    "interrupts_enable": true
+  },
+  "timing_correction": {
+    "sleep_dur_lsb": "512/ODR",
+    "wake_dur_lsb": "1/ODR",
+    "programmed_sleep_dur": 0,
+    "programmed_wake_dur": 2
+  },
+  "capture_checks": {
+    "v4_lp2": {
+      "path": "firmware/research/2026-09-27/rt12-v4-lp2-physical/capture.jsonl",
+      "capture_sha256": "61af77598443f88a614dded8aed63a7e4f0bc066944181fec2c9be782152faea",
+      "samples": 250,
+      "pairs": 123,
+      "singletons": 4,
+      "axis_span_counts": [116, 148, 96],
+      "maximum_run_to_run_delta_counts": 105.22357150372724,
+      "maximum_run_to_run_delta_g_at_8192_counts_per_g": 0.01284467425582608,
+      "singleton_high_motion_alignment": false,
+      "note": "Three singletons are stream startup; the late singleton has a high relative noise delta but only about 0.0115 g."
+    },
+    "v5_lp1": {
+      "path": "firmware/research/2026-09-27/rt12-v5-lp1-physical/capture.jsonl",
+      "capture_sha256": "74ae851af8c68578e94ca8f51e610985b42e472c3fe50acac65c3c6967a5638f",
+      "samples": 201,
+      "pairs": 98,
+      "singletons": 5,
+      "axis_span_counts": [192, 176, 256],
+      "maximum_run_to_run_delta_counts": 220.54478003344354,
+      "maximum_run_to_run_delta_g_at_8192_counts_per_g": 0.026921970218926214,
+      "singleton_high_motion_alignment": false,
+      "note": "Three singletons are stream startup, one is at the final packet, and the interior singleton is not a high-motion transition."
+    }
+  },
+  "assessment": {
+    "static_feature_enabled": true,
+    "captures_contain_high_motion_wake_segments": false,
+    "captures_consistent_with_persistent_inactivity_state": true,
+    "hypothesis_selected_for_single_variable_v6": true,
+    "physical_confirmation": true
+  },
+  "v6_source_freshness": {
+    "path": "data/raw/rt12_v6_sleep_fix_first_source_20260927.jsonl",
+    "sha256": "49364908fcd8fb724dd735057e7db094e0d0e9e0d8665e56a2637feb901614bb",
+    "samples": 250,
+    "observed_s": 9.959843,
+    "notification_rate_hz": 25.00039408251716,
+    "consecutive_duplicate_count": 0,
+    "consecutive_duplicate_fraction": 0.0,
+    "distinct_payloads": 250,
+    "gap_median_s": 0.044603999999999644,
+    "gap_p95_s": 0.047104000000000035,
+    "gap_max_s": 0.060367999999998645,
+    "axis_span_counts": [904, 380, 1116],
+    "broad_motion_threshold_crossed": false,
+    "lease_stopped_stream": true,
+    "host_cleanup": ["A1 05", "A1 02", "MOTION_HOLD_DISABLE"]
+  },
+  "v6_high_motion": {
+    "path": "data/raw/rt12_v6_high_motion_repeat_20260927.jsonl",
+    "sha256": "e6140ee87e27cd608e8a959ee12612fd1d35f1cba1f254c576c6ff8156d28b33",
+    "samples": 250,
+    "observed_s": 9.944983,
+    "notification_rate_hz": 25.03775019022154,
+    "consecutive_duplicate_count": 0,
+    "distinct_payloads": 249,
+    "gap_max_s": 0.07526900000000047,
+    "axis_span_counts": [65512, 65512, 65512],
+    "peak_vector_g": 7.088246140455154,
+    "axis_rail_hits": 6,
+    "motion_observed": true,
+    "excluded_not_ready_capture": "data/raw/rt12_v6_high_motion_20260927.jsonl"
+  },
+  "v6_renewal_and_snap": {
+    "path": "data/raw/rt12_v6_snap_renewed_20260927.jsonl",
+    "sha256": "451a34f810ba36566c6d375765bc3144683eccc2d37eb38cc3a67230c4b3b77f",
+    "samples": 501,
+    "observed_s": 19.9948,
+    "notification_rate_hz": 25.006501690439514,
+    "consecutive_duplicate_count": 0,
+    "distinct_payloads": 501,
+    "gap_max_s": 0.0757879999999993,
+    "renewal_boundaries": [
+      {"at_s": 8.0, "gap_s": 0.06014599999999959, "duplicate": false, "nearby_duplicates": 0},
+      {"at_s": 16.0, "gap_s": 0.04717799999999883, "duplicate": false, "nearby_duplicates": 0}
+    ],
+    "intended_gesture": "snap",
+    "model_event": {"name": "flick", "direction": "left", "confidence": 0.621, "votes": 2, "peak_g": 7.77, "latency_s": 1.715}
+  },
+  "v6": {
+    "path": "firmware/rt12col-25hz-health-default-gesture-v6-sleep-fix-experimental.bin",
+    "version": "RT12COL_1.00.06_260927",
+    "sha256": "e92c5bc0d2751c3348aeea56ece4e5b5693baf1f6ba45c2a869c2d79729e134d",
+    "gesture_wake_up_ths": "0x01",
+    "stock_restore_wake_up_ths": "0x41",
+    "flashed": true,
+    "bounded_user_authorized_flash": true,
+    "flash_approved_for_general_install": false,
+    "identity_verified": true,
+    "physical_source_freshness_validated": true,
+    "physical_high_motion_validated": true,
+    "physical_lease_renewal_validated": true,
+    "gesture_model_validated": false
+  }
+}

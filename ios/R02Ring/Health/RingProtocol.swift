@@ -34,6 +34,13 @@ enum ColmiR02Protocol {
         [rawSensorPacket(0x05), rawSensorPacket(0x02)]
     }
 
+    /// Existing volatile motion feature used by the RT12COL candidate to wake
+    /// the native accelerometer and defer its connected-idle transition. Mode 3
+    /// has a no-op action target; mode 0 restores the stock state.
+    static func gestureMotionHoldPacket(enabled: Bool) -> Data {
+        packet(command: 0x3b, payload: [0x02, 0x01, enabled ? 0x03 : 0x00])
+    }
+
     static func checksum<S: Sequence>(_ bytes: S) -> UInt8 where S.Element == UInt8 {
         UInt8(truncatingIfNeeded: bytes.reduce(0) { $0 + Int($1) })
     }
@@ -139,7 +146,8 @@ enum RingRecoverySelector {
     /// Prefer the app's saved peripheral when it still identifies as a ring.
     /// Without that identity, attach automatically only when exactly one safe
     /// candidate remains. An unnamed HID/FEE7 device is never eligible.
-    static func select(_ candidates: [RingRecoveryCandidate], preferredID: UUID?) -> UUID? {
+    static func select(_ candidates: [RingRecoveryCandidate], preferredID: UUID?,
+                       excluding excludedIDs: Set<UUID> = []) -> UUID? {
         var merged: [UUID: RingRecoveryCandidate] = [:]
         for candidate in candidates {
             if let old = merged[candidate.id] {
@@ -154,7 +162,7 @@ enum RingRecoverySelector {
             }
         }
 
-        let eligible = merged.values.filter(\.isEligible)
+        let eligible = merged.values.filter { $0.isEligible && !excludedIDs.contains($0.id) }
         if let preferredID,
            eligible.contains(where: { $0.id == preferredID }) {
             return preferredID
@@ -165,14 +173,15 @@ enum RingRecoverySelector {
     /// Health and firmware-mode state is written only after a real R02 link has
     /// supplied a CoreBluetooth identifier. Those per-ring keys can therefore
     /// restore the identifier accidentally removed by the app's Forget action.
-    static func historicalIdentifiers(from keys: [String]) -> [UUID] {
+    static func historicalIdentifiers(from keys: [String],
+                                      excluding excludedIDs: Set<UUID> = []) -> [UUID] {
         let prefixes = ["lastHealthSync.", "ringFirmwareMode."]
         var result = Set<UUID>()
         for key in keys {
             for prefix in prefixes where key.hasPrefix(prefix) {
                 let suffix = String(key.dropFirst(prefix.count))
                 if let id = UUID(uuidString: suffix), suffix == id.uuidString {
-                    result.insert(id)
+                    if !excludedIDs.contains(id) { result.insert(id) }
                 }
             }
         }

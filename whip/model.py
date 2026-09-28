@@ -93,7 +93,7 @@ DEFAULT_CHANNELS = ("shape", "scale")
 FINGER_AXIS = 1
 
 CHANNEL_WIDTHS = {"shape": 3, "gravity": 3, "linear": 3, "scale": 1, "saturation": 1,
-                  "posture": 3, "invariant": 3, "gref": 2, "room": 3}
+                  "posture": 3, "invariant": 3, "gref": 2, "room": 3, "impulse": 1}
 
 
 def _moving_average(x, width: int):
@@ -108,6 +108,21 @@ def _moving_average(x, width: int):
 
 def n_channels_for(channels=DEFAULT_CHANNELS) -> int:
     return sum(CHANNEL_WIDTHS[c] for c in channels)
+
+
+def channel_slices(channels=DEFAULT_CHANNELS) -> dict[str, slice]:
+    """Exact model-channel layout for augmentation/export parity."""
+    unknown = set(channels) - set(CHANNEL_WIDTHS)
+    if unknown:
+        raise ValueError(f"unknown channel group(s): {sorted(unknown)}")
+    if len(set(channels)) != len(tuple(channels)):
+        raise ValueError("channel groups must not repeat")
+    out = {}
+    start = 0
+    for name in channels:
+        out[name] = slice(start, start + CHANNEL_WIDTHS[name])
+        start += CHANNEL_WIDTHS[name]
+    return out
 
 
 def to_model_input(x, channels=DEFAULT_CHANNELS, gravity=None):
@@ -154,6 +169,11 @@ def to_model_input(x, channels=DEFAULT_CHANNELS, gravity=None):
       front -- that flips the lateral sign, and it is the one bit a room-frame
       left/right needs (decided 2026-09-16: every direction is the direction
       the hand moved in the room, in any posture). Requires the wear rule.
+    - `impulse` (1): magnitude of the same high-passed/impulsive acceleration,
+      normalised by the window peak. This explicitly exposes shock/stroke count
+      without force, sign, hand, axis orientation or sensor gain. It contains no
+      derivative or interpolated sample, so it does not amplify 25 Hz phase
+      noise or invent between-sample motion.
 
     `gravity + linear == shape` exactly, so passing all three is redundant; the
     useful comparison is `("shape", "scale")` against
@@ -255,6 +275,9 @@ def to_model_input(x, channels=DEFAULT_CHANNELS, gravity=None):
             along = np.einsum("ntw,nt->nw", lin, g)[:, None, :]
             perp = np.sqrt(np.maximum((lin ** 2).sum(axis=1, keepdims=True) - along ** 2, 0.0))
             parts.append(np.concatenate([along, perp], axis=1) / peak)
+        elif name == "impulse":
+            lin = x - _moving_average(x, GRAVITY_WINDOW)
+            parts.append(np.sqrt((lin ** 2).sum(axis=1, keepdims=True)) / peak)
 
     return np.concatenate(parts, axis=1).astype("float32")
 
@@ -438,40 +461,59 @@ def rotate_frame(x, gravity, frames):
 def augment(batch: torch.Tensor,
             amplitude: float = AMPLITUDE_RANGE,
             rotation_deg: float = ROTATION_DEGREES,
-            noise_g: float = NOISE_G) -> torch.Tensor:
+            noise_g: float = NOISE_G,
+            channels=DEFAULT_CHANNELS) -> torch.Tensor:
     """
     Amplitude scale, small rotation about the finger axis, light noise.
 
-    Rotation is applied to axes 1 and 2 only: axis 0 is the finger axis, and
-    rotating the ring on the finger spins the other two around it. Rotating all
-    three would model the ring being worn on a different finger, which is not a
-    thing that happens mid-session.
+    Amplitude moves only the `scale` channel. Earlier code moved every channel
+    after XYZ, silently corrupting saturation and the room-frame components.
+
+    Rotation uses the measured FINGER_AXIS and applies only to channel groups
+    expressed as ring-frame 3-vectors. Room/gref/invariant are derived frames
+    and must not be rotated a second time.
     """
     out = batch.clone()
+    layout = channel_slices(tuple(channels))
+    expected = sum(CHANNEL_WIDTHS[name] for name in channels)
+    # Three-channel legacy models predate named channel metadata and carried
+    # raw axes. Keep their old augmentation behavior without weakening checks
+    # for self-describing checkpoints.
+    legacy_raw = batch.shape[1] == N_AXES and expected != N_AXES
+    if not legacy_raw and batch.shape[1] != expected:
+        raise ValueError(f"batch has {batch.shape[1]} channels, layout requires {expected}")
     if amplitude:
         factor = 1.0 - amplitude + 2 * amplitude * torch.rand(len(batch), 1, 1, device=batch.device)
-        if batch.shape[1] > N_AXES:
-            # On a shape+scale input, "louder" means moving the scale channel,
-            # not stretching a waveform that is unit-amplitude by construction.
-            # Multiplying the shape here would desynchronise it from the scale
-            # channel and teach the two to disagree.
-            out[:, N_AXES:] = out[:, N_AXES:] + torch.log10(factor)
+        if not legacy_raw and "scale" in layout:
+            out[:, layout["scale"]] = out[:, layout["scale"]] + torch.log10(factor)
         else:
             out = out * factor
     if rotation_deg:
         theta = (torch.rand(len(batch), device=batch.device) * 2 - 1) * (rotation_deg * math.pi / 180)
         cos, sin = torch.cos(theta)[:, None], torch.sin(theta)[:, None]
-        y, z = out[:, 1].clone(), out[:, 2].clone()
-        out[:, 1], out[:, 2] = cos * y - sin * z, sin * y + cos * z
+        axis_a, axis_b = [axis for axis in range(N_AXES) if axis != FINGER_AXIS]
+        vector_groups = ("shape", "gravity", "linear", "posture")
+        if legacy_raw:
+            groups = (slice(0, N_AXES),)
+        else:
+            groups = tuple(layout[name] for name in vector_groups if name in layout)
+        for group in groups:
+            a = group.start + axis_a; b = group.start + axis_b
+            before_a, before_b = out[:, a].clone(), out[:, b].clone()
+            out[:, a] = cos * before_a - sin * before_b
+            out[:, b] = sin * before_a + cos * before_b
     if noise_g:
-        out[:, :N_AXES] = out[:, :N_AXES] + noise_g * torch.randn_like(out[:, :N_AXES])
+        group = slice(0, N_AXES) if legacy_raw else layout.get("shape")
+        if group is not None:
+            out[:, group] = out[:, group] + noise_g * torch.randn_like(out[:, group])
     return out
 
 
 def save(model, path, trained_on: list[str], held_out: list[str],
          labels: list[str], channels=DEFAULT_CHANNELS,
          direction_names=("none", "up", "down", "left", "right"),
-         direction_trained: bool = True) -> None:
+         direction_trained: bool = True,
+         training_config: dict | None = None) -> None:
     """
     State dict plus provenance -- never the pickled module.
 
@@ -496,6 +538,11 @@ def save(model, path, trained_on: list[str], held_out: list[str],
         "trained_on": sorted(trained_on),
         "held_out": sorted(held_out),
         "window_samples": WINDOW_SAMPLES,
+        # Exact recipe provenance is required before a candidate can replace
+        # the bundled model. Older checkpoints remain loadable with this field
+        # absent, but new training runs must record the knobs that affect the
+        # learned decision boundary.
+        "training_config": dict(training_config or {}),
     }, path)
 
 
