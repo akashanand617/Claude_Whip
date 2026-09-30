@@ -142,7 +142,8 @@ final class GestureDiagnosticRecorder {
         return sessionID
     }
 
-    private static func writeLine(_ value: [String: Any], to handle: FileHandle) throws {
+    /// Pure I/O on its arguments, so the io queue may call it off the main actor.
+    private nonisolated static func writeLine(_ value: [String: Any], to handle: FileHandle) throws {
         var data = try JSONSerialization.data(withJSONObject: value, options: [.sortedKeys])
         data.append(0x0a)
         try handle.write(contentsOf: data)

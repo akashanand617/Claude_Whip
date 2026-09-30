@@ -633,7 +633,7 @@ final class RingManager: NSObject, ObservableObject {
         }
     }
 
-    private func receiveUART(_ data: Data) {
+    private func receiveUART(_ data: Data, receivedAt: TimeInterval) {
 #if DEBUG
         print("R02 UART RX", data.map { String(format: "%02X", $0) }.joined(separator: " "))
 #endif
@@ -643,8 +643,10 @@ final class RingManager: NSObject, ObservableObject {
             }
             return
         }
-        if data[0] == 0xa1, data[1] == 0x03 {
-            onRawMotion?(data, ProcessInfo.processInfo.systemUptime)
+        // A1 03 motion, and A1 FF (an A1 command refused, e.g. on the charger),
+        // which the unified transport reads receive-only.
+        if data[0] == 0xa1, data[1] == 0x03 || data[1] == 0xff {
+            onRawMotion?(data, receivedAt)
         }
         if data.first == ColmiR02Protocol.startRealtimeCommand,
            data.count == 16, data[1] == 1, data[2] == 0,
@@ -956,12 +958,17 @@ extension RingManager: CBPeripheralDelegate {
 
     nonisolated func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic,
                                 error: Error?) {
+        // Capture before the hop: the characteristic's value is overwritten by
+        // the next notification, and receipt time must not include main-actor
+        // queueing (that only makes freshness checks stricter, never looser).
+        let receivedAt = ProcessInfo.processInfo.systemUptime
+        let uuid = characteristic.uuid.uuidString.uppercased()
+        let payload = characteristic.value
         Task { @MainActor in
-            let uuid = characteristic.uuid.uuidString.uppercased()
             if uuid == ColmiR02Protocol.firmwareRevision
                 || uuid == ColmiR02Protocol.hardwareRevision {
                 pendingIdentityReads = max(0, pendingIdentityReads - 1)
-                if error == nil, let data = characteristic.value {
+                if error == nil, let data = payload {
                     let value = String(data: data, encoding: .utf8)?
                         .trimmingCharacters(in: .controlCharacters)
                     if uuid == ColmiR02Protocol.firmwareRevision {
@@ -979,9 +986,9 @@ extension RingManager: CBPeripheralDelegate {
                 announceReadyIfPossible()
                 return
             }
-            guard error == nil, let data = characteristic.value else { return }
+            guard error == nil, let data = payload else { return }
             switch uuid {
-            case ColmiR02Protocol.uartNotify: receiveUART(data)
+            case ColmiR02Protocol.uartNotify: receiveUART(data, receivedAt: receivedAt)
             case ColmiR02Protocol.bigDataNotify: receiveBigData(data)
             default: break
             }

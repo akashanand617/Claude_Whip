@@ -90,6 +90,192 @@ final class UnifiedModeTests: XCTestCase {
                        [[0xa1, 0x05], [0xa1, 0x02]])
     }
 
+    func testHIDActionsShareTheModeWriteLaneAndFailClosedOutsideFreshGesture() async throws {
+        let link = A1Link()
+        let transport = A1UnifiedModeTransport(
+            link: link, charging: { false }, firmwareLeaseSeconds: 10, connectionID: 70
+        )
+        do {
+            try await transport.sendHIDCommand(.init(code: 0x00))
+            XCTFail("Health must reject HID")
+        } catch {
+            guard let error = error as? RingProtocolError, case .busy = error else {
+                return XCTFail("unexpected error: \(error)")
+            }
+        }
+
+        let start = Task { try await transport.setGesture(true, requestID: 1) }
+        try await Task.sleep(for: .milliseconds(10))
+        for value: UInt8 in 1...3 {
+            transport.receiveMotion(
+                ColmiR02Protocol.packet(command: 0xa1,
+                                        payload: [0x03, value, 0, 0, 0, 0, 0]),
+                at: ProcessInfo.processInfo.systemUptime
+            )
+        }
+        _ = try await start.value
+        let volumeUp = try XCTUnwrap(RingHIDAction.volumeUp.command(hidVersion: 8))
+        try await transport.sendHIDCommand(volumeUp)
+        XCTAssertEqual(link.writes.last, ColmiR02Protocol.hidActionPacket(volumeUp))
+
+        _ = try await transport.setGesture(false, requestID: 2)
+        let countAfterStop = link.writes.count
+        do {
+            try await transport.sendHIDCommand(.init(code: 0x01))
+            XCTFail("Health must reject HID")
+        } catch {
+            guard let error = error as? RingProtocolError, case .busy = error else {
+                return XCTFail("unexpected error: \(error)")
+            }
+        }
+        XCTAssertEqual(link.writes.count, countAfterStop)
+    }
+
+    func testHIDActionWaitsForRenewalThenUsesTheSameWriteLane() async throws {
+        let link = A1Link()
+        let transport = A1UnifiedModeTransport(
+            link: link, charging: { false }, firmwareLeaseSeconds: 10, connectionID: 71
+        )
+        var timestamp = ProcessInfo.processInfo.systemUptime - 0.36
+        let start = Task { try await transport.setGesture(true, requestID: 1) }
+        try await Task.sleep(for: .milliseconds(10))
+        for value: UInt8 in 1...10 {
+            transport.receiveMotion(
+                ColmiR02Protocol.packet(command: 0xa1, payload: [0x03, value]),
+                at: timestamp
+            )
+            timestamp += 0.04
+        }
+        let started = try await start.value
+        let renewal = Task {
+            try await transport.renew(
+                session: started.status.session, processedSequence: 10, requestID: 2
+            )
+        }
+        try await Task.sleep(for: .milliseconds(170))
+        XCTAssertEqual(link.writes.filter { $0.first == 0xa1 }.count, 2)
+
+        let command = RingHIDCommand(code: 0xD1)
+        let action = Task { try await transport.sendHIDCommand(command) }
+        try await Task.sleep(for: .milliseconds(30))
+        XCTAssertFalse(link.writes.contains(ColmiR02Protocol.hidActionPacket(command)),
+                       "the action must wait while renewal is collecting evidence")
+
+        for value: UInt8 in 11...20 {
+            transport.receiveMotion(
+                ColmiR02Protocol.packet(command: 0xa1, payload: [0x03, value]),
+                at: timestamp
+            )
+            timestamp += 0.04
+        }
+        _ = try await renewal.value
+        try await action.value
+        XCTAssertEqual(link.writes.last, ColmiR02Protocol.hidActionPacket(command))
+    }
+
+    func testStopWithdrawsHIDActionQueuedBehindRenewal() async throws {
+        let link = A1Link()
+        let transport = A1UnifiedModeTransport(
+            link: link, charging: { false }, firmwareLeaseSeconds: 10, connectionID: 72
+        )
+        var timestamp = ProcessInfo.processInfo.systemUptime - 0.36
+        let start = Task { try await transport.setGesture(true, requestID: 1) }
+        try await Task.sleep(for: .milliseconds(10))
+        for value: UInt8 in 1...10 {
+            transport.receiveMotion(
+                ColmiR02Protocol.packet(command: 0xa1, payload: [0x03, value]),
+                at: timestamp
+            )
+            timestamp += 0.04
+        }
+        let started = try await start.value
+        let renewal = Task {
+            try await transport.renew(
+                session: started.status.session, processedSequence: 10, requestID: 2
+            )
+        }
+        try await Task.sleep(for: .milliseconds(170))
+
+        let command = RingHIDCommand(code: 0xD1)
+        let action = Task { try await transport.sendHIDCommand(command) }
+        try await Task.sleep(for: .milliseconds(20))
+        do {
+            _ = try await transport.setGesture(false, requestID: 3)
+            XCTFail("the renewal still owns the mode gate")
+        } catch RingProtocolError.busy {} catch {
+            XCTFail("unexpected stop error: \(error)")
+        }
+        do {
+            try await action.value
+            XCTFail("a stopped session emitted its queued HID action")
+        } catch RingProtocolError.busy {} catch {
+            XCTFail("unexpected action error: \(error)")
+        }
+        XCTAssertFalse(link.writes.contains(ColmiR02Protocol.hidActionPacket(command)))
+
+        for value: UInt8 in 11...20 {
+            transport.receiveMotion(
+                ColmiR02Protocol.packet(command: 0xa1, payload: [0x03, value]),
+                at: timestamp
+            )
+            timestamp += 0.04
+        }
+        _ = try await renewal.value
+        _ = try await transport.setGesture(false, requestID: 4)
+        XCTAssertFalse(link.writes.contains(ColmiR02Protocol.hidActionPacket(command)))
+        XCTAssertEqual(transport.currentStatus.mode, .health)
+    }
+
+    /// A heal's entry follows its own stop by one write slot. Notifications
+    /// still in flight from the stream it stopped arrive in that slot and must
+    /// never confirm the entry: only packets after A1 04 count.
+    func testAnEntryIsConfirmedOnlyByPacketsAfterItsA104() async throws {
+        let link = A1Link()
+        let transport = A1UnifiedModeTransport(link: link, charging: { false }, connectionID: 12)
+        _ = try await transport.status(requestID: 1) // the stop half: A1 05, A1 02
+        let stops = link.writes.count
+        func motion(_ value: UInt8) -> Data {
+            ColmiR02Protocol.packet(command: 0xa1, payload: [0x03, value, 0, 0, 0, 0, 0])
+        }
+        final class Box { var resolved = false }
+        let box = Box()
+        let start = Task { () throws -> ModeReply in
+            let reply = try await transport.setGesture(true, requestID: 2)
+            box.resolved = true
+            return reply
+        }
+        try await Task.sleep(for: .milliseconds(20))
+        XCTAssertEqual(link.writes.count, stops, "A1 04 waits for its write slot")
+        for value: UInt8 in 1...4 { transport.receiveMotion(motion(value), at: ProcessInfo.processInfo.systemUptime) }
+        try await Task.sleep(for: .milliseconds(10))
+        XCTAssertFalse(box.resolved, "the stopped stream's backlog never confirms the entry")
+        let written = await GestureIntentLogic.waitUntil(timeout: 1, poll: .milliseconds(5)) { link.writes.count > stops }
+        XCTAssertTrue(written)
+        XCTAssertEqual(link.writes.last, ColmiR02Protocol.startRawMotionPacket)
+        XCTAssertFalse(box.resolved)
+        for value: UInt8 in 5...7 { transport.receiveMotion(motion(value), at: ProcessInfo.processInfo.systemUptime) }
+        let reply = try await start.value
+        XCTAssertEqual(reply.status.mode, .gesture)
+    }
+
+    func testAHeartbeatThatIsNotDueRenewsNothingAndSaysSo() async throws {
+        let transport = Transport(), coordinator = UnifiedModeCoordinator(gate: RingOperationGate())
+        try await coordinator.attach(transport)
+        try await coordinator.setGesture(true)
+        coordinator.didProcess(session: 1, sequence: 100, at: 5)
+        let renewed = try await coordinator.heartbeat(at: 5.1)
+        XCTAssertEqual(renewed, .renewed)
+        XCTAssertEqual(coordinator.lastHeartbeatOutcome, .renewed)
+        coordinator.didProcess(session: 1, sequence: 200, at: 8)
+        let early = try await coordinator.heartbeat(at: 8.1)
+        guard case .notDue(let remaining) = early else { return XCTFail("renewed early: \(early)") }
+        XCTAssertEqual(remaining, 2, accuracy: 1e-9)
+        XCTAssertEqual(coordinator.lastHeartbeatOutcome, early)
+        XCTAssertEqual(transport.renewals, 1, "nothing was written or checked")
+        _ = try await coordinator.heartbeat(now: { 8.1 })
+        XCTAssertNotEqual(coordinator.lastHeartbeatOutcome, .renewed, "heartbeat(now:) reports it too")
+    }
+
     func testExactA1CapabilitiesAreNarrowAndChargingBlocksStart() async throws {
         let link = A1Link()
         let transport = A1UnifiedModeTransport(link: link, charging: { true }, connectionID: 8)
@@ -233,7 +419,7 @@ final class UnifiedModeTests: XCTestCase {
         XCTAssertEqual(metrics.renewalDuplicateFraction, 0, accuracy: 1e-12)
     }
 
-    func testCorrectedExactA1RenewalRejectsDuplicateBurstAndReturnsHealth() async throws {
+    func testCorrectedExactA1RenewalRejectsDuplicateBurstAndKeepsGesture() async throws {
         let link = A1Link()
         let transport = A1UnifiedModeTransport(
             link: link, charging: { false }, firmwareLeaseSeconds: 10, connectionID: 11
@@ -268,9 +454,13 @@ final class UnifiedModeTests: XCTestCase {
         }
         let metrics = try XCTUnwrap(transport.lastRenewalMetrics)
         XCTAssertEqual(metrics.renewalDuplicateFraction, 1, accuracy: 1e-12)
+        // Sticky sessions: the gate still rejects the frozen burst, but a
+        // renewal failure never calls the stop path. The owner heals a bad
+        // source with a fresh start; the lease is the hardware backstop.
         try await Task.sleep(for: .milliseconds(320))
-        XCTAssertEqual(link.writes.suffix(2).map { Array($0.prefix(2)) },
-                       [[0xa1, 0x05], [0xa1, 0x02]])
+        XCTAssertEqual(link.writes.map { Array($0.prefix(2)) }, [[0xa1, 0x04], [0xa1, 0x04]],
+                       "entry and renewal only: no A1 05 or A1 02")
+        XCTAssertEqual(transport.currentStatus.mode, .gesture)
     }
 
     func testA1RenewalCannotWriteOutsideActiveGesture() async {

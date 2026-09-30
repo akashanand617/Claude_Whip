@@ -1,5 +1,92 @@
 import Foundation
 
+/// A logical ring control. V8+ use the same A2 envelope. V9 introduced the
+/// compact keyboard/Consumer report and V10 keeps its wire contract while
+/// making Keyboard the primary HID application in both complete maps.
+enum RingHIDAction: CaseIterable {
+    case swipeUp, swipeDown, swipeLeft, swipeRight
+    case nextTrack, previousTrack, stopMedia, playPause
+    case mute
+    case volumeUp, volumeDown
+    case search, home, back, forward
+    case stopNavigation, refresh
+    case wheelUp, wheelDown
+    case keyUp, keyDown, keyLeft, keyRight
+    case keyPageUp, keyPageDown, keyHome, keyEnd
+    case keySpace, keyEnter, keyEscape, keyTab
+    case keyBackspace, keyDelete, keyRefresh, keyF6
+
+    func command(hidVersion: Int, wheelAmount: Int = 3) -> RingHIDCommand? {
+        guard (8...10).contains(hidVersion) else { return nil }
+        let hasKeyboard = hidVersion >= 9
+        let code: UInt8
+        switch self {
+        case .swipeUp: code = 0x00
+        case .swipeDown: code = 0x01
+        case .swipeLeft: code = 0x02
+        case .swipeRight: code = 0x03
+        case .nextTrack: code = 0x20
+        case .previousTrack: code = 0x21
+        case .stopMedia: code = 0x22
+        case .playPause: code = 0x23
+        case .mute: code = 0x24
+        case .volumeUp: code = 0x28
+        case .volumeDown: code = 0x29
+        case .refresh: code = hasKeyboard ? 0xBE : 0x37 // Keyboard F5 / Consumer Refresh
+        case .search: code = hasKeyboard ? 0x25 : 0x32
+        case .home: code = hasKeyboard ? 0x26 : 0x33
+        case .back: code = hasKeyboard ? 0x27 : 0x34
+        case .forward: code = hasKeyboard ? 0xCF : 0x35 // Keyboard Right / Consumer Forward
+        case .stopNavigation: code = hasKeyboard ? 0xA9 : 0x36 // Keyboard Escape / Consumer Stop
+        case .wheelUp:
+            guard hasKeyboard else { return nil }
+            let amount = min(max(wheelAmount, 1), 5)
+            code = UInt8(9 - amount) // 0x08...0x04 => +1...+5
+        case .wheelDown:
+            guard hasKeyboard else { return nil }
+            let amount = min(max(wheelAmount, 1), 5)
+            code = UInt8(9 + amount) // 0x0A...0x0E => -1...-5
+        case .keyEnter:
+            guard hasKeyboard else { return nil }; code = 0xA8
+        case .keyEscape:
+            guard hasKeyboard else { return nil }; code = 0xA9
+        case .keySpace:
+            guard hasKeyboard else { return nil }; code = 0xAC
+        case .keyHome:
+            guard hasKeyboard else { return nil }; code = 0xCA
+        case .keyPageUp:
+            guard hasKeyboard else { return nil }; code = 0xCB
+        case .keyEnd:
+            guard hasKeyboard else { return nil }; code = 0xCD
+        case .keyPageDown:
+            guard hasKeyboard else { return nil }; code = 0xCE
+        case .keyRight:
+            guard hasKeyboard else { return nil }; code = 0xCF
+        case .keyLeft:
+            guard hasKeyboard else { return nil }; code = 0xD0
+        case .keyDown:
+            guard hasKeyboard else { return nil }; code = 0xD1
+        case .keyUp:
+            guard hasKeyboard else { return nil }; code = 0xD2
+        case .keyTab:
+            guard hasKeyboard else { return nil }; code = 0xAB
+        case .keyBackspace:
+            guard hasKeyboard else { return nil }; code = 0xAA
+        case .keyDelete:
+            guard hasKeyboard else { return nil }; code = 0xCC
+        case .keyRefresh:
+            guard hasKeyboard else { return nil }; code = 0xBE
+        case .keyF6:
+            guard hasKeyboard else { return nil }; code = 0xBF
+        }
+        return RingHIDCommand(code: code)
+    }
+}
+
+struct RingHIDCommand: Equatable {
+    let code: UInt8
+}
+
 enum ColmiR02Protocol {
     static let uartService = "6E40FFF0-B5A3-F393-E0A9-E50E24DCCA9E"
     static let uartWrite = "6E400002-B5A3-F393-E0A9-E50E24DCCA9E"
@@ -32,6 +119,12 @@ enum ColmiR02Protocol {
     static var startRawMotionPacket: Data { rawSensorPacket(0x04) }
     static var stopRawMotionPackets: [Data] {
         [rawSensorPacket(0x05), rawSensorPacket(0x02)]
+    }
+
+    /// V8+ only. Older exact images have no A2 handler and must never receive
+    /// this packet; AppModel enables it only after a complete image fingerprint.
+    static func hidActionPacket(_ command: RingHIDCommand) -> Data {
+        packet(command: 0xa2, payload: [command.code])
     }
 
     /// Existing volatile motion feature used by the RT12COL candidate to wake

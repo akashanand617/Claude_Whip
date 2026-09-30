@@ -121,7 +121,7 @@ final class RingProtocolTests: XCTestCase {
             for: .unified,
             hardware: "RT12COL_V1.0",
             firmware: "RT12COL_1.00.00_260520"
-        )?.sha256, BundledFirmware.rt12colUnified.sha256)
+        )?.sha256, BundledFirmware.rt12colUnifiedHIDV10.sha256)
         XCTAssertFalse(rt12col.contains { $0.family == .rt02cr })
     }
 
@@ -144,6 +144,86 @@ final class RingProtocolTests: XCTestCase {
         )
     }
 
+    func testRT12COLV8HIDIsRecognizedAndRoutedForGuardedInstallation() throws {
+        XCTAssertTrue(FirmwareIdentity.isKnownInstalledVersion(
+            FirmwareIdentity.rt12colUnifiedHIDVersion, family: .rt12col
+        ))
+        XCTAssertTrue(BundledFirmware.rt12colUnifiedHID.installEnabled)
+        XCTAssertTrue(BundledFirmware.rt12colCatalog.contains {
+            $0.resource == BundledFirmware.rt12colUnifiedHID.resource
+        })
+        XCTAssertEqual(
+            BundledFirmware.routedImage(
+                for: .unified,
+                hardware: "RT12COL_V1.0",
+                firmware: FirmwareIdentity.rt12colUnifiedVersion
+            )?.resource,
+            BundledFirmware.rt12colUnifiedHIDV10.resource
+        )
+        XCTAssertFalse(BundledFirmware.rt12colUnifiedHID.isInstalled(
+            mode: .unified, version: FirmwareIdentity.rt12colUnifiedVersion
+        ))
+        XCTAssertTrue(BundledFirmware.rt12colUnifiedHID.isInstalled(
+            mode: .unified, version: FirmwareIdentity.rt12colUnifiedHIDVersion
+        ))
+        let image = try BundledFirmware.rt12colUnifiedHID.load()
+        XCTAssertEqual(
+            try BundledFirmware.rt12colUnifiedHID.declaredFirmware(in: image),
+            FirmwareIdentity.rt12colUnifiedHIDVersion
+        )
+    }
+
+    func testRT12COLV9KeyboardHIDRemainsRecognizedButIsNotAnInstallTarget() throws {
+        XCTAssertTrue(FirmwareIdentity.isKnownInstalledVersion(
+            FirmwareIdentity.rt12colUnifiedHIDV9Version, family: .rt12col
+        ))
+        XCTAssertFalse(BundledFirmware.rt12colUnifiedHIDV9.installEnabled)
+        XCTAssertFalse(BundledFirmware.rt12colCatalog.contains {
+            $0.resource == BundledFirmware.rt12colUnifiedHIDV9.resource
+        })
+        XCTAssertFalse(BundledFirmware.rt12colUnifiedHIDV9.isInstalled(
+            mode: .unified, version: FirmwareIdentity.rt12colUnifiedHIDVersion
+        ))
+        XCTAssertTrue(BundledFirmware.rt12colUnifiedHIDV9.isInstalled(
+            mode: .unified, version: FirmwareIdentity.rt12colUnifiedHIDV9Version
+        ))
+        let image = try BundledFirmware.rt12colUnifiedHIDV9.load()
+        XCTAssertEqual(
+            try BundledFirmware.rt12colUnifiedHIDV9.declaredFirmware(in: image),
+            FirmwareIdentity.rt12colUnifiedHIDV9Version
+        )
+        XCTAssertEqual(try BundledFirmware.rt12colUnifiedHIDV9.declaredHardware(in: image),
+                       "RT12COL_V1.0")
+    }
+
+    func testRT12COLV10IsTheGuardedUpgradeFromInstalledV9() throws {
+        XCTAssertTrue(FirmwareIdentity.isKnownInstalledVersion(
+            FirmwareIdentity.rt12colUnifiedHIDV10Version, family: .rt12col
+        ))
+        XCTAssertTrue(BundledFirmware.rt12colUnifiedHIDV10.installEnabled)
+        XCTAssertTrue(BundledFirmware.rt12colCatalog.contains {
+            $0.resource == BundledFirmware.rt12colUnifiedHIDV10.resource
+        })
+        XCTAssertFalse(BundledFirmware.rt12colUnifiedHIDV10.isInstalled(
+            mode: .unified, version: FirmwareIdentity.rt12colUnifiedHIDV9Version
+        ), "an installed V9 must be eligible for the V10 same-mode upgrade")
+        XCTAssertTrue(BundledFirmware.rt12colUnifiedHIDV10.isInstalled(
+            mode: .unified, version: FirmwareIdentity.rt12colUnifiedHIDV10Version
+        ))
+        XCTAssertEqual(BundledFirmware.routedImage(
+            for: .unified,
+            hardware: "RT12COL_V1.0",
+            firmware: FirmwareIdentity.rt12colUnifiedHIDV9Version
+        )?.resource, BundledFirmware.rt12colUnifiedHIDV10.resource)
+        let image = try BundledFirmware.rt12colUnifiedHIDV10.load()
+        XCTAssertEqual(try BundledFirmware.rt12colUnifiedHIDV10.declaredFirmware(in: image),
+                       FirmwareIdentity.rt12colUnifiedHIDV10Version)
+        XCTAssertEqual(try BundledFirmware.rt12colUnifiedHIDV10.declaredHardware(in: image),
+                       "RT12COL_V1.0")
+        XCTAssertEqual(BundledFirmware.rt12colUnifiedHIDV10.sha256,
+                       "7e04ae9973341233d2dbbe06fc6eb4c228aab625b1c3687462416edbe7d21ce2")
+    }
+
     func testFirmwareCatalogFailsClosedOnIdentityConflict() {
         XCTAssertTrue(BundledFirmware.routedCatalog(
             hardware: "RT12COL_V1.0", firmware: FirmwareIdentity.gestureVersion
@@ -158,6 +238,9 @@ final class RingProtocolTests: XCTestCase {
     func testRT12COLCandidateAndRollbackAreSeparatelyPinned() throws {
         XCTAssertEqual(BundledFirmware.rt12colUnified.initType, 4)
         XCTAssertFalse(BundledFirmware.rt12colUnified.installEnabled)
+        XCTAssertTrue(BundledFirmware.rt12colUnifiedHID.installEnabled)
+        XCTAssertFalse(BundledFirmware.rt12colUnifiedHIDV9.installEnabled)
+        XCTAssertTrue(BundledFirmware.rt12colUnifiedHIDV10.installEnabled)
         XCTAssertFalse(BundledFirmware.rt12colUnifiedLegacyV6.installEnabled)
         XCTAssertFalse(BundledFirmware.rt12colUnifiedLegacyV3.installEnabled)
         XCTAssertFalse(BundledFirmware.rt12colUnifiedLegacyV1.installEnabled)
@@ -170,6 +253,15 @@ final class RingProtocolTests: XCTestCase {
                           BundledFirmware.rt12colUnifiedLegacyV3.sha256)
         XCTAssertNotEqual(BundledFirmware.rt12colUnified.sha256,
                           BundledFirmware.rt12colUnifiedLegacyV6.sha256)
+        XCTAssertNotEqual(BundledFirmware.rt12colUnifiedHID.sha256,
+                          BundledFirmware.rt12colUnified.sha256)
+        XCTAssertNotEqual(BundledFirmware.rt12colUnifiedHIDV9.sha256,
+                          BundledFirmware.rt12colUnifiedHID.sha256)
+        XCTAssertNotEqual(BundledFirmware.rt12colUnifiedHIDV10.sha256,
+                          BundledFirmware.rt12colUnifiedHIDV9.sha256)
+        XCTAssertEqual(try BundledFirmware.rt12colUnifiedHID.declaredHardware(
+            in: BundledFirmware.rt12colUnifiedHID.load()
+        ), "RT12COL_V1.0")
         XCTAssertEqual(try BundledFirmware.rt12colUnified.declaredHardware(
             in: BundledFirmware.rt12colUnified.load()
         ), "RT12COL_V1.0")
@@ -200,6 +292,61 @@ final class RingProtocolTests: XCTestCase {
                        [[0xa1, 0x05], [0xa1, 0x02]])
         XCTAssertTrue(ColmiR02Protocol.isValidPacket(ColmiR02Protocol.startRawMotionPacket))
         XCTAssertTrue(ColmiR02Protocol.stopRawMotionPackets.allSatisfy(ColmiR02Protocol.isValidPacket))
+    }
+
+    func testEveryExposedHIDActionUsesOneChecksumValidA2Packet() {
+        for version in [8, 9] {
+            let commands = RingHIDAction.allCases.compactMap {
+                $0.command(hidVersion: version, wheelAmount: 3)
+            }
+            XCTAssertFalse(commands.isEmpty)
+            for command in commands {
+                let packet = ColmiR02Protocol.hidActionPacket(command)
+                XCTAssertEqual(packet.count, 16)
+                XCTAssertEqual(packet[0], 0xa2)
+                XCTAssertEqual(packet[1], command.code)
+                XCTAssertTrue(packet[2..<15].allSatisfy { $0 == 0 })
+                XCTAssertTrue(ColmiR02Protocol.isValidPacket(packet))
+            }
+        }
+        let swipe = RingHIDAction.swipeUp.command(hidVersion: 9)!
+        let volume = RingHIDAction.volumeUp.command(hidVersion: 9)!
+        XCTAssertEqual(Array(ColmiR02Protocol.hidActionPacket(swipe)),
+                       [0xa2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xa2])
+        XCTAssertEqual(Array(ColmiR02Protocol.hidActionPacket(volume).prefix(2)),
+                       [0xa2, 0x28])
+        XCTAssertEqual(RingHIDAction.wheelUp.command(hidVersion: 9, wheelAmount: 1)?.code, 0x08)
+        XCTAssertEqual(RingHIDAction.wheelUp.command(hidVersion: 9, wheelAmount: 5)?.code, 0x04)
+        XCTAssertEqual(RingHIDAction.wheelDown.command(hidVersion: 9, wheelAmount: 1)?.code, 0x0a)
+        XCTAssertEqual(RingHIDAction.wheelDown.command(hidVersion: 9, wheelAmount: 5)?.code, 0x0e)
+        XCTAssertEqual(RingHIDAction.keyUp.command(hidVersion: 9)?.code, 0xd2)
+        XCTAssertEqual(RingHIDAction.keyF6.command(hidVersion: 9)?.code, 0xbf)
+        XCTAssertNil(RingHIDAction.keyUp.command(hidVersion: 8))
+    }
+
+    func testV9KeyboardCommandsMatchTheDirectUSBKeycodeContract() {
+        let expected: [(RingHIDAction, UInt8)] = [
+            (.keyEnter, 0xa8), (.keyEscape, 0xa9), (.keyBackspace, 0xaa),
+            (.keyTab, 0xab), (.keySpace, 0xac), (.keyRefresh, 0xbe), (.keyF6, 0xbf),
+            (.keyHome, 0xca), (.keyPageUp, 0xcb), (.keyDelete, 0xcc),
+            (.keyEnd, 0xcd), (.keyPageDown, 0xce), (.keyRight, 0xcf),
+            (.keyLeft, 0xd0), (.keyDown, 0xd1), (.keyUp, 0xd2),
+        ]
+        for (action, code) in expected {
+            XCTAssertEqual(action.command(hidVersion: 9)?.code, code)
+            XCTAssertEqual(action.command(hidVersion: 10)?.code, code)
+            XCTAssertEqual(code & 0x7f, code - 0x80)
+        }
+        XCTAssertEqual(RingHIDAction.nextTrack.command(hidVersion: 9)?.code, 0x20)
+        XCTAssertEqual(RingHIDAction.volumeDown.command(hidVersion: 9)?.code, 0x29)
+        XCTAssertEqual(RingHIDAction.search.command(hidVersion: 9)?.code, 0x25)
+        XCTAssertEqual(RingHIDAction.home.command(hidVersion: 9)?.code, 0x26)
+        XCTAssertEqual(RingHIDAction.back.command(hidVersion: 9)?.code, 0x27)
+        for action in RingHIDAction.allCases {
+            XCTAssertEqual(action.command(hidVersion: 10, wheelAmount: 4),
+                           action.command(hidVersion: 9, wheelAmount: 4),
+                           "V10 changes HID classification, not the A2 wire action for \(action)")
+        }
     }
 
     func testHeartRateRequestEncodesEpochLittleEndian() {
@@ -348,17 +495,52 @@ final class RingProtocolTests: XCTestCase {
         XCTAssertEqual(FirmwareIdentity.rt12colUnifiedV3Sites.reduce(0) { $0 + $1.length }, 364)
         XCTAssertEqual(FirmwareIdentity.rt12colUnifiedSites.count, 41)
         XCTAssertEqual(FirmwareIdentity.rt12colUnifiedSites.reduce(0) { $0 + $1.length }, 335)
+        XCTAssertEqual(FirmwareIdentity.rt12colUnifiedHIDSites.count, 50)
+        XCTAssertEqual(FirmwareIdentity.rt12colUnifiedHIDSites.reduce(0) { $0 + $1.length }, 423)
+        XCTAssertEqual(FirmwareIdentity.rt12colUnifiedHIDV9Sites.count, 73)
+        XCTAssertEqual(FirmwareIdentity.rt12colUnifiedHIDV9Sites.reduce(0) { $0 + $1.length }, 707)
+        XCTAssertEqual(FirmwareIdentity.rt12colUnifiedHIDV10Sites.count, 84)
+        XCTAssertEqual(FirmwareIdentity.rt12colUnifiedHIDV10Sites.reduce(0) { $0 + $1.length }, 855)
         for site in FirmwareIdentity.sites + FirmwareIdentity.unifiedSites
                 + FirmwareIdentity.rt12colUnifiedV1Sites
                 + FirmwareIdentity.rt12colUnifiedV2Sites
                 + FirmwareIdentity.rt12colUnifiedV3Sites
-                + FirmwareIdentity.rt12colUnifiedSites {
+                + FirmwareIdentity.rt12colUnifiedSites
+                + FirmwareIdentity.rt12colUnifiedHIDSites
+                + FirmwareIdentity.rt12colUnifiedHIDV9Sites
+                + FirmwareIdentity.rt12colUnifiedHIDV10Sites {
             XCTAssertLessThanOrEqual(site.length, 14)
             let packet = FirmwareIdentity.readPacket(site)
             XCTAssertEqual(packet[0], 0xcd)
             XCTAssertEqual(packet[1], 1)
             XCTAssertTrue(ColmiR02Protocol.isValidPacket(packet))
         }
+    }
+
+    func testRT12COLV9FingerprintCoversEveryChangedApplicationByte() throws {
+        let stock = try BundledFirmware.rt12colHealth.load()
+        let v9 = try BundledFirmware.rt12colUnifiedHIDV9.load()
+        XCTAssertEqual(stock.count, v9.count)
+        let covered = Set(FirmwareIdentity.rt12colUnifiedHIDV9Sites.flatMap { site in
+            site.offset..<(site.offset + site.length)
+        })
+        let changedApplication = Set((0x450..<v9.count).filter { stock[$0] != v9[$0] })
+        XCTAssertFalse(changedApplication.isEmpty)
+        XCTAssertTrue(changedApplication.isSubset(of: covered))
+        XCTAssertEqual(covered.count, 707)
+    }
+
+    func testRT12COLV10FingerprintCoversEveryChangedApplicationByte() throws {
+        let stock = try BundledFirmware.rt12colHealth.load()
+        let v10 = try BundledFirmware.rt12colUnifiedHIDV10.load()
+        XCTAssertEqual(stock.count, v10.count)
+        let covered = Set(FirmwareIdentity.rt12colUnifiedHIDV10Sites.flatMap { site in
+            site.offset..<(site.offset + site.length)
+        })
+        let changedApplication = Set((0x450..<v10.count).filter { stock[$0] != v10[$0] })
+        XCTAssertFalse(changedApplication.isEmpty)
+        XCTAssertTrue(changedApplication.isSubset(of: covered))
+        XCTAssertEqual(covered.count, 855)
     }
 
     func testRT12COLV6FingerprintCoversEveryChangedApplicationByte() throws {
@@ -385,6 +567,19 @@ final class RingProtocolTests: XCTestCase {
         XCTAssertFalse(changedApplication.isEmpty)
         XCTAssertTrue(changedApplication.isSubset(of: covered))
         XCTAssertEqual(covered.count, 335)
+    }
+
+    func testRT12COLV8FingerprintCoversEveryChangedApplicationByte() throws {
+        let stock = try BundledFirmware.rt12colHealth.load()
+        let v8 = try BundledFirmware.rt12colUnifiedHID.load()
+        XCTAssertEqual(stock.count, v8.count)
+        let covered = Set(FirmwareIdentity.rt12colUnifiedHIDSites.flatMap { site in
+            site.offset..<(site.offset + site.length)
+        })
+        let changedApplication = Set((0x450..<v8.count).filter { stock[$0] != v8[$0] })
+        XCTAssertFalse(changedApplication.isEmpty)
+        XCTAssertTrue(changedApplication.isSubset(of: covered))
+        XCTAssertEqual(covered.count, 423)
     }
 
     func testBundledFirmwareImagesArePinnedAndCompatible() throws {

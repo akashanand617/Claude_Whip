@@ -1,0 +1,3 @@
+{"action":"flag","confidence":0.912,"direction":"right","end_s":12.846,"latency_s":1.4,"name":"flick","run_length":5,"t_s":12.346,"wall":1790000012.5}
+{"action":"approve","confidence":0.874,"direction":"up","end_s":20.9,"latency_s":2.05,"name":"double_flick","run_length":4,"t_s":20.1,"wall":1790000020.75}
+{"action":null,"confidence":0.8,"direction":"none","end_s":null,"latency_s":null,"name":"wave","run_length":3,"t_s":31.0,"wall":1790000032.0}

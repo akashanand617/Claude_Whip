@@ -6,6 +6,8 @@ final class GestureBurstTracker {
     // overlapping CNN windows vote for a double class. Mirrors
     // whip.events.MIN_DOUBLE_BURST_S and is deliberately amplitude-independent.
     private static let minimumDoubleBurstSeconds = 5.0 / 25.0
+    /// After a judged wave closes, no new wave fires for this long.
+    static let waveRefractorySeconds = 2.0
     private struct Vote {
         let start: Double
         let label: String
@@ -86,8 +88,23 @@ final class GestureBurstTracker {
         return events
     }
 
+    /// The wave refractory a replacement tracker must keep when this one is
+    /// discarded at `release` (a stall reset). A wave already judged and still
+    /// open may continue across the stall, so it stays suppressed until
+    /// `release` plus the refractory, as if it had closed there. A wave open
+    /// but not yet judged has fired nothing, so the new tracker's judgement of
+    /// it is its only one.
+    func waveRefractory(discardedAt release: Double) -> Double {
+        waveJudged ? max(waveSuppressedUntil, release + Self.waveRefractorySeconds) : waveSuppressedUntil
+    }
+
+    /// Carries a discarded tracker's refractory (`waveRefractory`).
+    func suppressWaves(until time: Double) {
+        waveSuppressedUntil = max(waveSuppressedUntil, time)
+    }
+
     private func closeWave(at end: Double) {
-        if waveStart != nil && waveJudged { waveSuppressedUntil = end + 2 }
+        if waveStart != nil && waveJudged { waveSuppressedUntil = end + Self.waveRefractorySeconds }
         waveStart = nil; waveCount = 0; waveJudged = false; waveConfidence = 0
         waveDirections.removeAll(keepingCapacity: true)
     }

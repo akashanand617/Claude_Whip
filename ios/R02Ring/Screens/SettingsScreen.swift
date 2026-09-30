@@ -11,7 +11,7 @@ struct SettingsScreen: View {
     @State private var exportURLs: [URL] = []
     @State private var showsExport = false
     @State private var showsModePicker = false
-    @State private var pendingFirmwareMode: RingFirmwareMode?
+    @State private var pendingFirmware: BundledFirmware?
 
     var body: some View {
         Screen(tab: $tab) {
@@ -49,7 +49,7 @@ struct SettingsScreen: View {
         #endif
         .confirmationDialog("Firmware maintenance", isPresented: $showsModePicker, titleVisibility: .visible) {
             ForEach(model.firmwareOptions) { image in
-                Button(optionLabel(image)) { chooseMode(image.mode) }
+                Button(optionLabel(image)) { pendingFirmware = image }
                     .disabled(!image.installEnabled)
             }
             if model.firmwareOptions.isEmpty {
@@ -60,12 +60,12 @@ struct SettingsScreen: View {
         } message: {
             Text(model.firmwareRoutingMessage)
         }
-        .alert(item: $pendingFirmwareMode) { target in
+        .alert(item: $pendingFirmware) { image in
             Alert(
-                title: Text("Switch to \(target.title) mode?"),
-                message: Text(modeWarning(target)),
-                primaryButton: .destructive(Text("Flash \(target.title) firmware")) {
-                    Task { await model.switchFirmware(to: target) }
+                title: Text("Install \(image.label)?"),
+                message: Text(firmwareWarning(image)),
+                primaryButton: .destructive(Text("Flash firmware")) {
+                    Task { await model.switchFirmware(to: image) }
                 },
                 secondaryButton: .cancel()
             )
@@ -118,8 +118,10 @@ struct SettingsScreen: View {
                 showsModePicker = true
             }
 
-            SettingsRow(title: "Haptics", isButton: false) {
+            SettingsRow(title: "Haptics", subtitle: "Confirms gesture actions while R02 is open",
+                        isButton: false) {
                 RingToggle(isOn: $model.haptics)
+                    .accessibilityLabel("Haptics")
             }
 
             SettingsRow(title: "Heart-rate logging", subtitle: model.heartRateSettingsKnown
@@ -167,18 +169,22 @@ struct SettingsScreen: View {
         }
     }
 
-    private func chooseMode(_ mode: RingFirmwareMode) {
-        guard mode != model.firmwareMode else { return }
-        pendingFirmwareMode = mode
-    }
-
     private func optionLabel(_ image: BundledFirmware) -> String {
         guard let reason = image.disabledReason else { return image.label }
         return "\(image.label) (\(reason))"
     }
 
-    private func modeWarning(_ target: RingFirmwareMode) -> String {
-        switch target {
+    private func firmwareWarning(_ image: BundledFirmware) -> String {
+        if image.targetVersion == FirmwareIdentity.rt12colUnifiedHIDV10Version {
+            return "This installs experimental RT12COL V10 with Keyboard as the primary Bluetooth HID application, plus mouse wheel, swipes, media, volume and navigation. The app saves pending health history first. After reboot, forget the ring in iPhone Bluetooth settings and reconnect it so iOS replaces the cached V9 report map. Keyboard and Consumer controls do not need AssistiveTouch; mouse input may. V10 HID behavior and Health return are not yet physically validated."
+        }
+        if image.targetVersion == FirmwareIdentity.rt12colUnifiedHIDV9Version {
+            return "V9 remains recognized when already installed, but is superseded as an install target because iOS classified its Keyboard usage as secondary. Upgrade to V10 or use the exact V8 rollback."
+        }
+        if image.targetVersion == FirmwareIdentity.rt12colUnifiedHIDVersion {
+            return "This installs experimental RT12COL V8 with ring-sent Bluetooth HID swipes and controls. Swipes require AssistiveTouch. The app will save pending health history first. Keep the app open and the ring nearby; physical HID behavior and Health return are not yet validated."
+        }
+        switch image.mode {
         case .gesture:
             return "The app will sync pending health history first. Heart-rate and blood-oxygen tracking will stop while Gesture mode is active. Keep the app open and the ring nearby."
         case .health:
@@ -239,55 +245,5 @@ struct SettingsScreen: View {
             Spacer()
             Text(value).font(.mono(11)).multilineTextAlignment(.trailing)
         }
-    }
-}
-
-#if os(iOS)
-private struct ActivityView: UIViewControllerRepresentable {
-    let items: [Any]
-
-    func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: items, applicationActivities: nil)
-    }
-
-    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
-}
-#endif
-
-/// A 52pt row with a hairline beneath it and an `inkRaised` press state.
-private struct SettingsRow<Trailing: View>: View {
-    var title: String
-    var subtitle: String? = nil
-    var isButton: Bool = true
-    @ViewBuilder var trailing: Trailing
-    var action: () -> Void = {}
-
-    var body: some View {
-        VStack(spacing: 0) {
-            Group {
-                if isButton {
-                    Button(action: action) { content }
-                        .buttonStyle(RowPressStyle())
-                } else {
-                    content
-                }
-            }
-            Hairline()
-        }
-    }
-
-    private var content: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title).font(.mono(12)).foregroundStyle(Tok.text)
-                if let subtitle {
-                    Text(subtitle).font(.mono(10)).foregroundStyle(Tok.muted)
-                }
-            }
-            Spacer(minLength: 8)
-            trailing
-        }
-        .frame(minHeight: Tok.settingsRowHeight)
-        .contentShape(Rectangle())
     }
 }

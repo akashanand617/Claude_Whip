@@ -1,4 +1,7 @@
 import SwiftUI
+#if os(iOS)
+import UIKit
+#endif
 
 // MARK: - Rules
 
@@ -99,7 +102,7 @@ extension ScreenHeader where Trailing == EmptyView {
 
 // MARK: - Controls
 
-/// The restyled switch: 40×22 track, 18pt knob.
+/// The restyled switch: 40×22 track, 18pt knob, 44pt hit area.
 struct RingToggle: View {
     @Binding var isOn: Bool
 
@@ -113,6 +116,8 @@ struct RingToggle: View {
                     .frame(width: 18, height: 18)
                     .padding(2)
             }
+            // The drawn track stays 40×22; the hit area meets the 44pt minimum.
+            .frame(minWidth: Tok.tapTarget, minHeight: Tok.tapTarget, alignment: .trailing)
             .contentShape(Rectangle())
             .onTapGesture {
                 withAnimation(.easeOut(duration: 0.18)) { isOn.toggle() }
@@ -123,10 +128,11 @@ struct RingToggle: View {
     }
 }
 
-/// The wide outlined action at the foot of Today and Gestures.
+/// The wide outlined action at the foot of Today and Gestures. Dims when disabled.
 struct OutlineButton: View {
     var title: String
     var action: () -> Void = {}
+    @Environment(\.isEnabled) private var isEnabled
 
     var body: some View {
         Button(action: action) {
@@ -134,12 +140,13 @@ struct OutlineButton: View {
                 .font(.mono(13))
                 .tracking(13 * 0.14)
                 .textCase(.uppercase)
-                .foregroundStyle(Tok.accent)
+                .foregroundStyle(isEnabled ? Tok.accent : Tok.dim)
                 .frame(maxWidth: .infinity)
                 .frame(minHeight: 48)
                 .overlay {
-                    Rectangle().strokeBorder(Tok.accent, lineWidth: Tok.hairlineWidth)
+                    Rectangle().strokeBorder(isEnabled ? Tok.accent : Tok.hairline, lineWidth: Tok.hairlineWidth)
                 }
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .padding(.horizontal, 60)
@@ -233,3 +240,186 @@ struct LegendRow: View {
         .foregroundStyle(Tok.muted)
     }
 }
+
+// MARK: - Rows
+
+/// A 52pt row with a hairline beneath it and an `inkRaised` press state.
+struct SettingsRow<Trailing: View>: View {
+    var title: String
+    var subtitle: String? = nil
+    var isButton: Bool = true
+    @ViewBuilder var trailing: Trailing
+    var action: () -> Void = {}
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Group {
+                if isButton {
+                    Button(action: action) { content }
+                        .buttonStyle(RowPressStyle())
+                } else {
+                    content
+                }
+            }
+            Hairline()
+        }
+    }
+
+    private var content: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title).font(.mono(12)).foregroundStyle(Tok.text)
+                if let subtitle {
+                    Text(subtitle).font(.mono(10)).foregroundStyle(Tok.muted)
+                }
+            }
+            Spacer(minLength: 8)
+            trailing
+        }
+        .frame(minHeight: Tok.settingsRowHeight)
+        .contentShape(Rectangle())
+    }
+}
+
+// MARK: - Badges
+
+/// `BACKGROUND` / `LOCKED` / `UNASSIGNED`: a hairline-boxed 8pt label beside an action.
+struct ActionBadge: View {
+    enum Kind: Equatable {
+        case background, locked, unassigned
+
+        var title: String {
+            switch self {
+            case .background: return "Background"
+            case .locked: return "Locked"
+            case .unassigned: return "Unassigned"
+            }
+        }
+
+        /// Spoken in place of the uppercase label.
+        var accessibilityText: String {
+            switch self {
+            case .background: return "works in background"
+            case .locked: return "locked"
+            case .unassigned: return "unassigned"
+            }
+        }
+
+        fileprivate var text: Color {
+            switch self {
+            case .background: return Tok.accentDeep
+            case .locked: return Tok.muted
+            case .unassigned: return Tok.dim
+            }
+        }
+
+        fileprivate var rule: Color {
+            switch self {
+            case .background: return Tok.series3
+            case .locked: return Tok.dim
+            case .unassigned: return Tok.hairline
+            }
+        }
+    }
+
+    var kind: Kind
+
+    var body: some View {
+        Text(kind.title)
+            .labelType(8, tracking: 0.1)
+            .foregroundStyle(kind.text)
+            .lineLimit(1)
+            .fixedSize()
+            .padding(.horizontal, 4)
+            .padding(.vertical, 2)
+            .overlay { Rectangle().strokeBorder(kind.rule, lineWidth: Tok.hairlineWidth) }
+            .accessibilityLabel(kind.accessibilityText)
+    }
+}
+
+// MARK: - Sheets
+
+/// Sheet chrome: ink ground, a 34pt serif title with a Done button, a hairline,
+/// then scrolling content. Medium and large detents like the Ring sheet.
+struct SheetScaffold<Content: View>: View {
+    var title: String
+    var subtitle: String? = nil
+    /// Hidden while dismissing would abandon work, such as a running capture.
+    var showsDone = true
+    /// Rendering tests turn scrolling off: `ImageRenderer` draws no scroll view contents.
+    var scrolls = true
+    @ViewBuilder var content: Content
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        ZStack {
+            Tok.ink.ignoresSafeArea()
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text(title)
+                        .font(.serif(34))
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.7)
+                        .accessibilityAddTraits(.isHeader)
+                    Spacer(minLength: 12)
+                    // Kept in the layout while hidden, so the header doesn't jump.
+                    Button("Done") { dismiss() }
+                        .font(.mono(11))
+                        .foregroundStyle(Tok.accent)
+                        .frame(minWidth: Tok.tapTarget, minHeight: Tok.tapTarget, alignment: .trailing)
+                        .contentShape(Rectangle())
+                        .buttonStyle(.plain)
+                        .opacity(showsDone ? 1 : 0)
+                        .disabled(!showsDone)
+                        .accessibilityHidden(!showsDone)
+                }
+                .frame(minHeight: Tok.tapTarget)
+                if let subtitle {
+                    Text(subtitle)
+                        .font(.mono(11))
+                        .foregroundStyle(Tok.muted)
+                        .padding(.bottom, 12)
+                }
+                Hairline()
+                if scrolls {
+                    ScrollView {
+                        framed(content)
+                    }
+                    .scrollIndicators(.hidden)
+                } else {
+                    framed(content).fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 0)
+                }
+            }
+            .padding(.horizontal, Tok.side)
+            .padding(.top, 14)
+        }
+        .foregroundStyle(Tok.text)
+        .environment(\.colorScheme, .dark)
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+        .presentationBackground(Tok.ink)
+    }
+
+    private func framed(_ content: Content) -> some View {
+        VStack(alignment: .leading, spacing: 0) { content }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.top, 16)
+            .padding(.bottom, 28)
+    }
+}
+
+// MARK: - Sharing
+
+#if os(iOS)
+/// The system share sheet for files.
+struct ActivityView: UIViewControllerRepresentable {
+    let items: [Any]
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: items, applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
+}
+#endif

@@ -18,7 +18,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--revision", required=True,
         choices=("v1", "v2", "v3-revoked", "v4-lp2", "v5-lp1", "v6-sleep-fix",
-                 "v7-100hz-compare"),
+                 "v7-100hz-compare", "v8-hid", "v9-hid-experimental",
+                 "v10-hid-keyboard-primary-experimental"),
         help="explicit archived, revoked, or off-ring comparison revision",
     )
     parser.add_argument("--out", type=Path, required=True,
@@ -33,6 +34,9 @@ def main(argv: list[str] | None = None) -> int:
             "v5-lp1": fwrt12col_unified.build_lp1,
             "v6-sleep-fix": fwrt12col_unified.build_v6,
             "v7-100hz-compare": fwrt12col_unified.build_v7,
+            "v8-hid": fwrt12col_unified.build_v8_hid,
+            "v9-hid-experimental": fwrt12col_unified.build_v9_hid,
+            "v10-hid-keyboard-primary-experimental": fwrt12col_unified.build_v10_hid,
         }
         candidate = builders[args.revision](args.base.read_bytes())
         with args.out.open("xb") as stream:
@@ -55,6 +59,15 @@ def main(argv: list[str] | None = None) -> int:
     elif args.revision == "v7-100hz-compare":
         print("DISABLED COMPARISON: V6 with Gesture CTRL1 0x51 (100 Hz LP2).")
         print("Freshness passed but model transfer did not beat V6; no app install route.")
+    elif args.revision == "v8-hid":
+        print("OFF-RING HID CANDIDATE: selected V6 source plus checksum-gated A2 actions.")
+        print("This command performs no flash; the app route remains separately guarded.")
+    elif args.revision == "v9-hid-experimental":
+        print("OFF-RING ONLY: bounded A2 wheel and one-key keyboard-array/Consumer report.")
+        print("The app route is separately identity/fingerprint gated; this command performs no flash.")
+    elif args.revision == "v10-hid-keyboard-primary-experimental":
+        print("OFF-RING ONLY: V9 fields with Keyboard first in both complete report maps.")
+        print("This builder performs no device action; physical iOS interpretation remains untested.")
     else:
         print("Archived/revoked artifact; never select it as an install target.")
     return 0

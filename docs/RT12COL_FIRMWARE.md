@@ -1,5 +1,75 @@
 # RT12COL Health-default / temporary-Gesture firmware
 
+## V10 keyboard-primary HID maps — 2026-09-29
+
+V10 is an offline-only descriptor-order correction on top of V9. Physical iOS
+logs after a successful V9 forget/re-pair show the exact map and ID4 Input
+reference were read, followed by `Ignoring service with secondary keyboard
+usage`. The iPhone map still began with Mouse ID1, making Mouse primary even
+though V9 appended its Keyboard ID4 descriptor. Keyboard actions were tried
+only before the re-pair, so classification—not sender delivery—is the proven
+V9 defect.
+
+V10 places the exact V9 81-byte Keyboard descriptor first in each complete
+selectable map, followed by the byte-exact original 66-byte Mouse or 82-byte
+Digitizer descriptor. The full maps remain exactly 147 and 163 bytes. Report
+IDs, fields, ID4 sender/release, wheel helper, bridge, motion/lease code, A2
+actions, Boot Mouse characteristic, `[0x04, 0x01]` Report Reference and GATT
+database are unchanged.
+
+Artifact:
+`rt12col-25hz-health-default-gesture-v10-hid-keyboard-primary-experimental.bin`,
+version `RT12COL_1.00.10_260929`, SHA-256
+`7e04ae9973341233d2dbbe06fc6eb4c228aab625b1c3687462416edbe7d21ce2`.
+Builder revision is `v10-hid-keyboard-primary-experimental`. No phone deploy,
+BLE connection, DFU or ring write occurred while building it. Offline proofs
+pin the exact artifact and map ordering; iOS interpretation remains a physical
+gate.
+
+## V9 keyboard + mouse HID — 2026-09-29
+
+V9 is a size-neutral, offline-only successor to V8. It retains the selected V6
+200 Hz/wide-band Gesture source, lease and corrected 3B route. It adds a bounded
+wheel helper, replaces the exact three-byte ID4 sender, and replaces both exact
+81-byte ID4 map copies with ten Consumer bits plus an 8-bit Keyboard Array.
+The existing HID service and characteristics are unchanged. No RAM, task,
+timer, partition or image-size growth is introduced.
+
+The guarded iOS catalog now offers V9 and retains V8 as rollback. V9 commands
+are enabled only after a complete 707-byte changed-region fingerprint. A report
+map change may require forgetting and reconnecting the ring so iOS discards its
+cached V8 descriptor. Keyboard and Consumer controls do not use AssistiveTouch;
+mouse wheel/drags may still require iPhone pointer support. No phone deploy,
+BLE connection, DFU or physical validation occurred. A first bounded deployment
+must validate pairing/rebond, keyboard and Consumer interpretation, wheel
+direction/amount, session/renewal coexistence, Health return, optical history,
+steps/sleep and rollback before any safety claim.
+
+## V8 HID bridge — 2026-09-29
+
+V8 is a guarded, app-installable experimental candidate based on the selected V6
+200 Hz/wide-band source, not V7. It adds one checksum-valid UART command,
+`A2 <action>`, that calls the unchanged stock HID mouse-drag and Consumer Control
+senders. It adds no service, report descriptor, RAM, task, timer, partition or
+image size. At the user's 2026-09-29 request, the iOS firmware-maintenance
+catalog exposes this exact bundle behind the existing identity, history,
+Health-mode, battery, charging, hash, header and destructive-confirmation gates.
+It also supports the same-mode V7→V8 upgrade. See
+[RING_HID_RESEARCH.md](RING_HID_RESEARCH.md).
+
+The corrected bridge explicitly restores the stock 3B handler route displaced
+by the dispatcher hook and uses mouse transport 1 for iPhone swipes. An earlier
+unflashed draft omitted the 3B taken branch and selected touch transport 2; it
+is revoked and rejected by the exact bridge fingerprint. iPhone swipes require
+AssistiveTouch. A2 itself is neither authenticated nor Gesture-gated in
+firmware; those restrictions are enforced by the exact-fingerprint app path.
+
+Nothing in this section authorizes DFU, BLE device commands, or a phone deploy.
+The current ring still runs V7. Before V8 can be considered for a bounded
+deployment, review the static bridge proof and repeat the existing identity,
+source freshness, renewal, Health-return, optical/steps/sleep and rollback
+gates, then validate every enabled HID action on the physical iPhone.
+
 Status: **no corrected candidate is validated or approved for general
 installation.** V3 is revoked off-ring.
 V4-LP2 and V5-LP1 were both physically tested on 2026-09-27 and are also
@@ -32,6 +102,9 @@ fingerprinted RT12COL image. It must never be routed to RT02CR.
 | V5-LP1 | `RT12COL_1.00.05_260927` | **revoked after physical test**: 49.0% paired duplicates; not installable | `23267b5e25e65591349861048c24b72b5cdbc60ea2d583a58315b4cd33d38217` |
 | V6 sleep fix | `RT12COL_1.00.06_260927` | physically passed freshness/renewal; preferred cross-ring baseline and rollback | `e92c5bc0d2751c3348aeea56ece4e5b5693baf1f6ba45c2a869c2d79729e134d` |
 | V7 100 Hz comparison | `RT12COL_1.00.07_260927` | currently installed; freshness passed, frozen-model transfer did not beat V6; no app install route | `cb815abea8d0ed0b4734b83790a45f632113e0bed4184de606b897727d4e9bd5` |
+| V8 HID bridge | `RT12COL_1.00.08_260929` | corrected guarded app target; V6 signal source, restored 3B route, A2→stock HID; not yet flashed | `a8be4e97051b25adffaadfd7f23632c54f396c6711960edf7dd0bfce9d683fc6` |
+| V9 keyboard + mouse HID | `RT12COL_1.00.09_260929` | guarded app target; changed ID4 map, keyboard array and bounded wheel; not yet flashed | `27fdfa741407da90def1a1124f8f551503d519d8ef730d30e61fa195476339ef` |
+| V10 keyboard-primary HID | `RT12COL_1.00.10_260929` | offline full-map reorder addressing iOS secondary-keyboard rejection; not physically validated | `7e04ae9973341233d2dbbe06fc6eb4c228aab625b1c3687462416edbe7d21ce2` |
 
 All are 137,996-byte application OTA images, declare `RT12COL_V1.0`, and use
 DFU init type `0x04`. The stock restore is not a full-flash dump or wired
@@ -52,6 +125,7 @@ bandwidth setting, LP1/LP2/LP3/LP4 are 3200/720/360/180 Hz respectively.
 | V5-LP1 | `0x60` | 200 Hz | LP1 | 3200 Hz | `0x10` (+/-4 g, widest) |
 | V6 sleep fix | `0x61` | 200 Hz | LP2 | 720 Hz | `0x10` (+/-4 g, widest) |
 | V7 comparison | `0x51` | 100 Hz | LP2 | 720 Hz | `0x10` (+/-4 g, widest) |
+| V8 HID bridge | `0x61` | 200 Hz | LP2 | 720 Hz | `0x10` (+/-4 g, widest) |
 
 V5-LP1 was designed as the resolution comparison and V4-LP2 as the bandwidth/
 resolution comparison. Physical testing disqualified both. They retained 25 Hz

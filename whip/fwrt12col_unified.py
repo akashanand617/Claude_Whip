@@ -42,7 +42,8 @@ the original one-shot producer.  If raw mode 4 is already active, a pre-entry
 gate resets only the lease byte and branches directly to the handler epilogue:
 it performs no owner/register write, one-shot producer call or timer restart.
 Normal stop, disconnect and expiry restore CTRL1 ``0x32``, CTRL6 ``0x50``, raw
-ownership and the volatile motion hold.  No unknown command is introduced.
+ownership and the volatile motion hold. V1–V7 introduce no command. The
+separate V8 builder adds the bounded A2-to-stock-HID bridge documented below.
 
 The bounded helpers occupy only the stock 0x48-sensor configuration branch.
 The exact ring physically identified as 0x44; the one external selector edge
@@ -79,6 +80,14 @@ V6_CANDIDATE_VERSION = "RT12COL_1.00.06_260927"
 V6_CANDIDATE_SHA256 = "e92c5bc0d2751c3348aeea56ece4e5b5693baf1f6ba45c2a869c2d79729e134d"
 V7_CANDIDATE_VERSION = "RT12COL_1.00.07_260927"
 V7_CANDIDATE_SHA256 = "cb815abea8d0ed0b4734b83790a45f632113e0bed4184de606b897727d4e9bd5"
+V8_HID_CANDIDATE_VERSION = "RT12COL_1.00.08_260929"
+V8_HID_CANDIDATE_SHA256 = "a8be4e97051b25adffaadfd7f23632c54f396c6711960edf7dd0bfce9d683fc6"
+V9_HID_CANDIDATE_VERSION = "RT12COL_1.00.09_260929"
+V9_HID_CANDIDATE_SHA256 = "27fdfa741407da90def1a1124f8f551503d519d8ef730d30e61fa195476339ef"
+V10_HID_CANDIDATE_VERSION = "RT12COL_1.00.10_260929"
+# Filled only after the exact offline artifact is reproduced below.  This is
+# deliberately pinned rather than derived at import time.
+V10_HID_CANDIDATE_SHA256 = "7e04ae9973341233d2dbbe06fc6eb4c228aab625b1c3687462416edbe7d21ce2"
 BIAS = 0x825FB0
 
 # Runtime Device Information stores the version as a 9-byte release component
@@ -93,7 +102,11 @@ LP2_RUNTIME_RELEASE = b"1.00.04_"
 LP1_RUNTIME_RELEASE = b"1.00.05_"
 V6_RUNTIME_RELEASE = b"1.00.06_"
 V7_RUNTIME_RELEASE = b"1.00.07_"
+V8_HID_RUNTIME_RELEASE = b"1.00.08_"
+V9_HID_RUNTIME_RELEASE = b"1.00.09_"
+V10_HID_RUNTIME_RELEASE = b"1.00.10_"
 RUNTIME_DATE = b"260927"
+V8_HID_RUNTIME_DATE = b"260929"
 
 # A1 raw callback: remove SpO2, PPG and subtype-5 notifications, retaining only
 # A1/03 accelerometer delivery.  These are complete 32-bit Thumb BL calls.
@@ -349,6 +362,159 @@ def _v7_helper_blob() -> bytes:
 
 V7_HELPER_BYTES = _v7_helper_blob()
 
+# V8 returns to the physically selected V6 200 Hz/wide-band source and adds a
+# size-neutral UART-to-HID bridge. The exact RT12COL_V1.0 board identifies its
+# accelerometer as LIS2DW12 (0x44). The stock STK8321 (0x23) initializer at
+# 0xbf30 is therefore unreachable after both of its only call edges are
+# retired. Its complete 80-byte span holds the bridge without new RAM, GATT
+# attributes, report-map changes, image growth, or a second task/timer.
+HID_COMMAND = 0xA2
+HID_DISPATCH_HOOK = 0x637E
+HID_BRIDGE = 0xBF30
+HID_BRIDGE_END = 0xBF80
+HID_STK_INIT_BRANCH = 0xBFDA
+HID_STK_RESET_BRANCH = 0xC21A
+HID_SWIPE_SCHEDULER = 0x12366
+HID_CONSUMER_PRESS = 0x3E1E
+HID_CONSUMER_RELEASE = 0x3E48
+HID_3B_HANDLER = 0x5C82
+HID_MOUSE_SEND = 0x3D70
+HID_WHEEL_HELPER = 0xBF14
+HID_WHEEL_HELPER_END = 0xBF30
+HID_HYBRID_PRESS = 0x3E1E
+HID_HYBRID_RELEASE = 0x3E20
+HID_HYBRID_SENDER_END = 0x3E70
+HID_HYBRID_REPORT_MAPS = (0x1FE3E, 0x1FEE1)
+HID_NATIVE_RELEASE_CALLS = (0x12256, 0x122DA, 0x12454)
+HID_REPORT_SEND = 0x11B2A
+
+HID_BRIDGE_TEMPLATE = bytes.fromhex(
+    "10b50446a2291ad1607804280fd20122022805d20121002800d14942002003e0"
+    "002102384000013800bf00bf06e02038182803d200bf00bf00bf00bf00212046"
+    "3b2902d100bf00bf002110bd00000000"
+)
+assert len(HID_BRIDGE_TEMPLATE) == HID_BRIDGE_END - HID_BRIDGE
+
+HID_BRIDGE_CALLS = {
+    0xBF58: HID_SWIPE_SCHEDULER,
+    0xBF64: HID_CONSUMER_PRESS,
+    0xBF68: HID_CONSUMER_RELEASE,
+    0xBF74: HID_3B_HANDLER,
+}
+
+
+def _hid_bridge_blob() -> bytes:
+    blob = bytearray(HID_BRIDGE_TEMPLATE)
+    for site, target in HID_BRIDGE_CALLS.items():
+        index = site - HID_BRIDGE
+        if blob[index:index + 4] != bytes.fromhex("00bf00bf"):
+            raise AssertionError(f"HID bridge BL marker drifted at {site:#x}")
+        blob[index:index + 4] = _bl(BIAS + site, (BIAS + target) | 1)
+    return bytes(blob)
+
+
+HID_BRIDGE_BYTES = _hid_bridge_blob()
+
+# V9 extends the exact V8 bridge without changing its 80-byte placement.
+# The additional 28-byte STK-only helper at 0xbf14 is called only from the
+# initializer at 0xbf30, whose two selector edges V8 already retires. The
+# action byte itself bounds the wheel delta to +/-5; payload bytes are unused.
+# The helper returns 0x30 after wheel handling; the bridge subtracts 0x20 and
+# the replacement sender consumes resulting 0x10 without a second report.
+# The 82-byte replacement sender is exact-size and retains stock HID-enabled,
+# GATT connection/attribute pointers and the three-byte ID4 send path. Its
+# descriptor replaces both 81-byte stock map variants with one Keyboard
+# Application collection containing Consumer bits and an 8-bit keycode Array.
+# Host interpretation, especially Consumer fields inside that collection,
+# remains experimental and must not be represented as physically verified.
+V9_WHEEL_TEMPLATE = bytes.fromhex(
+    "10b50f2808d209231b1a04d000200146024600bf00bf302010bd0000"
+)
+V9_BRIDGE_TEMPLATE = bytes.fromhex(
+    "10b50446a2291ad16078042807d300bf00bf203800bf00bf00bf00bf"
+    "0ee00122022805d20121002800d14942002003e00021023840000138"
+    "00bf00bf002120463b2902d100bf00bf002110bd00000000"
+)
+assert len(V9_WHEEL_TEMPLATE) == HID_WHEEL_HELPER_END - HID_WHEEL_HELPER
+assert len(V9_BRIDGE_TEMPLATE) == HID_BRIDGE_END - HID_BRIDGE
+
+V9_HYBRID_SENDER_TEMPLATE = bytes.fromhex(
+    "00e0ff200eb500220292ff280fd0b2281dd8802806d20a2819d20121"
+    "81406a46118104e020304006400e6a4690720b48007800280bd00320"
+    "00900120019005480649807c097802ab182200bf00bf0ebd0000"
+)
+assert len(V9_HYBRID_SENDER_TEMPLATE) == HID_HYBRID_SENDER_END - HID_HYBRID_PRESS
+
+V9_HYBRID_REPORT_DESCRIPTOR = bytes.fromhex(
+    "05010906a1018504150025017501950a050c"
+    "09b509b609b709cd09e20a21020a23020a240209e909ea"
+    "81027506950181030507150026650075089501190029658100"
+    "a4b4a4b4a4b4a4b4a4b4a4b4a4b4c0"
+)
+assert len(V9_HYBRID_REPORT_DESCRIPTOR) == 81
+
+# V10 changes no report fields, sender or wire action.  Physical iOS logs read
+# V9's exact map but rejected its Keyboard usage as secondary because each full
+# selectable map still began with Mouse/Digitizer.  Reorder each complete map
+# so the exact V9 Keyboard-ID4 descriptor is its first top-level Application
+# collection, followed by the byte-exact original Mouse/Digitizer descriptor.
+# Full-map sizes, all report IDs and the GATT database remain unchanged.
+HID_FULL_REPORT_MAPS = (0x1FDFC, 0x1FE8F)
+V10_MOUSE_REPORT_PREFIX = bytes.fromhex(
+    "05010902a10185010901a10005091901290515002501950575018102"
+    "9501750381010501093009311601f826ff0775109502810609381581"
+    "257f750895018106c0c0"
+)
+V10_TOUCH_REPORT_PREFIX = bytes.fromhex(
+    "050d0904a10185010922a10209421500250175019501810209328102"
+    "950681037508095195018102050126ff0f7510550e65330930360000"
+    "46b50495018102468a0309318102c0050d0954750895018102c0"
+)
+assert len(V10_MOUSE_REPORT_PREFIX) == 66
+assert len(V10_TOUCH_REPORT_PREFIX) == 82
+V10_KEYBOARD_FIRST_REPORT_MAPS = {
+    HID_FULL_REPORT_MAPS[0]: V9_HYBRID_REPORT_DESCRIPTOR + V10_MOUSE_REPORT_PREFIX,
+    HID_FULL_REPORT_MAPS[1]: V9_HYBRID_REPORT_DESCRIPTOR + V10_TOUCH_REPORT_PREFIX,
+}
+assert tuple(map(len, V10_KEYBOARD_FIRST_REPORT_MAPS.values())) == (147, 163)
+
+
+def _v9_hid_blobs() -> tuple[bytes, bytes]:
+    wheel = bytearray(V9_WHEEL_TEMPLATE)
+    bridge = bytearray(V9_BRIDGE_TEMPLATE)
+    for blob, origin, calls in (
+        (wheel, HID_WHEEL_HELPER, {0xBF26: HID_MOUSE_SEND}),
+        (bridge, HID_BRIDGE, {
+            0xBF3E: HID_WHEEL_HELPER,
+            0xBF44: HID_HYBRID_PRESS,
+            0xBF48: HID_HYBRID_RELEASE,
+            0xBF68: HID_SWIPE_SCHEDULER,
+            0xBF74: HID_3B_HANDLER,
+        }),
+    ):
+        for site, target in calls.items():
+            index = site - origin
+            if blob[index:index + 4] != bytes.fromhex("00bf00bf"):
+                raise AssertionError(f"V9 HID BL marker drifted at {site:#x}")
+            blob[index:index + 4] = _bl(BIAS + site, (BIAS + target) | 1)
+    return bytes(wheel), bytes(bridge)
+
+
+V9_WHEEL_BYTES, V9_BRIDGE_BYTES = _v9_hid_blobs()
+
+
+def _v9_hybrid_sender_blob() -> bytes:
+    blob = bytearray(V9_HYBRID_SENDER_TEMPLATE)
+    site = 0x3E68
+    index = site - HID_HYBRID_PRESS
+    if blob[index:index + 4] != bytes.fromhex("00bf00bf"):
+        raise AssertionError("V9 sender BL marker drifted")
+    blob[index:index + 4] = _bl(BIAS + site, (BIAS + HID_REPORT_SEND) | 1)
+    return bytes(blob)
+
+
+V9_HYBRID_SENDER_BYTES = _v9_hybrid_sender_blob()
+
 
 def _short_b(source: int, target: int) -> bytes:
     displacement = target - (source + 4)
@@ -423,6 +589,16 @@ _SIGNATURES = (
         "fff74dfe32212020fff749fe00212320fff745fe00212220fff741fe"
     )),
     (0xBFD8, bytes.fromhex("232821d0442824d048283fd0ade0")),
+    (0xC1F4, bytes.fromhex(
+        "10b53220fff7c0fdfff7a5ff6b480078482816d0442814d0332807d0"
+        "152805d0112805d023280ad0282801d0002010bd"
+    )),
+    (0x6378, bytes.fromhex("00190179001d3b294bd015dc152935d0")),
+    (0xBF30, bytes.fromhex(
+        "10b5b6211420fff7a2fe1d4932200968884705210f20fff79afe5e20c021"
+        "fff796fe34200421fff792fe20200521fff78efe1a200221fff78afe1720"
+        "4021fff786fe3d202021fff782fefff7cbff10bd"
+    )),
     (0xC064, bytes.fromhex(
         "1325012269462846fff753fe6a461178ef2421402020014311702846"
         "fff763fe102001226946fff744fe6a461178102001431170fff757fe"
@@ -558,6 +734,45 @@ def v7_patch_map() -> dict[int, bytes]:
     return patches
 
 
+def v8_hid_patch_map() -> dict[int, bytes]:
+    """V6 source/lease behavior plus the bounded stock-HID command bridge."""
+    patches = v6_patch_map()
+    patches.update({offset: V8_HID_RUNTIME_RELEASE for offset in RUNTIME_RELEASE_OFFSETS})
+    patches.update({offset: V8_HID_RUNTIME_DATE for offset in RUNTIME_DATE_OFFSETS})
+    patches[HID_DISPATCH_HOOK] = _bl(
+        BIAS + HID_DISPATCH_HOOK, (BIAS + HID_BRIDGE) | 1
+    )
+    patches[HID_STK_INIT_BRANCH] = bytes.fromhex("00bf")
+    patches[HID_STK_RESET_BRANCH] = bytes.fromhex("00bf")
+    patches[HID_BRIDGE] = HID_BRIDGE_BYTES
+    return patches
+
+
+def v9_hid_patch_map() -> dict[int, bytes]:
+    """Experimental V9 wheel and one-report keyboard-array HID candidate."""
+    patches = v8_hid_patch_map()
+    patches.update({offset: V9_HID_RUNTIME_RELEASE for offset in RUNTIME_RELEASE_OFFSETS})
+    patches[HID_WHEEL_HELPER] = V9_WHEEL_BYTES
+    patches[HID_BRIDGE] = V9_BRIDGE_BYTES
+    patches[HID_HYBRID_PRESS] = V9_HYBRID_SENDER_BYTES
+    for offset in HID_HYBRID_REPORT_MAPS:
+        patches[offset] = V9_HYBRID_REPORT_DESCRIPTOR
+    for site in HID_NATIVE_RELEASE_CALLS:
+        patches[site] = _bl(BIAS + site, (BIAS + HID_HYBRID_RELEASE) | 1)
+    return patches
+
+
+def v10_hid_patch_map() -> dict[int, bytes]:
+    """V9 reports reordered so Keyboard is each full map's primary usage."""
+    patches = v9_hid_patch_map()
+    patches.update({offset: V10_HID_RUNTIME_RELEASE
+                    for offset in RUNTIME_RELEASE_OFFSETS})
+    for offset in HID_HYBRID_REPORT_MAPS:
+        patches.pop(offset)
+    patches.update(V10_KEYBOARD_FIRST_REPORT_MAPS)
+    return patches
+
+
 def patch_map() -> dict[int, bytes]:
     """Return the current off-ring LP2 comparison candidate edit map."""
     return lp2_patch_map()
@@ -592,11 +807,41 @@ def _edits(replacements: dict[int, bytes]) -> dict[int, tuple[int, int]]:
             "38fe6a4611780826314311702846fff74afe1525012269462846fff7"
             "2afe6a461078062108433043"
         ),
+        HID_DISPATCH_HOOK: bytes.fromhex("3b294bd0"),
+        HID_STK_INIT_BRANCH: bytes.fromhex("21d0"),
+        HID_STK_RESET_BRANCH: bytes.fromhex("0ad0"),
+        HID_BRIDGE: bytes.fromhex(
+            "10b5b6211420fff7a2fe1d4932200968884705210f20fff79afe5e20c021"
+            "fff796fe34200421fff792fe20200521fff78efe1a200221fff78afe1720"
+            "4021fff786fe3d202021fff782fefff7cbff10bd"
+        ),
+        HID_WHEEL_HELPER: bytes.fromhex(
+            "10b511207421fff7b0fe10200f21fff7acfe3e20c821fff7a8fe10bd"
+        ),
+        HID_HYBRID_PRESS: bytes.fromhex(
+            "0eb51649097800290ed001221146814003200192029100900f480f49"
+            "807c02ab1822097811f012fd0ebd0eb50c48007800280dd000200290"
+            "012103200191009005480549807c02ab1822097811f0fefc0ebd"
+        ),
     }
     source_bytes.update({offset: None for offset in SUPPRESSED_NOTIFY_CALLS})
     source_bytes.update({offset: bytes([0x14]) for offset in QUEUE_RETRY_LIMITS})
     source_bytes.update({offset: b"1.00.00_" for offset in RUNTIME_RELEASE_OFFSETS})
     source_bytes.update({offset: b"260520" for offset in RUNTIME_DATE_OFFSETS})
+    stock_consumer_descriptor = bytes.fromhex(
+        "050c0901a10185041500250175019518"
+        "09b509b609b709cd09e2093009e509e709e909ea"
+        "0a52010a53010a54010a55010a83010a8a010a92010a9401"
+        "0a21020a23020a24020a25020a26020a27028102c0"
+    )
+    source_bytes.update({offset: stock_consumer_descriptor
+                         for offset in HID_HYBRID_REPORT_MAPS})
+    source_bytes.update({
+        HID_FULL_REPORT_MAPS[0]: V10_MOUSE_REPORT_PREFIX + stock_consumer_descriptor,
+        HID_FULL_REPORT_MAPS[1]: V10_TOUCH_REPORT_PREFIX + stock_consumer_descriptor,
+    })
+    source_bytes.update({site: _bl(BIAS + site, (BIAS + HID_CONSUMER_RELEASE) | 1)
+                         for site in HID_NATIVE_RELEASE_CALLS})
 
     # Helper revisions replace a contiguous retired 0x48-sensor branch prefix,
     # not independent guessed fragments. V3 is 192 bytes; corrected builds are
@@ -758,6 +1003,36 @@ def build_v7(data: bytes) -> bytes:
         replacements=v7_patch_map(),
         version=V7_CANDIDATE_VERSION,
         expected_digest=V7_CANDIDATE_SHA256,
+    )
+
+
+def build_v8_hid(data: bytes) -> bytes:
+    """Build the off-ring V6-based HID bridge candidate; never auto-route."""
+    return _build(
+        data,
+        replacements=v8_hid_patch_map(),
+        version=V8_HID_CANDIDATE_VERSION,
+        expected_digest=V8_HID_CANDIDATE_SHA256,
+    )
+
+
+def build_v9_hid(data: bytes) -> bytes:
+    """Build the offline-only hybrid HID artifact used by the guarded app route."""
+    return _build(
+        data,
+        replacements=v9_hid_patch_map(),
+        version=V9_HID_CANDIDATE_VERSION,
+        expected_digest=V9_HID_CANDIDATE_SHA256,
+    )
+
+
+def build_v10_hid(data: bytes) -> bytes:
+    """Build the offline-only keyboard-primary full-map reorder experiment."""
+    return _build(
+        data,
+        replacements=v10_hid_patch_map(),
+        version=V10_HID_CANDIDATE_VERSION,
+        expected_digest=V10_HID_CANDIDATE_SHA256,
     )
 
 

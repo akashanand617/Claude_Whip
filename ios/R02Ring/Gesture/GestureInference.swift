@@ -80,8 +80,18 @@ enum GestureContract {
     }
 }
 
-final class PinnedGestureClassifier {
+/// Anything that maps the 450 model features to the 12 class probabilities.
+protocol GestureProbabilities: AnyObject {
+    func probabilities(_ features: [Float]) throws -> [Float]
+}
+
+/// Loaded once and shared: by a warm-up off the main thread and by successive
+/// sessions' inference queues (an old queue may still be draining when a new
+/// session starts), so predictions are serialized rather than relying on
+/// MLModel's own thread-safety.
+final class PinnedGestureClassifier: GestureProbabilities, @unchecked Sendable {
     private let model: MLModel
+    private let lock = NSLock()
     init(bundle: Bundle = .main) throws {
         guard let url = bundle.url(forResource: "GestureClassifier", withExtension: "mlmodelc") else {
             throw FirmwareSwitchError.missingImage("GestureClassifier.mlmodelc")
@@ -97,13 +107,24 @@ final class PinnedGestureClassifier {
         guard features.count == 450, features.allSatisfy(\.isFinite) else { throw RingProtocolError.invalidPacket }
         let input = try MLMultiArray(shape: [1, 9, 50], dataType: .float32)
         for i in features.indices { input[i] = NSNumber(value: features[i]) }
-        let result = try model.prediction(from: MLDictionaryFeatureProvider(dictionary: ["samples": input]))
+        let provider = try MLDictionaryFeatureProvider(dictionary: ["samples": input])
+        lock.lock()
+        defer { lock.unlock() }
+        let result = try model.prediction(from: provider)
         guard let values = result.featureValue(for: "probabilities")?.multiArrayValue, values.count == 12 else {
             throw RingProtocolError.invalidPacket
         }
         let output = (0..<12).map { values[$0].floatValue }
         guard output.allSatisfy({ $0.isFinite && $0 >= 0 && $0 <= 1 }) else { throw RingProtocolError.invalidPacket }
         return output
+    }
+
+    /// One real prediction on all-zero (finite, valid) features, so a session's
+    /// first prediction does not pay Core ML's first-call cost on the
+    /// inference queue, where it would age queued samples.
+    @discardableResult
+    func warmUp() throws -> [Float] {
+        try probabilities([Float](repeating: 0, count: 450))
     }
 }
 
@@ -118,11 +139,22 @@ final class GestureInference {
     private var tracker = GestureBurstTracker()
     init(predict: @escaping ([Float]) throws -> [Float]) { self.predict = predict }
 
+    /// Replay-equivalent reset (the Python parity fixtures): a fresh window
+    /// and tracker. Pending events are deliberately NOT flushed.
     func reset() {
         samples.removeAll(keepingCapacity: true)
         times.removeAll(keepingCapacity: true)
         sinceWindow = 0
         tracker = GestureBurstTracker() // deliberately do NOT flush pending events
+    }
+
+    /// `reset()` after a stall that ended at receipt `release`, keeping the
+    /// wave refractory (`GestureBurstTracker.waveRefractory`), so one
+    /// continuous wave spanning the stall fires one event.
+    func reset(releasedAt release: Double) {
+        let refractory = tracker.waveRefractory(discardedAt: release)
+        reset()
+        tracker.suppressWaves(until: refractory)
     }
 
     func feed(time: Double, counts: [Double]) throws -> [RingGestureEvent] {

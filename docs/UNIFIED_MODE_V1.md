@@ -87,7 +87,10 @@ UART, DFU, DIS, HID, Health, steps, and sleep services remain registered.
 The phone accepts Gesture only after three checksum-valid A1/03 samples with at
 least two distinct XYZ payloads. It assigns a connection-bound monotonic sample
 sequence, runs the pinned gesture model, and returns to Health on explicit stop,
-stale/inference failure, app backgrounding, or disconnect. Health jobs and mode
+stale/inference failure, disconnect, lease/renewal failure, the Return-to-Health
+timer, the idle pause, or a gesture mapped to Pause gestures. Since 2026-09-28
+app backgrounding returns to Health only when the app's "Keep gestures active in
+background" setting is off (it is on by default). Health jobs and mode
 changes share one operation gate. Gesture intervals remain recorded as
 unverified health coverage; the app does not manufacture zero steps or sleep.
 

@@ -20,6 +20,8 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSAppleMusicUsageDescription</key>
+	<string>R02 Ring controls Apple Music playback when you map a ring gesture to a music action.</string>
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>R02 Ring uses Bluetooth to connect to your ring and sync sleep, heart rate, steps, and battery data.</string>
 	<key>UIApplicationSceneManifest</key>

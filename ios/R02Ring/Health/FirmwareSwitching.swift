@@ -98,10 +98,36 @@ struct BundledFirmware: Identifiable {
     let targetHardware: String
     let installEnabled: Bool
     let disabledReason: String?
+    /// Exact Device Information version expected after installing this image.
+    /// Older catalog entries predate same-mode upgrades and may leave this nil.
+    let targetVersion: String?
 
-    var id: String { "\(family.rawValue).\(mode.rawValue)" }
+    init(family: RingHardwareFamily, mode: RingFirmwareMode, resource: String,
+         sha256: String, initType: UInt8, targetHardware: String,
+         installEnabled: Bool, disabledReason: String?, targetVersion: String? = nil) {
+        self.family = family
+        self.mode = mode
+        self.resource = resource
+        self.sha256 = sha256
+        self.initType = initType
+        self.targetHardware = targetHardware
+        self.installEnabled = installEnabled
+        self.disabledReason = disabledReason
+        self.targetVersion = targetVersion
+    }
+
+    var id: String { "\(family.rawValue).\(mode.rawValue).\(resource)" }
 
     var label: String {
+        if targetVersion == FirmwareIdentity.rt12colUnifiedHIDV10Version {
+            return "V10 Keyboard-primary HID firmware"
+        }
+        if targetVersion == FirmwareIdentity.rt12colUnifiedHIDV9Version {
+            return "V9 Keyboard + mouse firmware"
+        }
+        if targetVersion == FirmwareIdentity.rt12colUnifiedHIDVersion {
+            return "V8 Ring controls firmware"
+        }
         switch mode {
         case .health: return "Stock Health firmware"
         case .gesture: return "Experimental Gesture-only V2 firmware"
@@ -158,7 +184,52 @@ struct BundledFirmware: Identifiable {
         disabledReason: "V7 is recognized for bounded testing, but app installation remains locked pending physical gates"
     )
 
-    // Physically fresh, lease-safe V6 remains an authenticated rollback and
+    // V8 remains an app-installable experimental rollback behind the same
+    // confirmation gates as V9.
+    static let rt12colUnifiedHID = BundledFirmware(
+        family: .rt12col,
+        mode: .unified,
+        resource: "rt12col-25hz-health-default-gesture-v8-hid-experimental",
+        sha256: "a8be4e97051b25adffaadfd7f23632c54f396c6711960edf7dd0bfce9d683fc6",
+        initType: 4,
+        targetHardware: "RT12COL_V1.0",
+        installEnabled: true,
+        disabledReason: nil,
+        targetVersion: FirmwareIdentity.rt12colUnifiedHIDVersion
+    )
+
+    // V9 is still recognized because it was physically installed, but is no
+    // longer offered as a target. Physical logs showed iOS parsed the map yet
+    // treated Keyboard as a secondary usage; that result is inconclusive for
+    // its reports, not a reason to lose the exact installed identity.
+    static let rt12colUnifiedHIDV9 = BundledFirmware(
+        family: .rt12col,
+        mode: .unified,
+        resource: "rt12col-25hz-health-default-gesture-v9-hid-experimental",
+        sha256: "27fdfa741407da90def1a1124f8f551503d519d8ef730d30e61fa195476339ef",
+        initType: 4,
+        targetHardware: "RT12COL_V1.0",
+        installEnabled: false,
+        disabledReason: "superseded by V10 after iOS classified Keyboard as a secondary usage",
+        targetVersion: FirmwareIdentity.rt12colUnifiedHIDV9Version
+    )
+
+    // V10 keeps V9's sender and wire actions but makes Keyboard the first
+    // Application collection in both complete selectable report maps. A
+    // post-reboot full changed-byte fingerprint is required before commands.
+    static let rt12colUnifiedHIDV10 = BundledFirmware(
+        family: .rt12col,
+        mode: .unified,
+        resource: "rt12col-25hz-health-default-gesture-v10-hid-keyboard-primary-experimental",
+        sha256: "7e04ae9973341233d2dbbe06fc6eb4c228aab625b1c3687462416edbe7d21ce2",
+        initType: 4,
+        targetHardware: "RT12COL_V1.0",
+        installEnabled: true,
+        disabledReason: nil,
+        targetVersion: FirmwareIdentity.rt12colUnifiedHIDV10Version
+    )
+
+    // Physically fresh, lease-safe V6 remains a fingerprinted rollback and
     // comparison identity. It is not re-exposed as an app install target.
     static let rt12colUnifiedLegacyV6 = BundledFirmware(
         family: .rt12col,
@@ -222,7 +293,9 @@ struct BundledFirmware: Identifiable {
     )
 
     static let rt02crCatalog: [BundledFirmware] = [.health, .unified, .gesture]
-    static let rt12colCatalog: [BundledFirmware] = [.rt12colHealth, .rt12colUnified]
+    static let rt12colCatalog: [BundledFirmware] = [
+        .rt12colHealth, .rt12colUnifiedHIDV10, .rt12colUnifiedHID,
+    ]
 
     static func catalog(for family: RingHardwareFamily) -> [BundledFirmware] {
         switch family {
@@ -244,6 +317,13 @@ struct BundledFirmware: Identifiable {
         routedCatalog(hardware: hardware, firmware: firmware).first { $0.mode == mode }
     }
 
+    /// Same-mode upgrades must compare the exact target version. Legacy
+    /// descriptors without one retain the older mode-based behavior.
+    func isInstalled(mode installedMode: RingFirmwareMode, version: String?) -> Bool {
+        if let targetVersion { return version == targetVersion }
+        return mode == installedMode
+    }
+
     func load(bundle: Bundle = .main) throws -> Data {
         guard let url = bundle.url(forResource: resource, withExtension: "bin", subdirectory: "Firmware")
                 ?? bundle.url(forResource: resource, withExtension: "bin") else {
@@ -263,7 +343,25 @@ struct BundledFirmware: Identifiable {
                 "catalog target \(targetHardware) does not match image header \(declared)"
             )
         }
+        if let targetVersion {
+            let declaredVersion = try declaredFirmware(in: data)
+            guard declaredVersion == targetVersion else {
+                throw FirmwareSwitchError.invalidImage(
+                    "catalog version \(targetVersion) does not match image header \(declaredVersion)"
+                )
+            }
+        }
         return data
+    }
+
+    func declaredFirmware(in data: Data) throws -> String {
+        guard data.count >= 0x30 else { throw FirmwareSwitchError.invalidImage("truncated container") }
+        let field = data[0x10..<0x30]
+        let bytes = field.prefix { $0 != 0 }
+        guard let value = String(bytes: bytes, encoding: .utf8), !value.isEmpty else {
+            throw FirmwareSwitchError.invalidImage("unreadable firmware header")
+        }
+        return value
     }
 
     func declaredHardware(in data: Data) throws -> String {
@@ -353,6 +451,9 @@ enum FirmwareIdentity {
     static let rt12colUnifiedV3Version = "RT12COL_1.00.03_260927"
     static let rt12colUnifiedV6Version = "RT12COL_1.00.06_260927"
     static let rt12colUnifiedVersion = "RT12COL_1.00.07_260927"
+    static let rt12colUnifiedHIDVersion = "RT12COL_1.00.08_260929"
+    static let rt12colUnifiedHIDV9Version = "RT12COL_1.00.09_260929"
+    static let rt12colUnifiedHIDV10Version = "RT12COL_1.00.10_260929"
 
     static func isKnownInstalledVersion(_ version: String?, family: RingHardwareFamily) -> Bool {
         guard let version else { return false }
@@ -362,6 +463,9 @@ enum FirmwareIdentity {
             return version == rt12colStockVersion || version == rt12colUnifiedV1Version
                 || version == rt12colUnifiedV2Version || version == rt12colUnifiedV3Version
                 || version == rt12colUnifiedV6Version || version == rt12colUnifiedVersion
+                || version == rt12colUnifiedHIDVersion
+                || version == rt12colUnifiedHIDV9Version
+                || version == rt12colUnifiedHIDV10Version
         }
     }
     private static let fileToAddress = 0x825fb0
@@ -459,6 +563,50 @@ enum FirmwareIdentity {
     // V7 changes one byte inside the same helper interval, so the exact same
     // complete changed-byte site set authenticates V6 against its own bundle.
     static let rt12colUnifiedV6Sites = rt12colUnifiedSites
+
+    // V8 is V6 plus a four-byte dispatcher hook, the complete 80-byte retired
+    // STK initializer reused by the bridge, and both retired call edges. The
+    // V6 ranges above already cover every signal/lease/identity byte.
+    static let rt12colUnifiedHIDSites: [Site] = (
+        rt12colUnifiedV6Ranges + [(0x637e, 4), (0xbf30, 80), (0xbfda, 2), (0xc21a, 2)]
+    ).flatMap { offset, length in
+        stride(from: 0, to: length, by: 14).map {
+            Site(offset: offset + $0, length: min(14, length - $0))
+        }
+    }
+
+    // V9 authenticates every byte changed from stock: V6 source/lease/runtime,
+    // the A2 hook, both retired STK spans, the complete replacement sender,
+    // both report-map copies, the retired selector edges and all three native
+    // release-call retargets. Splitting only respects the 14-byte CD01 limit.
+    private static let rt12colUnifiedHIDV9Ranges: [(Int, Int)] =
+        rt12colUnifiedV6Ranges + [
+            (0x637e, 4), (0x3e1e, 82),
+            (0xbf14, 28), (0xbf30, 80), (0xbfda, 2), (0xc21a, 2),
+            (0x1fe3e, 81), (0x1fee1, 81),
+            (0x12256, 4), (0x122da, 4), (0x12454, 4),
+        ]
+    static let rt12colUnifiedHIDV9Sites: [Site] = rt12colUnifiedHIDV9Ranges.flatMap { offset, length in
+        stride(from: 0, to: length, by: 14).map {
+            Site(offset: offset + $0, length: min(14, length - $0))
+        }
+    }
+
+    // V10 authenticates the same motion, lease, bridge and sender bytes as V9,
+    // plus both complete reordered report maps. Version text alone cannot
+    // grant the keyboard-primary capability.
+    private static let rt12colUnifiedHIDV10Ranges: [(Int, Int)] =
+        rt12colUnifiedV6Ranges + [
+            (0x637e, 4), (0x3e1e, 82),
+            (0xbf14, 28), (0xbf30, 80), (0xbfda, 2), (0xc21a, 2),
+            (0x1fdfc, 147), (0x1fe8f, 163),
+            (0x12256, 4), (0x122da, 4), (0x12454, 4),
+        ]
+    static let rt12colUnifiedHIDV10Sites: [Site] = rt12colUnifiedHIDV10Ranges.flatMap { offset, length in
+        stride(from: 0, to: length, by: 14).map {
+            Site(offset: offset + $0, length: min(14, length - $0))
+        }
+    }
 
     static func readPacket(_ site: Site) -> Data {
         ColmiR02Protocol.packet(command: 0xcd, payload: [

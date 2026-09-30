@@ -1,5 +1,222 @@
 # Whip — working notes
 
+## RT12COL V10 keyboard-primary HID maps — 2026-09-29
+
+V10 is an offline-only descriptor-order correction on top of V9. Read
+[docs/RING_HID_RESEARCH.md](docs/RING_HID_RESEARCH.md) before any device work.
+
+- Artifact: `RT12COL_1.00.10_260929`, SHA-256
+  `7e04ae9973341233d2dbbe06fc6eb4c228aab625b1c3687462416edbe7d21ce2`,
+  `firmware/rt12col-25hz-health-default-gesture-v10-hid-keyboard-primary-experimental.bin`;
+  builder revision `v10-hid-keyboard-primary-experimental`.
+- After V9 was forgotten and re-paired, iOS read the exact V9 map and ID4 Input
+  reference, then logged `Ignoring service with secondary keyboard usage`; its
+  primary usage was Mouse because the full iPhone map still began with the
+  stock Mouse collection. Keyboard actions were tested only before the re-pair,
+  so descriptor classification—not sender delivery—is the proven defect.
+- V10 reorders each complete selectable map: the exact 81-byte V9 Keyboard
+  Application descriptor comes first, followed by the exact original 66-byte
+  Mouse or 82-byte Digitizer descriptor. Application order is therefore
+  Keyboard→Mouse and Keyboard→Digitizer. Report IDs, field layout, map sizes,
+  the ID4 sender/release, wheel, bridge, motion/lease code and A2 actions stay
+  exact V9.
+- Boot Mouse Input, the `[0x04, 0x01]` Report Reference and the complete GATT
+  database remain byte-identical. Repurposing Boot Mouse was rejected as an
+  unsupported, behavior-removing change; ID4 remains report-mode input.
+- The app makes V10 the guarded target from exact recognized RT12COL versions,
+  including installed V9→V10. V9 remains exactly recognizable but is not an
+  install choice; V8 remains the exact rollback. V10 commands are enabled only
+  after an 855-byte fingerprint covers every stock→V10 changed application
+  byte. After reboot the user must forget and reconnect the ring so iOS replaces
+  the cached V9 report map.
+- Physical journals also showed two HID actions rejected while renewal held the
+  mode lane. HID now waits behind renewal and revalidates session ownership; a
+  stop revokes queued HID before its own busy retry. Focused UnifiedMode tests
+  pass 26/26, including wait-then-send and stop-withdraws regressions.
+- Offline verification passes: the full iOS suite is 397/397 with no skips;
+  the selected firmware/event-log Python set is 40/40; a fresh V10 build is
+  byte-identical to the pinned artifact; and Release simulator plus unsigned
+  generic-iPhone builds succeed. `git diff --check` is clean.
+- This firmware work performed no phone deploy, BLE connection, DFU or ring
+  write. V10 has not been physically interpreted by iOS. Do not call it safe or
+  physically validated; keyboard-primary classification and input delivery are
+  still physical gates.
+
+## RT12COL V9 keyboard + mouse HID — 2026-09-29
+
+This was the guarded app target after V8 and is retained as an exact installed
+identity, but V10 now supersedes it as the install target. V8 remains available
+as an exact rollback. Read [docs/RING_HID_RESEARCH.md](docs/RING_HID_RESEARCH.md)
+and [ios/IMPLEMENTATION.md](ios/IMPLEMENTATION.md) before any device action.
+
+- V9 is an offline-only experimental candidate:
+  `RT12COL_1.00.09_260929`, SHA-256
+  `27fdfa741407da90def1a1124f8f551503d519d8ef730d30e61fa195476339ef`.
+  Artifact: `firmware/rt12col-25hz-health-default-gesture-v9-hid-experimental.bin`;
+  builder revision: `v9-hid-experimental`. No phone deploy, BLE connection,
+  DFU or ring write occurred in this work.
+- V9 retains V8's V6-derived 200 Hz/wide-band Gesture source, four stock mouse
+  drags and corrected 3B route. It adds bounded stock-mouse wheel reports:
+  A2 actions `0x04...0x08` send +5...+1, `0x09` is a no-op, and
+  `0x0a...0x0e` send -1...-5. Wheel amount is adjustable 1...5 in the app.
+- Both exact 81-byte ID4 maps become one Keyboard Application report while the
+  existing characteristic stays three bytes: ten Consumer bits, six constant
+  pad bits and one standards-shaped 8-bit Keyboard Array. Consumer A2 actions
+  are `0x20...0x29`; direct keys use `0x80 | USB keycode` for keycodes
+  `0x20...0x52`. Unknown values and V8-only Consumer actions
+  `0x2a...0x37` are consumed. Native indices 3 and 9 retain Play/Pause and
+  Volume Down.
+- The replacement sender exactly fills the live 82-byte press/release span and
+  preserves its HID-enabled gate and stock GATT pointers. Three native release
+  calls are retargeted. The 80-byte bridge and 28-byte wheel helper occupy only
+  instruction-traced retired STK8321 spans on exact LIS2DW12/0x44 hardware. V9
+  changes no GATT service, characteristic, RAM, task, timer, partition or image
+  size.
+- Firmware maintenance now bundles V9 and V8 for exact known RT12COL identities.
+  It preserves the history, Health-mode, battery >=40%, not-charging,
+  hash/header/version and destructive-confirmation gates. V9 capability is
+  granted only after all 707 changed bytes match the bundled image after reboot.
+- Remaps now include wheel up/down; arrow and Page keys; Home/End; Space,
+  Return, Escape, Tab, Backspace, Forward Delete and F5; media stop; Search;
+  Home; camera shutter; existing media/volume/navigation and mouse drags.
+  Keyboard and Consumer actions are the no-AssistiveTouch path. iPhone may
+  still require AssistiveTouch/pointer support for mouse drags/wheel, and may
+  cache V8's report map until the ring is forgotten and reconnected.
+- The descriptor and reports are structurally proved offline, but their iOS
+  interpretation, rebonding, mouse wheel semantics, keyboard/Consumer delivery,
+  25 Hz coexistence, background behavior, Health return and battery impact are
+  physical gates. Seven V9 firmware proofs and the selected 35-test Python set
+  pass; iOS XCTest passes 393/393 with no skips; Release simulator and unsigned
+  generic-iPhone builds succeed with the exact V9 bundle. The broader RT12
+  Python run reaches an environment-specific Unicorn illegal instruction and
+  is not claimed as passing. Do not call V9 safe or physically validated.
+
+
+## RT12COL V8 HID bridge — 2026-09-29
+
+This supersedes the 2026-09-28 statements below that swipe up/down are locked,
+the ring HID service is unresearched, or gesture sessions send only A1/3B.
+Read [docs/RING_HID_RESEARCH.md](docs/RING_HID_RESEARCH.md) and
+[ios/IMPLEMENTATION.md](ios/IMPLEMENTATION.md) first.
+
+- V8 is a guarded, app-installable experimental candidate based on V6's selected
+  200 Hz/wide-band source: `RT12COL_1.00.08_260929`, SHA-256
+  `a8be4e97051b25adffaadfd7f23632c54f396c6711960edf7dd0bfce9d683fc6`.
+  The current ring remains on V7. No BLE command, DFU, phone deploy or ring
+  connection occurred.
+- Static analysis found the unchanged stock HID service, mouse/touch
+  trajectories and
+  24-bit Consumer Control report. V8 adds checksum-valid `A2 <action>`: 0–3
+  swipe up/down/left/right; `0x20...0x37` select Consumer bits 0–23; unknown
+  actions are consumed. It adds no GATT service/report, RAM, task, timer,
+  partition or image size.
+- The 80-byte bridge exactly replaces the retired STK8321-only initializer
+  after both of its selector edges are retired on the exact LIS2DW12/0x44
+  hardware. The corrected bridge explicitly calls stock handler `0x5c82` for
+  3B because the hook displaced both its comparison and taken branch, and uses
+  mouse transport 1 for swipes. An earlier unflashed draft omitted that branch
+  and selected touch transport 2; it is revoked and rejected by the exact
+  bridge fingerprint. A2 itself is not authenticated or Gesture-gated.
+  Reproducible source: `firmware/rt12col_hid_bridge.S`; builder revision:
+  `v8-hid`.
+- At the user's 2026-09-29 request, the app's identity-gated firmware maintenance
+  catalog now offers V8 for an exact recognized RT12COL ring, including the
+  same-mode V7→V8 upgrade that the old mode-only picker hid. It verifies the
+  bundled SHA-256, image hardware and declared V8 version before DFU; requires
+  Health mode, saved history, battery at least 40% and not charging; and shows a
+  destructive confirmation. A2 is enabled only after the post-reboot 423-byte
+  fingerprint. Swipe up/down are unlocked; added remaps are swipe left/right,
+  generic media next/previous/play-pause, volume up/down/mute and navigation
+  back/forward. The route is prepared but no phone deploy or flash occurred.
+- iPhone swipes require AssistiveTouch; the Gestures screen now includes a setup
+  sheet. Consumer Control keys do not require it.
+- HID actions require a calibrated, non-healing Gesture segment and share the
+  serialized UART lane with entry, stop and renewal. A stop disables a queued
+  HID action before the Health-return packets. Lifecycle records are
+  `hid_action`.
+- Offline evidence: seven V8 firmware proofs and the combined 28-test Python
+  set pass; full iOS XCTest passes 388/388 with no skips; Release simulator and
+  unsigned generic-iPhone builds succeed with the exact V8 bundle. Physical
+  HID bonding, AssistiveTouch drag semantics, Consumer
+  keys, background use, stream/renewal coexistence, Health return and battery
+  remain untested. Do not call V8 safe or physically validated.
+
+
+## iOS gesture actions, Back Tap and background sessions — 2026-09-28
+
+App-only. No firmware, image, container or ring-command change; nothing here
+alters the firmware guidance in the other sections. Read
+[ios/IMPLEMENTATION.md](ios/IMPLEMENTATION.md) (2026-09-28 section) first.
+
+- During a Gesture session, recognized gestures now run phone actions through
+  `GestureActionRouter` (0.75 s cooldown, 1 s settle after calibration).
+  Defaults: flick right/left = Apple Music next/previous; snap = **Pause
+  gestures**, which ends the session (ring back to Health, CNN stops) and stays
+  remappable; flick up/down = Swipe up/down, which are **locked**, because an
+  iOS app cannot scroll other apps (that needs ring-sent Bluetooth HID; the
+  ring's HID service was not researched in this session and
+  `docs/RING_HID_RESEARCH.md` does not exist yet).
+  Double flicks, double clap and wave are unassigned but mappable. Volume,
+  torch, HomeKit, Run Shortcut and speech are deliberately not offered.
+- Background sessions are now an opt-out setting, "Keep gestures active in
+  background", **default ON**; this supersedes "background returns to Health"
+  wording elsewhere. Idle auto-pause (default 15 min, reset by every recognized
+  gesture), the Return-to-Health timer, stale stream, lease/renewal failure,
+  disconnect and explicit stop still return the ring to Health. Only the
+  audited `A1 04`, `A1 05`, `A1 02` and `3B 02 01 03/00` are sent.
+- App Intents under "R02Ring" in Shortcuts: Toggle Gesture Session, Start
+  Gesture Session, Pause Gestures (Return to Health). Back Tap runs a user
+  shortcut containing Toggle. A stop or a second Toggle withdraws a start that
+  is still waiting for the ring. A background start waits 10 s, then asks to
+  continue in R02, which tries for 30 s.
+- `Model/AppRuntime.swift`: `@MainActor` singleton `AppRuntime.shared` owns the
+  SwiftData container and `AppModel` and calls `model.start`, so an intent or
+  Bluetooth state restoration that cold-launches R02 in the background starts
+  the ring manager without any view. Intents reach the model only through it.
+- Research event log `Documents/GestureEvents/events_*.jsonl` has exactly the
+  Python EventLog's nine keys (`name, direction, t_s, confidence, run_length,
+  latency_s, end_s, action, wall`), pinned by
+  `tests/test_ios_event_log_contract.py`; `python -m probe.label join` reads it
+  unchanged. `lifecycle_*.jsonl` journals starts/stops, readiness, renewals,
+  stream gaps, mode recovery and slow Apple Music calls.
+- Bugs fixed with this change: (1) entry-window race: a stop that arrives
+  during entry (after `A1 04`, before the three-sample gate) is now held and
+  sent once entry settles, and a stop during a start's readiness wait withdraws
+  it before `A1 04` (`GestureSessionSequencer`); an integration test on the real
+  coordinator and A1 transport sees exactly `A1 05, A1 02, 3B 02 01 00` after
+  the entry. (2) A renewal failure left mode control unavailable until
+  reconnect, and a renewal-guard failure wrote no stop packets at all;
+  `ModeRecoveryController` now re-attaches the same A1 transport after 600 ms
+  (at most 3 consecutive failures per connection), which sends the audited
+  stops and re-enables Start. (3) `RingManager.peripheral(_:didUpdateValueFor:)`
+  read `characteristic.value` after the main-actor hop, where the next
+  notification could overwrite it; value, UUID and receipt uptime are now
+  captured before the hop. No unit test pins (3): `CBPeripheral` cannot be
+  constructed in tests.
+- Left open: charging is checked only when a session starts, never
+  mid-session (a re-check needs a battery query that is unvalidated during raw
+  streaming); the Gestures screen says so. Two low-severity review findings are
+  still unfixed: a start whose entry is followed by a held stop still answers
+  "Gesture session started" while the ring is back in Health; a Toggle during a
+  stop now waits and re-enters Gesture (an "off" Back Tap right after a silent
+  background snap pause restarts streaming). Details: ios/IMPLEMENTATION.md.
+- Fixed in the follow-up (`Model/GestureStartHolds.swift`, 13 tests in
+  `GestureStartHoldsTests`): the model now clears a failed continuation's
+  message, and the panel's own tap message (now model-owned), whenever the ring
+  reaches Gesture from any source, or a start joins a running session. A failed
+  entry keeps it. A stop now runs the deferred health refresh after it settles,
+  including a stop that only drops a foreground-start hold.
+- Offline evidence (latest fix-stage run, iOS Simulator SDK 27.0): full XCTest
+  suite **229 executed (88 before this feature), 0 failures**, no skips, zero
+  Swift warnings; Release simulator build succeeds; `tests/test_labeling.py`
+  plus `tests/test_ios_event_log_contract.py` 21 passed. A simulator smoke
+  launch (DEBUG-only `-R02InitialTab gestures`) showed the Gestures tab without
+  a crash. No phone install, no ring connection.
+- Offline only. Background BLE delivery at 25 Hz, Back Tap and intent cold
+  launch, Apple Music from the background, and main-queue stalls from Music's
+  synchronous IPC have **not** been verified on the physical phone and ring.
+  The physical checklist is in the ios/IMPLEMENTATION.md 2026-09-28 section.
+
 ## RT12COL V7 comparison result — 2026-09-28
 
 This section supersedes the earlier wording below that calls V6 off-ring, V7

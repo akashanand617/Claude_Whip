@@ -4,31 +4,25 @@ import Combine
 
 @main
 struct R02RingApp: App {
-    private let container: ModelContainer
+    private let runtime: AppRuntime
 
     init() {
-        do {
-            container = try ModelContainer(for: HeartRateRecord.self, StepRecord.self,
-                                           SleepSessionRecord.self, SleepStageRecord.self, HealthCoverageRecord.self)
-        } catch {
-            fatalError("Could not create the local health store: \(error)")
-        }
+        runtime = AppRuntime.shared
     }
 
     var body: some Scene {
         WindowGroup {
-            RootView()
+            RootView(model: runtime.model)
                 .preferredColorScheme(.dark)   // the design is authored dark-first
-                .modelContainer(container)
+                .modelContainer(runtime.container)
         }
     }
 }
 
 /// Three tabs; Today additionally pushes the metric detail screens.
 struct RootView: View {
-    @Environment(\.modelContext) private var modelContext
     @Environment(\.scenePhase) private var scenePhase
-    @StateObject private var model = AppModel()
+    @ObservedObject var model: AppModel
     @State private var path: [Metric] = []
     private let foregroundRefresh = Timer.publish(every: 300, on: .main, in: .common).autoconnect()
 
@@ -61,30 +55,17 @@ struct RootView: View {
         .ringOnboarding(manager: model.ringManager) {
             model.connectCandidate()
         }
-        .task {
-            model.start(modelContext: modelContext)
-        }
         // Switching tabs from inside a pushed detail screen should not leave that
         // screen sitting on Today's stack when you come back.
         .onChange(of: model.selectedTab) { _, _ in
             if model.selectedTab != .today { path.removeAll() }
         }
-        .onChange(of: scenePhase) { _, phase in
-            switch phase {
-            case .active:
-                model.ringManager.begin()
-                if model.ringManager.isReady, model.healthSyncEnabled { Task { await model.sync() } }
-            case .background:
-                model.stopHeartRateMeasurement()
-                if model.modes.status?.mode == .gesture || model.modes.status?.mode == .enteringGesture {
-                    Task { await model.setGestureSession(false) }
-                }
-            default: break
-            }
+        .onChange(of: scenePhase, initial: true) { _, phase in
+            model.scenePhaseChanged(phase)
         }
         .onReceive(foregroundRefresh) { _ in
-            guard scenePhase == .active, model.ringManager.isReady, model.healthSyncEnabled else { return }
-            Task { await model.sync() }
+            guard scenePhase == .active else { return }
+            model.automaticHealthSync()
         }
     }
 }
